@@ -10,7 +10,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import nflreadpy
 
 # === Config ===
-SEASONS   = list(range(2000, 2020))   # 20 años → rookie deals expirados
+SEASONS   = list(range(2011, 2020))   # 2011-2019: cobertura OTC ~98%
 BG        = "#0f1115"
 CARD      = "#151924"
 FG        = "#EDEDED"
@@ -37,24 +37,78 @@ POS_MAP = {
 POS_ORDER  = ["QB", "RB", "WR", "TE", "OL", "DL", "LB", "DB"]
 ROUND_LABELS = ["Ronda 1", "Ronda 2", "Ronda 3", "Ronda 4", "Ronda 5", "Ronda 6", "Ronda 7"]
 
+# Mapa nickname/nombre completo → abreviatura estándar
+# Cubre nombres actuales, históricos y variantes que usa OTC
+NICK_TO_ABBR = {
+    "Cardinals":"ARI","Falcons":"ATL","Ravens":"BAL","Bills":"BUF","Panthers":"CAR",
+    "Bears":"CHI","Bengals":"CIN","Browns":"CLE","Cowboys":"DAL","Broncos":"DEN",
+    "Lions":"DET","Packers":"GB","Texans":"HOU","Colts":"IND","Jaguars":"JAX",
+    "Chiefs":"KC","Rams":"LA","Chargers":"LAC","Raiders":"LV","Dolphins":"MIA",
+    "Vikings":"MIN","Patriots":"NE","Saints":"NO","Giants":"NYG","Jets":"NYJ",
+    "Eagles":"PHI","Steelers":"PIT","Seahawks":"SEA","49ers":"SF",
+    "Buccaneers":"TB","Titans":"TEN","Commanders":"WAS",
+    # Nombres históricos
+    "Redskins":"WAS","Football Team":"WAS","Oilers":"TEN",
+}
+# Abreviaturas legacy → estándar (OAK→LV, SD→LAC, STL→LA, KAN→KC, SFO→SF, GNB→GB, etc.)
+ABBR_NORM = {
+    "OAK":"LV","SD":"LAC","STL":"LA","KAN":"KC","SFO":"SF","GNB":"GB",
+    "TAM":"TB","JAC":"JAX","NOR":"NO","PHO":"ARI","HST":"HOU",
+    "ARI":"ARI","ATL":"ATL","BAL":"BAL","BUF":"BUF","CAR":"CAR",
+    "CHI":"CHI","CIN":"CIN","CLE":"CLE","DAL":"DAL","DEN":"DEN",
+    "DET":"DET","GB":"GB","HOU":"HOU","IND":"IND","JAX":"JAX",
+    "KC":"KC","LA":"LA","LAC":"LAC","LAR":"LA","LV":"LV","MIA":"MIA",
+    "MIN":"MIN","NE":"NE","NO":"NO","NYG":"NYG","NYJ":"NYJ",
+    "PHI":"PHI","PIT":"PIT","SEA":"SEA","SF":"SF","TB":"TB",
+    "TEN":"TEN","WAS":"WAS",
+}
+
+def normalize_team(raw: str) -> str:
+    """Convierte cualquier forma de nombre de equipo a abreviatura estándar."""
+    if not isinstance(raw, str):
+        return None
+    # Tomar sólo el primer equipo si hay varios (ej. "DEN/LAR" → "DEN")
+    base = raw.split("/")[0].strip()
+    # Si ya es una abreviatura conocida
+    if base in ABBR_NORM:
+        return ABBR_NORM[base]
+    # Si es un nombre completo/nickname
+    if base in NICK_TO_ABBR:
+        return NICK_TO_ABBR[base]
+    return None
+
 
 # ─────────────────────────────────────────────
 # 1. Datos
 # ─────────────────────────────────────────────
 def load_data() -> pd.DataFrame:
-    print(f"Cargando draft picks {SEASONS[0]}–{SEASONS[-1]}...")
-    df = nflreadpy.load_draft_picks(seasons=SEASONS).to_pandas()
+    print("Cargando draft picks 2011-2019 (datos de contratos completos)...")
+    draft = nflreadpy.load_draft_picks(seasons=list(range(2011, 2020))).to_pandas()
+    draft["pos_group"] = draft["position"].map(POS_MAP)
+    draft = draft[draft["pos_group"].notna() & draft["gsis_id"].notna()].copy()
+    draft["season"] = draft["season"].astype(int)
+    draft["round"]  = draft["round"].astype(int)
 
-    df["pos_group"] = df["position"].map(POS_MAP)
-    df = df[df["pos_group"].notna() & df["to"].notna() & df["round"].notna()].copy()
-    df["round"] = df["round"].astype(int)
-    df["season"] = df["season"].astype(int)
-    df["to"] = df["to"].astype(int)
+    print("Cargando contratos OTC...")
+    c = nflreadpy.load_contracts().to_pandas()
+    c = c.dropna(subset=["gsis_id","draft_team","team","year_signed","years","draft_year"]).copy()
+    c["year_signed"]  = c["year_signed"].astype(int)
+    c["years"]        = c["years"].astype(float)
+    c["draft_year"]   = c["draft_year"].astype(int)
+    c["team_norm"]    = c["team"].apply(normalize_team)
+    c["dt_norm"]      = c["draft_team"].apply(normalize_team)
 
-    # Éxito = jugó 5+ temporadas → casi seguro obtuvo segundo contrato
-    df["success"] = (df["to"] >= df["season"] + 4).astype(int)
+    # Segundo contrato = mismo equipo que lo drafteó,
+    # firmado 3+ años después del draft, duración ≥ 2 años
+    second = c[
+        c["team_norm"].notna() & c["dt_norm"].notna() &
+        (c["team_norm"] == c["dt_norm"]) &
+        (c["year_signed"] >= c["draft_year"] + 3) &
+        (c["years"] >= 2)
+    ]["gsis_id"].unique()
 
-    return df
+    draft["success"] = draft["gsis_id"].isin(second).astype(int)
+    return draft
 
 
 def compute_heatmap(df: pd.DataFrame):
@@ -98,7 +152,7 @@ def plot_heatmap(rate: pd.DataFrame, count: pd.DataFrame):
              ha="left", va="top",
              fontsize=20, fontweight="bold", color=FG)
     fig.text(0.03, 0.91,
-             "% de jugadores que jugaron 5+ temporadas (segundo contrato tras el rookie deal)  ·  Drafts 2000–2019",
+             "% de picks que firmaron un segundo contrato (≥2 años) con el mismo equipo que los drafteó  ·  Drafts 2011–2019",
              ha="left", va="top",
              fontsize=10, color="#888888", fontstyle="italic")
 
