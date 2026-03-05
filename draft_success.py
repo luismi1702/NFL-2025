@@ -10,7 +10,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import nflreadpy
 
 # === Config ===
-SEASONS   = list(range(2011, 2020))   # 2011-2019: cobertura OTC ~98%
+SEASONS   = list(range(2011, 2023))   # 2011-2022: cobertura OTC ~98%
 BG        = "#0f1115"
 CARD      = "#151924"
 FG        = "#EDEDED"
@@ -82,8 +82,8 @@ def normalize_team(raw: str) -> str:
 # 1. Datos
 # ─────────────────────────────────────────────
 def load_data() -> pd.DataFrame:
-    print("Cargando draft picks 2011-2019 (datos de contratos completos)...")
-    draft = nflreadpy.load_draft_picks(seasons=list(range(2011, 2020))).to_pandas()
+    print("Cargando draft picks 2011-2022 (datos de contratos completos)...")
+    draft = nflreadpy.load_draft_picks(seasons=SEASONS).to_pandas()
     draft["pos_group"] = draft["position"].map(POS_MAP)
     draft = draft[draft["pos_group"].notna() & draft["gsis_id"].notna()].copy()
     draft["season"] = draft["season"].astype(int)
@@ -152,7 +152,7 @@ def plot_heatmap(rate: pd.DataFrame, count: pd.DataFrame):
              ha="left", va="top",
              fontsize=20, fontweight="bold", color=FG)
     fig.text(0.03, 0.91,
-             "% de picks que firmaron un segundo contrato (≥2 años) con el mismo equipo que los drafteó  ·  Drafts 2011–2019",
+             "% de picks que firmaron un segundo contrato (≥2 años) con el mismo equipo que los drafteó  ·  Drafts 2011–2022",
              ha="left", va="top",
              fontsize=10, color="#888888", fontstyle="italic")
 
