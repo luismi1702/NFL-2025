@@ -92,7 +92,7 @@ def plot_ranking(data_df, title, subtitle, outfile, higher_is_better=True):
     fig, ax = plt.subplots(figsize=(14, 10), dpi=200)
     fig.patch.set_facecolor(BG)
     ax.set_facecolor(BG)
-    fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
+    fig.subplots_adjust(left=0.0, right=1.0, top=0.87, bottom=0.05)
 
     for spine in ax.spines.values():
         spine.set_edgecolor(GRID)

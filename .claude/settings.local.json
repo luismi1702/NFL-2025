@@ -9,7 +9,30 @@
       "Bash(npx skills:*)",
       "Bash(where gh:*)",
       "Bash(cmd.exe:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" repo:*)",
+      "Bash(python:*)",
+      "WebSearch",
+      "WebFetch(domain:nflreadr.nflverse.com)",
+      "Bash(pip install:*)",
+      "WebFetch(domain:ftnfantasy.com)",
+      "WebFetch(domain:www.sharpfootballanalysis.com)",
+      "WebFetch(domain:www.matchquarters.com)",
+      "Bash(py:*)",
+      "Bash(echo KC\n:*)",
+      "Bash(ls:*)",
+      "Bash(printf Mahomes\\\\nAllen\\\\n:*)",
+      "Bash(echo KC\nSF\n1:*)",
+      "Bash(echo BUF\nBAL\n1:*)",
+      "Bash(printf SF\\\\nKC\\\\n:*)",
+      "Bash(printf 18\\\\ns\\\\n:*)",
+      "Bash(printf 18\\\\nn\\\\n:*)",
+      "Bash(printf KC\\\\n:*)",
+      "Bash(printf SF\\\\n:*)",
+      "Bash(printf KC\\\\nSF\\\\n:*)",
+      "Bash(printf Mahomes\\\\nJosh Allen\\\\n:*)",
+      "Bash(printf:*)",
+      "WebFetch(domain:sumersports.com)"
     ]
   }
 }

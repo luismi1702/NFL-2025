@@ -87,9 +87,9 @@ def compute_pct(part: pd.DataFrame) -> pd.DataFrame:
 # Normalizar todos los logos a ~60 px de pantalla independientemente de su tamaño real.
 # Fórmula: zoom = TARGET_PX / max(h, w)
 # Esto resuelve que NYJ tenga 4096x4096 px frente a los 500x500 del resto.
-TARGET_PX = 48   # píxeles de pantalla deseados por logo
+TARGET_PX = 30   # píxeles de pantalla deseados por logo
 
-def add_logo(ax, team: str, y: float, x: float = -9.5):
+def add_logo(ax, team: str, y: float, x: float = -6.0):
     path = os.path.join(LOGO_DIR, f"{team}.png")
     if not os.path.exists(path):
         return
@@ -116,10 +116,10 @@ def plot_coberturas(pct_df: pd.DataFrame, season: int):
     ax.set_facecolor(BG)
 
     bar_start =  0.0
-    right_lim =  90.0
+    right_lim =  103.0
     bar_h     =  0.64
 
-    ax.set_xlim(-12.0, right_lim)
+    ax.set_xlim(-8.5, right_lim)
     ax.set_ylim(-1, n)
 
     # Barras apiladas
@@ -173,7 +173,7 @@ def plot_coberturas(pct_df: pd.DataFrame, season: int):
             color="#888888", fontsize=9, alpha=0.85, fontstyle="italic")
 
     out = f"coberturas_defensivas_{season}.png"
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0.02, 1, 0.87])
     plt.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
     plt.close()
     print(f"Guardado: {out}")

@@ -178,7 +178,7 @@ for bar, val in zip(bars2, grp_plot["air_yards_share"]):
     )
 
 # Titles & credits
-fig.text(0.5,  0.97, f"Distribución de blancos — {team} — NFL {SEASON}",
+fig.text(0.5,  0.97, f"Distribución de blancos — NFL {SEASON}",
          ha="center", va="top", fontsize=16, fontweight="bold", color=FG)
 fig.text(0.5,  0.92,
          "Target share (%) y Air Yards share (%) por receptor | Toda la temporada",
@@ -189,6 +189,17 @@ fig.text(0.99, 0.01, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
 
 fig.tight_layout(rect=[0, 0.03, 1, 0.91])
+
+# Logo del equipo en el área del título (después de tight_layout para no interferir)
+logo = load_logo(team, base_zoom=0.09)
+if logo:
+    logo_ax = fig.add_axes([0.87, 0.905, 0.10, 0.085])
+    logo_ax.set_facecolor(BG)
+    logo_ax.axis("off")
+    ab = AnnotationBbox(logo, (0.5, 0.5), frameon=False,
+                        xycoords="axes fraction", box_alignment=(0.5, 0.5))
+    logo_ax.add_artist(ab)
+
 out = f"target_share_{team}_{SEASON}.png"
 fig.savefig(out, dpi=DPI, bbox_inches="tight", facecolor=BG)
 plt.close(fig)

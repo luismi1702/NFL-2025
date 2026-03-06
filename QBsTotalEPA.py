@@ -1,33 +1,31 @@
 # QBsTotalEPA.py
-# QBs — EPA del QB (pase + carrera)
-# Eje X: EPA en Red Zone (yardline_100 <= 20)
-# Eje Y: EPA en 3º down (down == 3)
-# Incluye jugadas de pase y carrera del propio QB.
-# Estilo Cuarta y Dato (oscuro) + firma @CuartayDato.
+# QBs — EPA/jugada en Red Zone (X) vs 3er down (Y)
+# Logo de equipo en cada punto + nombre debajo. Estilo Cuarta y Dato.
 
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # === Config ===
 SEASON           = 2025
 MIN_WEEK         = 1
-MAX_WEEK         = 18    # ajustar para análisis mid-season
-MIN_QB_PLAYS_RZ  = 15    # mínimo jugadas en red zone para incluir al QB
-MIN_QB_PLAYS_3RD = 15    # mínimo jugadas en 3º down
+MAX_WEEK         = 18
+MIN_QB_PLAYS_RZ  = 50   # mínimo jugadas en red zone
+MIN_QB_PLAYS_3RD = 50   # mínimo jugadas en 3er down
 
-URL  = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
-OUT  = f"scatter_QB_totalEPA_RZ_vs_3rd_{SEASON}.png"
+URL       = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
+OUT       = f"scatter_QB_totalEPA_RZ_vs_3rd_{SEASON}.png"
+LOGOS_DIR = "logos"
 
-BG   = "#0f1115"
-FG   = "#EDEDED"
-GRID = "#2a2f3a"
-DPI  = 200
+BG           = "#0f1115"
+FG           = "#EDEDED"
+GRID         = "#2a2f3a"
+DPI          = 200
+HARD_PENALTY = {"NYJ": 4.5}
 
-cmap = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
-
-# -------- Utilidades --------
+# ── HELPERS ───────────────────────────────────────────────────────────────────
 def to_num(df, cols):
     for c in cols:
         if c in df.columns:
@@ -46,56 +44,105 @@ def short_name(name: str) -> str:
     parts = name.replace("-", " ").split()
     if len(parts) == 1:
         return parts[0][:14]
-    first = parts[0]; last = parts[-1]
-    return (first[:1] + ". " + last)[:16]
+    return (parts[0][:1] + ". " + parts[-1])[:16]
 
-def scatter_with_labels(x, y, labels, size, title, xlabel, ylabel, outfile):
-    fig, ax = plt.subplots(figsize=(10, 6.5), dpi=DPI)
+def load_logo(team, base_zoom=0.030):
+    path = os.path.join(LOGOS_DIR, f"{team}.png")
+    if not os.path.exists(path):
+        return None
+    try:
+        img = plt.imread(path)
+        h, w = img.shape[:2]
+        aspect = w / float(h) if h else 1.0
+        if team in HARD_PENALTY:
+            zoom = base_zoom / HARD_PENALTY[team]
+        else:
+            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
+            zoom = base_zoom / div
+        return OffsetImage(img, zoom=zoom, resample=True)
+    except Exception:
+        return None
+
+# ── PLOT ──────────────────────────────────────────────────────────────────────
+def plot_qb_scatter(qbs_df, team_map, title, xlabel, ylabel, outfile):
+    fig, ax = plt.subplots(figsize=(13, 9), dpi=DPI)
     fig.patch.set_facecolor(BG)
     ax.set_facecolor(BG)
     for spine in ax.spines.values():
         spine.set_edgecolor(GRID)
-    ax.tick_params(colors=FG)
-    ax.xaxis.label.set_color(FG)
-    ax.yaxis.label.set_color(FG)
+    ax.tick_params(colors=FG, labelsize=9)
+    plt.setp(ax.get_xticklabels(), color=FG)
+    plt.setp(ax.get_yticklabels(), color=FG)
 
-    # Tamaño de punto proporcional al volumen de jugadas
-    size = np.array(size, dtype=float)
-    if len(size) and np.nanmax(size) > 0:
-        s_norm = 30 + 170 * (size - np.nanmin(size)) / (np.nanmax(size) - np.nanmin(size) + 1e-9)
-    else:
-        s_norm = np.ones_like(size) * 80
+    # Márgenes del eje
+    x_vals = qbs_df["rz_epa"].values
+    y_vals = qbs_df["d3_epa"].values
+    x_pad = (x_vals.max() - x_vals.min()) * 0.14
+    y_pad = (y_vals.max() - y_vals.min()) * 0.14
+    ax.set_xlim(x_vals.min() - x_pad, x_vals.max() + x_pad)
+    ax.set_ylim(y_vals.min() - y_pad, y_vals.max() + y_pad)
 
-    ax.scatter(x, y, s=s_norm, alpha=0.88, edgecolor="none", c=x + y, cmap=cmap)
-
-    for xi, yi, lab in zip(x, y, labels):
-        if pd.isna(xi) or pd.isna(yi) or not lab:
-            continue
-        ax.text(xi, yi, lab, fontsize=8.5, ha="center", va="center", color=FG, alpha=0.9)
-
-    ax.axhline(0, color=GRID, linewidth=0.8, linestyle="--")
-    ax.axvline(0, color=GRID, linewidth=0.8, linestyle="--")
-    ax.grid(True, linestyle="--", alpha=0.2, color=GRID)
+    # Líneas de referencia
+    ax.axhline(0, color=GRID, linewidth=1.0, linestyle="--", alpha=0.7, zorder=1)
+    ax.axvline(0, color=GRID, linewidth=1.0, linestyle="--", alpha=0.7, zorder=1)
+    ax.grid(True, linestyle="--", alpha=0.12, color=GRID, zorder=0)
     for sp in ["top", "right"]:
         ax.spines[sp].set_visible(False)
 
-    ax.set_title(title, fontsize=15, pad=10, color=FG, fontweight="bold")
-    ax.set_xlabel(xlabel, fontsize=11, color=FG, labelpad=6)
-    ax.set_ylabel(ylabel, fontsize=11, color=FG, labelpad=6)
+    # Etiquetas de cuadrante
+    x_lo, x_hi = ax.get_xlim()
+    y_lo, y_hi = ax.get_ylim()
+    xm = (x_hi - x_lo) * 0.03
+    ym = (y_hi - y_lo) * 0.03
+    q_kw = dict(fontsize=8.5, alpha=0.30, color=FG, fontstyle="italic")
+    ax.text(x_hi - xm, y_hi - ym, "Élite en ambas",        ha="right", va="top",    **q_kw)
+    ax.text(x_lo + xm, y_hi - ym, "Bueno en 3ro / Malo RZ", ha="left",  va="top",    **q_kw)
+    ax.text(x_hi - xm, y_lo + ym, "Bueno en RZ / Malo 3ro", ha="right", va="bottom", **q_kw)
+    ax.text(x_lo + xm, y_lo + ym, "Peor en ambas",          ha="left",  va="bottom", **q_kw)
+
+    # Offset vertical para el nombre (en unidades de datos)
+    y_range      = y_hi - y_lo
+    label_offset = y_range * 0.038
+
+    # Logos + nombres
+    for qb_key, row in qbs_df.iterrows():
+        x    = row["rz_epa"]
+        y    = row["d3_epa"]
+        name = row["label"]
+        team = team_map.get(qb_key, "")
+
+        logo = load_logo(team, base_zoom=0.030)
+        if logo:
+            ab = AnnotationBbox(logo, (x, y),
+                                frameon=False, zorder=3,
+                                box_alignment=(0.5, 0.5))
+            ax.add_artist(ab)
+        else:
+            ax.scatter(x, y, s=90, color="#888888", zorder=3, alpha=0.8)
+
+        ax.text(x, y - label_offset, name,
+                ha="center", va="top",
+                fontsize=7.5, color=FG, alpha=0.88, zorder=4)
+
+    # Ejes y títulos
+    ax.set_xlabel(xlabel, fontsize=11, color=FG, labelpad=7)
+    ax.set_ylabel(ylabel, fontsize=11, color=FG, labelpad=7)
+    ax.set_title(title, fontsize=15, pad=12, color=FG, fontweight="bold")
 
     week_range = f"S{MIN_WEEK}-S{MAX_WEEK}" if MAX_WEEK < 18 else "Temporada completa"
     fig.text(0.5, 0.01,
-             f"Fuente: nflverse-data  ·  min. {MIN_QB_PLAYS_RZ} jugadas en RZ y {MIN_QB_PLAYS_3RD} en 3er down  ·  {week_range}",
+             f"Fuente: nflverse-data  ·  mín. {MIN_QB_PLAYS_RZ} jugadas en RZ y {MIN_QB_PLAYS_3RD} en 3er down  ·  {week_range}",
              ha="center", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-
     ax.text(0.99, 0.02, "@CuartayDato", fontsize=9, color="#888888",
             ha="right", va="bottom", transform=ax.transAxes, alpha=0.85, fontstyle="italic")
 
+    plt.tight_layout(rect=[0, 0.03, 1, 1])
     plt.savefig(outfile, dpi=DPI, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
     print(f"Guardado: {outfile}")
 
-# -------- Main --------
+
+# ── MAIN ──────────────────────────────────────────────────────────────────────
 def main():
     print(f"Descargando play-by-play {SEASON} semanas {MIN_WEEK}-{MAX_WEEK}...")
     df = pd.read_csv(URL, low_memory=False, compression="infer")
@@ -104,7 +151,6 @@ def main():
     passer_id_col   = pick_col(df, "passer_player_id", "passer_id")
     rusher_id_col   = pick_col(df, "rusher_player_id", "rusher_id")
     passer_name_col = pick_col(df, "passer", "passer_player_name")
-    rusher_name_col = pick_col(df, "rusher", "rusher_player_name")
 
     base = df[
         df["week"].between(MIN_WEEK, MAX_WEEK) &
@@ -116,19 +162,24 @@ def main():
     pass_df["qb_key"]  = pass_df[passer_id_col]
     pass_df["qb_name"] = pass_df[passer_name_col]
 
-    # Mapa id → nombre más frecuente
     id2name = (pass_df.dropna(subset=[passer_id_col, passer_name_col])
                .groupby(passer_id_col)[passer_name_col]
                .agg(lambda s: s.value_counts().idxmax()))
 
-    # Carreras de QB (vectorizado: rusher_id está en el set de passers)
+    # Equipo principal de cada QB
+    team_map = (pass_df.dropna(subset=["qb_key", "posteam"])
+                .groupby("qb_key")["posteam"]
+                .agg(lambda s: s.value_counts().idxmax())
+                .to_dict())
+
+    # Carreras de QB
     qb_ids  = set(pass_df[passer_id_col].dropna().unique())
     run_df  = base[base["play_type"] == "run"].copy()
     qb_runs = run_df[run_df[rusher_id_col].isin(qb_ids)].copy()
     qb_runs["qb_key"]  = qb_runs[rusher_id_col]
     qb_runs["qb_name"] = qb_runs[rusher_id_col].map(id2name)
 
-    cols = ["qb_key", "qb_name", "epa", "yardline_100", "down"]
+    cols     = ["qb_key", "qb_name", "epa", "yardline_100", "down"]
     qb_plays = pd.concat([pass_df[cols], qb_runs[cols]], ignore_index=True)
     qb_plays = qb_plays.dropna(subset=["qb_key", "epa"])
     qb_plays["is_rz"]  = qb_plays["yardline_100"] <= 20
@@ -137,10 +188,9 @@ def main():
     if qb_plays.empty:
         raise SystemExit("No se han podido construir jugadas por QB.")
 
-    # Métricas por QB
     rz  = qb_plays[qb_plays["is_rz"]].groupby("qb_key").agg(rz_epa=("epa","mean"), rz_plays=("epa","size"))
     d3  = qb_plays[qb_plays["is_3rd"]].groupby("qb_key").agg(d3_epa=("epa","mean"), d3_plays=("epa","size"))
-    qbs = rz.join(d3, how="inner")  # solo QBs con datos en ambas métricas
+    qbs = rz.join(d3, how="inner")
     qbs = qbs[(qbs["rz_plays"] >= MIN_QB_PLAYS_RZ) & (qbs["d3_plays"] >= MIN_QB_PLAYS_3RD)].copy()
 
     name_map = (qb_plays.dropna(subset=["qb_key","qb_name"])
@@ -152,16 +202,14 @@ def main():
         raise SystemExit("Tras aplicar filtros de volumen no hay QBs suficientes.")
 
     print(f"QBs en el scatter: {len(qbs)}")
-    week_label = f"S{MIN_WEEK}-S{MAX_WEEK}" if MAX_WEEK < 18 else f"{SEASON}"
-    scatter_with_labels(
-        x=qbs["rz_epa"].values,
-        y=qbs["d3_epa"].values,
-        labels=qbs["label"].values,
-        size=(qbs["rz_plays"] + qbs["d3_plays"]).values,
-        title=f"QBs NFL {week_label} — EPA Red Zone (X) vs 3er down (Y)",
-        xlabel="EPA/jugada en Red Zone",
-        ylabel="EPA/jugada en 3er down",
-        outfile=OUT
+    week_label = f"S{MIN_WEEK}-S{MAX_WEEK}" if MAX_WEEK < 18 else str(SEASON)
+    plot_qb_scatter(
+        qbs_df   = qbs,
+        team_map = team_map,
+        title    = f"QBs NFL {week_label} — EPA Red Zone vs 3er down",
+        xlabel   = "EPA/jugada en Red Zone",
+        ylabel   = "EPA/jugada en 3er down",
+        outfile  = OUT,
     )
 
 if __name__ == "__main__":

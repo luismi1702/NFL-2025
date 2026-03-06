@@ -1,15 +1,18 @@
 """
 cuarto_down.py
-Decisiones en 4 down: go-for-it rate vs conversion rate, con logos de equipos.
+Calidad de decisiones del HC en 4to down: ¿acierta cuando debe ir a por ello
+y cuando debe patear? Modelo analítico propio basado en ydstogo + posición +
+win probability (go_boost no disponible en nflverse PBP 2025).
+NFL 2025
 """
 
 import os
-import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 SEASON       = 2025
 DPI          = 200
@@ -17,21 +20,50 @@ BG           = "#0f1115"
 FG           = "#EDEDED"
 GRID         = "#2a2f3a"
 RYG          = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
-
 LOGOS_DIR    = "logos"
 HARD_PENALTY = {"NYJ": 4.5}
+MIN_PLAYS    = 15   # mínimo de 4to-down decisiones para incluir al equipo
 
 URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 
+# ── MODELO DE RECOMENDACIÓN ────────────────────────────────────────────────────
+def recommend_go(ydstogo, yardline_100, wp_pos):
+    """
+    Modelo simplificado que aproxima el consenso analítico (4th Down Bot / EPA models).
+    wp_pos: win probability de la posesión (0=perder casi seguro, 1=ganar casi seguro).
+    Devuelve True (ir), False (patear), o None (dato inválido).
+    """
+    try:
+        yds = int(ydstogo)
+        yl  = float(yardline_100)   # 100 = propia línea de fondo, 1 = end zone rival
+        wp  = float(wp_pos)
+    except (TypeError, ValueError):
+        return None
+
+    # Desesperado: ir a por ello si la distancia es alcanzable
+    if wp < 0.20 and yds <= 5:
+        return True
+    if wp < 0.10 and yds <= 8:
+        return True
+
+    # Cómodo líder: evitar arriesgar salvo distancia muy corta
+    if wp > 0.88 and yds >= 3:
+        return False
+
+    # Umbrales analíticos estándar (campo + distancia)
+    if yds <= 1:
+        return yl <= 72       # casi siempre ir, salvo territorio propio profundo
+    elif yds == 2:
+        return yl <= 52       # ir en campo rival
+    elif yds <= 4:
+        return yl <= 42       # ir en territorio rival
+    elif yds == 5:
+        return yl <= 33       # ir en zona roja
+    else:
+        return False          # distancia larga → patear
+
 # ── HELPERS ────────────────────────────────────────────────────────────────────
-def pick_col(df, *candidates):
-    for c in candidates:
-        if c in df.columns:
-            return c
-    return None
-
-
-def load_logo(team, base_zoom=0.055):
+def load_logo(team, base_zoom=0.038):
     path = os.path.join(LOGOS_DIR, f"{team}.png")
     if not os.path.exists(path):
         return None
@@ -48,139 +80,182 @@ def load_logo(team, base_zoom=0.055):
     except Exception:
         return None
 
-# ── DATA ───────────────────────────────────────────────────────────────────────
+# ── CARGA DE DATOS ─────────────────────────────────────────────────────────────
 print(f"Descargando PBP {SEASON}...")
 df = pd.read_csv(URL, low_memory=False, compression="infer")
+print(f"Filas: {len(df):,}")
 
-print(f"Filas descargadas: {len(df):,}")
-
-# Filter 4th down scenarios
-EXCL = ["no_play", "qb_kneel", "qb_spike"]
+# ── FILTRO 4TO DOWN ────────────────────────────────────────────────────────────
 mask = (
     (df["down"] == 4) &
-    (df["ydstogo"] <= 5) &
-    (df["yardline_100"] <= 50) &
     df["posteam"].notna() &
-    (~df["play_type"].isin(EXCL)) &
-    df["play_type"].notna()
+    df["ydstogo"].notna() &
+    df["yardline_100"].notna() &
+    df["play_type"].isin(["pass", "run", "punt", "field_goal"])
 )
 df4 = df[mask].copy()
+print(f"Jugadas 4to down válidas: {len(df4):,}")
 
-print(f"Jugadas 4to down filtradas: {len(df4):,}")
-
-# Went for it flag
-df4["went_for_it"] = df4["play_type"].isin(["pass", "run"])
-
-# Success: first down or yards_gained >= ydstogo
-fd_col = pick_col(df4, "first_down", "first_down_rush", "first_down_pass")
-if fd_col is not None:
-    df4["success"] = pd.to_numeric(df4[fd_col], errors="coerce").fillna(0) == 1
+# ── WIN PROBABILITY DE LA POSESIÓN ────────────────────────────────────────────
+# wp en nflverse es del equipo local; calcular WP del equipo en posesión
+if "home_team" in df4.columns and "home_wp" in df4.columns and "away_wp" in df4.columns:
+    df4["wp_pos"] = np.where(
+        df4["posteam"] == df4["home_team"],
+        pd.to_numeric(df4["home_wp"], errors="coerce"),
+        pd.to_numeric(df4["away_wp"], errors="coerce"),
+    )
+elif "wp" in df4.columns:
+    df4["wp_pos"] = pd.to_numeric(df4["wp"], errors="coerce")
 else:
-    yg_col = pick_col(df4, "yards_gained")
-    if yg_col is not None:
-        df4["success"] = pd.to_numeric(df4[yg_col], errors="coerce").fillna(0) >= df4["ydstogo"]
-    else:
-        print("No se encontro columna de exito en 4to down, usando yards_gained >= ydstogo fallback.")
-        df4["success"] = False
+    df4["wp_pos"] = 0.5   # fallback neutro
 
-# Group by team
-def team_stats(group):
-    opp   = len(group)
-    go    = group["went_for_it"].mean() * 100
-    went  = group[group["went_for_it"]]
-    sr    = went["success"].mean() * 100 if len(went) > 0 else np.nan
-    return pd.Series({"opportunities": opp, "go_rate": go, "success_rate": sr, "n_went": len(went)})
+df4["wp_pos"] = df4["wp_pos"].fillna(0.5)
 
-stats = df4.groupby("posteam").apply(team_stats).reset_index()
-stats = stats[stats["opportunities"] >= 5].dropna(subset=["success_rate"])
-print(f"Equipos incluidos: {len(stats)}")
+# ── RECOMENDACIÓN Y DECISIÓN ───────────────────────────────────────────────────
+df4["rec_go"] = df4.apply(
+    lambda r: recommend_go(r["ydstogo"], r["yardline_100"], r["wp_pos"]), axis=1
+)
+df4 = df4[df4["rec_go"].notna()].copy()
+df4["rec_go"]    = df4["rec_go"].astype(bool)
+df4["went"]      = df4["play_type"].isin(["pass", "run"])
+df4["correct"]   = df4["rec_go"] == df4["went"]
+print(f"Jugadas clasificadas: {len(df4):,}")
 
-# League averages
-avg_go      = stats["go_rate"].mean()
-avg_success = stats["success_rate"].mean()
+# ── AGREGAR POR EQUIPO ─────────────────────────────────────────────────────────
+records = []
+for team, g in df4.groupby("posteam"):
+    go_pl   = g[g["rec_go"]]
+    kick_pl = g[~g["rec_go"]]
+    records.append({
+        "posteam":    team,
+        "n_plays":    len(g),
+        "accuracy":   g["correct"].mean() * 100,
+        "acc_go":     go_pl["correct"].mean()   * 100 if len(go_pl)   > 0 else np.nan,
+        "acc_kick":   kick_pl["correct"].mean() * 100 if len(kick_pl) > 0 else np.nan,
+        "n_go_rec":   len(go_pl),
+        "n_kick_rec": len(kick_pl),
+    })
 
-# Normalize for size
-size_raw  = stats["opportunities"].values.astype(float)
-size_norm = (size_raw - size_raw.min()) / (size_raw.max() - size_raw.min() + 1e-9)
-sizes     = 60 + size_norm * (300 - 60)
+stats = pd.DataFrame(records)
+stats = (
+    stats[stats["n_plays"] >= MIN_PLAYS]
+       .sort_values("accuracy", ascending=True)
+       .reset_index(drop=True)
+)
+n_teams = len(stats)
+print(f"Equipos incluidos: {n_teams}")
 
-norm = Normalize(vmin=stats["go_rate"].min(), vmax=stats["go_rate"].max())
+avg_acc  = stats["accuracy"].mean()
+avg_go   = stats["acc_go"].mean()
+avg_kick = stats["acc_kick"].mean()
 
-# ── PLOT ───────────────────────────────────────────────────────────────────────
-fig, ax = plt.subplots(figsize=(11, 8), facecolor=BG)
+# ── CONSOLA ────────────────────────────────────────────────────────────────────
+print(f"\n{'='*68}")
+print(f"  Decisiones correctas en 4to down | NFL {SEASON}")
+print(f"  Modelo: ydstogo + yardline_100 + win probability")
+print(f"{'='*68}")
+print(f"{'Equipo':<6} {'Total%':>8} {'n':>5} {'Go%':>8} {'nGo':>5} {'Kick%':>8} {'nKick':>6}")
+print("-" * 57)
+for _, r in stats.sort_values("accuracy", ascending=False).iterrows():
+    go_s   = f"{r['acc_go']:>7.1f}%"   if not np.isnan(r["acc_go"])   else f"{'—':>8}"
+    kick_s = f"{r['acc_kick']:>7.1f}%" if not np.isnan(r["acc_kick"]) else f"{'—':>8}"
+    print(f"{r['posteam']:<6} {r['accuracy']:>7.1f}% {int(r['n_plays']):>5}"
+          f" {go_s} {int(r['n_go_rec']):>5} {kick_s} {int(r['n_kick_rec']):>6}")
+print(f"\nLiga avg: {avg_acc:.1f}% | Go: {avg_go:.1f}% | Kick: {avg_kick:.1f}%\n")
+
+# ── FIGURA ─────────────────────────────────────────────────────────────────────
+BAR_H  = 0.58
+LOGO_X = -13.0
+XLEFT  = -17.5
+XRIGHT = 132.0
+
+fig_w = 13.5
+fig_h = max(10, n_teams * 0.56 + 3.2)
+
+fig, ax = plt.subplots(figsize=(fig_w, fig_h), facecolor=BG)
 ax.set_facecolor(BG)
+ax.set_xlim(XLEFT, XRIGHT)
+ax.set_ylim(-0.85, n_teams + 1.0)
 
-# Scatter background (for colorbar reference)
-sc = ax.scatter(
-    stats["go_rate"], stats["success_rate"],
-    s=sizes,
-    c=stats["go_rate"],
-    cmap=RYG, norm=norm,
-    alpha=0.0,  # invisible — logos will be plotted on top
-    zorder=1,
+norm = Normalize(
+    vmin=max(35, stats["accuracy"].min() - 3),
+    vmax=min(100, stats["accuracy"].max() + 3),
 )
 
-# Team logos or text
-base_zoom = 0.032
-for _, row in stats.iterrows():
-    team = row["posteam"]
-    x, y = row["go_rate"], row["success_rate"]
-    logo = load_logo(team, base_zoom=base_zoom)
+# ── FONDOS ALTERNADOS ─────────────────────────────────────────────────────────
+for i in range(n_teams):
+    bg_c = "#161b25" if i % 2 == 0 else BG
+    ax.add_patch(plt.Rectangle(
+        (XLEFT, i - BAR_H / 2 - 0.07), XRIGHT - XLEFT, BAR_H + 0.14,
+        color=bg_c, zorder=0,
+    ))
+
+# ── LÍNEA PROMEDIO LIGA ───────────────────────────────────────────────────────
+ax.axvline(avg_acc, color="#888888", linewidth=1.1, linestyle="--", alpha=0.65, zorder=1)
+ax.text(avg_acc, n_teams + 0.12, f"Liga\n{avg_acc:.1f}%",
+        ha="center", va="bottom", color="#aaaaaa", fontsize=7.5, linespacing=1.3)
+
+# ── BARRAS, LOGOS Y ETIQUETAS ─────────────────────────────────────────────────
+for i, row in stats.iterrows():
+    team     = row["posteam"]
+    acc      = row["accuracy"]
+    acc_go   = row["acc_go"]
+    acc_kick = row["acc_kick"]
+
+    color = RYG(norm(acc))
+    ax.barh(i, acc, height=BAR_H, color=color, alpha=0.88, zorder=2, left=0)
+
+    logo = load_logo(team, base_zoom=0.033)
     if logo is not None:
-        ab = AnnotationBbox(
-            logo, (x, y),
-            frameon=False, zorder=3,
-            box_alignment=(0.5, 0.5),
-        )
+        ab = AnnotationBbox(logo, (LOGO_X, i),
+                            frameon=False, zorder=4,
+                            box_alignment=(0.5, 0.5))
         ax.add_artist(ab)
     else:
-        color = RYG(norm(x))
-        ax.text(x, y, team,
-                ha="center", va="center", fontsize=7.5,
-                color=color, fontweight="bold", zorder=3)
+        ax.text(LOGO_X, i, team, ha="center", va="center",
+                color=FG, fontsize=8, fontweight="bold")
 
-# League avg lines
-ax.axhline(avg_success, color="#888888", linewidth=1.0, linestyle="--", alpha=0.6, zorder=2)
-ax.axvline(avg_go,      color="#888888", linewidth=1.0, linestyle="--", alpha=0.6, zorder=2)
+    ax.text(acc + 1.0, i, f"{acc:.1f}%",
+            ha="left", va="center", color=FG,
+            fontsize=8.5, fontweight="bold", zorder=3)
 
-# Liga avg labels
-ax.text(ax.get_xlim()[0] + 0.3, avg_success + 0.5,
-        f"Liga avg ({avg_success:.1f}%)", color="#aaaaaa", fontsize=7.5,
-        ha="left", va="bottom")
-ax.text(avg_go + 0.3, ax.get_ylim()[0] + 0.5,
-        f"Liga avg ({avg_go:.1f}%)", color="#aaaaaa", fontsize=7.5,
-        ha="left", va="bottom")
+    go_str   = f"↑ {acc_go:.0f}%"   if not np.isnan(acc_go)   else "↑ —"
+    kick_str = f"↓ {acc_kick:.0f}%" if not np.isnan(acc_kick) else "↓ —"
+    ax.text(105, i + 0.145, go_str,
+            ha="left", va="center",
+            color="#06d6a0", fontsize=7.5, fontweight="bold", zorder=3)
+    ax.text(105, i - 0.145, kick_str,
+            ha="left", va="center",
+            color="#ffd166", fontsize=7.5, fontweight="bold", zorder=3)
 
-# Colorbar
-cb = fig.colorbar(sc, ax=ax, pad=0.01)
-cb.set_label("% de intentos (agresividad)", color=FG, fontsize=8)
-cb.ax.yaxis.set_tick_params(color=FG)
-plt.setp(cb.ax.yaxis.get_ticklabels(), color=FG, fontsize=7)
-cb.outline.set_edgecolor(GRID)
+ax.text(105, n_teams + 0.12, "Acierta al ir ↑ / Acierta al patear ↓",
+        ha="left", va="bottom", color="#aaaaaa", fontsize=7.5, fontweight="bold")
 
-# Axes styling
-ax.set_xlabel("% de intentos en 4 down y corto (<=5 yds, mitad rival)", color=FG, fontsize=10)
-ax.set_ylabel("% de conversion cuando van a por ello", color=FG, fontsize=10)
-ax.tick_params(colors=FG)
-for spine in ax.spines.values():
-    spine.set_edgecolor(GRID)
-ax.grid(color=GRID, linewidth=0.5, alpha=0.4)
+# ── EJES ──────────────────────────────────────────────────────────────────────
+ax.set_yticks([])
+ax.set_xticks([0, 25, 50, 75, 100])
+ax.set_xlabel("% de decisiones correctas", color=FG, fontsize=9.5)
+ax.tick_params(colors=FG, labelsize=8)
+for sp in ax.spines.values():
+    sp.set_visible(False)
+ax.axvline(0, color=GRID, linewidth=0.8, zorder=1)
+ax.xaxis.grid(color=GRID, linewidth=0.4, alpha=0.4, zorder=0)
 ax.set_axisbelow(True)
 plt.setp(ax.get_xticklabels(), color=FG, fontsize=8)
-plt.setp(ax.get_yticklabels(), color=FG, fontsize=8)
 
-# Texts
-fig.text(0.5, 0.97, f"Decisiones en 4 down — NFL {SEASON}",
+# ── TÍTULOS ───────────────────────────────────────────────────────────────────
+fig.text(0.5, 0.99,
+         f"HC acertando en 4to down | NFL {SEASON}",
          ha="center", va="top", color=FG, fontsize=14, fontweight="bold")
-fig.text(0.5, 0.92,
-         "4 down y <=5 yardas en mitad del campo rival | Tamano = numero de oportunidades",
-         ha="center", va="top", color="#aaaaaa", fontsize=9)
-fig.text(0.01, 0.01, "Fuente: nflverse PBP",
-         ha="left", va="bottom", color="#666666", fontsize=7)
-fig.text(0.99, 0.01, "@CuartayDato",
-         ha="right", va="bottom", color="#666666", fontsize=7)
-
-plt.tight_layout(rect=[0, 0.03, 1, 0.91])
+fig.text(0.5, 0.976,
+         "% de veces que la decisión real coincide con el análisis situacional  ·  "
+         "Verde ↑ = acierta al ir a por ello  ·  Amarillo ↓ = acierta al patear",
+         ha="center", va="top", color="#888888", fontsize=8.5, fontstyle="italic")
+fig.text(0.01, 0.005,
+         f"Fuente: nflverse PBP {SEASON}  |  Modelo propio: ydstogo + posición + win probability",
+         ha="left", va="bottom", color="#555555", fontsize=7.5, fontstyle="italic")
+fig.text(0.99, 0.005, "@CuartayDato",
+         ha="right", va="bottom", color="#888888", fontsize=9, alpha=0.85, fontstyle="italic")
 
 out = f"cuarto_down_{SEASON}.png"
 fig.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
