@@ -2,15 +2,22 @@
 # Gráfico de % de box cargados (X) vs yardas/carrera (Y) con logos NFL
 
 import os
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-# ==== Config ====
+# === Config ===
+SEASON   = 2025
 LOGO_DIR = "logos"
-FIGSIZE = (10, 8)
-DPI = 300
-BG = "#0f1115"
+FIGSIZE  = (10, 8)
+DPI      = 200
+BG       = "#0f1115"
+FG       = "#EDEDED"
+GRID     = "#2a2f3a"
+OUT      = f"box_vs_yards_{SEASON}.png"
+
+HARD_PENALTY = {"NYJ": 4.5}
 
 TEAM_TO_ABBR = {
     "Arizona Cardinals":"ARI","Atlanta Falcons":"ATL","Baltimore Ravens":"BAL","Buffalo Bills":"BUF",
@@ -23,7 +30,7 @@ TEAM_TO_ABBR = {
     "Seattle Seahawks":"SEA","Tampa Bay Buccaneers":"TB","Tennessee Titans":"TEN","Washington Commanders":"WAS",
 }
 
-# ==== Datos ====
+# ==== Datos (hardcoded — box% no es columna estándar nflverse) ====
 data = [
     ["Seattle Seahawks",56.21,3.52],
     ["Buffalo Bills",53.09,4.16],
@@ -58,59 +65,70 @@ data = [
     ["Jacksonville Jaguars",26.88,5.02],
     ["New York Giants",24.86,3.09],
 ]
-df = pd.DataFrame(data, columns=["Equipo","Box%","YdsCarrera"])
+df = pd.DataFrame(data, columns=["Equipo", "Box%", "YdsCarrera"])
+
+
+def load_logo(abbr, base_zoom=0.15):
+    path = os.path.join(LOGO_DIR, f"{abbr}.png")
+    if not os.path.exists(path):
+        return None
+    try:
+        img = plt.imread(path)
+        h, w = img.shape[:2]
+        aspect = w / float(h) if h else 1.0
+        if abbr in HARD_PENALTY:
+            zoom = base_zoom / HARD_PENALTY[abbr]
+        else:
+            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
+            zoom = base_zoom / div
+        return OffsetImage(img, zoom=zoom, resample=True)
+    except Exception:
+        return None
+
 
 # ==== Gráfico ====
-plt.style.use("dark_background")
 fig, ax = plt.subplots(figsize=FIGSIZE, dpi=DPI)
 fig.patch.set_facecolor(BG)
 ax.set_facecolor(BG)
+for spine in ax.spines.values():
+    spine.set_edgecolor(GRID)
+ax.tick_params(colors=FG)
+ax.xaxis.label.set_color(FG)
+ax.yaxis.label.set_color(FG)
+ax.title.set_color(FG)
 
 ax.scatter(df["Box%"], df["YdsCarrera"], s=40, alpha=0.0)  # invisible, solo para fijar límites
 
-# Añadir logos
-def add_logo(team, x, y):
-    abbr = TEAM_TO_ABBR.get(team)
-    if not abbr:
-        return
-    path = os.path.join(LOGO_DIR, f"{abbr}.png")
-    if not os.path.exists(path):
-        return
-
-    img = plt.imread(path)
-    h, w = img.shape[0], img.shape[1]
-    max_side = max(h, w)
-    base_zoom = 0.15
-    scale = min(1.0, 180.0 / max_side)
-    zoom = base_zoom * scale
-    if abbr == "NYJ":
-        zoom *= 0.85
-
-    oi = OffsetImage(img, zoom=zoom)
-    ab = AnnotationBbox(oi, (x, y), frameon=False)
-    ax.add_artist(ab)
-
 for _, row in df.iterrows():
-    add_logo(row["Equipo"], row["Box%"], row["YdsCarrera"])
+    abbr = TEAM_TO_ABBR.get(row["Equipo"])
+    if abbr:
+        im = load_logo(abbr)
+        if im is not None:
+            ab = AnnotationBbox(im, (row["Box%"], row["YdsCarrera"]), frameon=False)
+            ax.add_artist(ab)
 
-# Ejes y títulos
-ax.set_title("Yardas por carrera vs % de box cargados (NFL 2025)", fontsize=15, weight="bold", pad=14)
-ax.set_xlabel("% de box cargados", fontsize=12)
-ax.set_ylabel("Yardas por carrera", fontsize=12)
+# Ejes y límites
+x_pad = (df["Box%"].max() - df["Box%"].min()) * 0.06
+y_pad = (df["YdsCarrera"].max() - df["YdsCarrera"].min()) * 0.12
+ax.set_xlim(df["Box%"].min() - x_pad, df["Box%"].max() + x_pad)
+ax.set_ylim(df["YdsCarrera"].min() - y_pad, df["YdsCarrera"].max() + y_pad)
 
-ax.grid(alpha=0.2, color="white", linestyle="--", lw=0.5)
+ax.set_title(f"Yardas por carrera vs % de box cargados (NFL {SEASON})", fontsize=15, weight="bold", pad=14, color=FG)
+ax.set_xlabel("% de box cargados", fontsize=12, color=FG, labelpad=6)
+ax.set_ylabel("Yardas por carrera", fontsize=12, color=FG, labelpad=6)
+ax.grid(alpha=0.2, color=GRID, linestyle="--", lw=0.5)
 
-# Límites automáticos con margen
-x_pad = (df["Box%"].max() - df["Box%"].min()) * 0.05
-y_pad = (df["YdsCarrera"].max() - df["YdsCarrera"].min()) * 0.1
-ax.set_xlim(df["Box%"].min()-x_pad, df["Box%"].max()+x_pad)
-ax.set_ylim(df["YdsCarrera"].min()-y_pad, df["YdsCarrera"].max()+y_pad)
+# Lineas de promedio
+ax.axvline(df["Box%"].mean(), color=GRID, linewidth=0.8, linestyle=":")
+ax.axhline(df["YdsCarrera"].mean(), color=GRID, linewidth=0.8, linestyle=":")
 
-# Firma
-ax.text(df["Box%"].max()+x_pad*0.8, df["YdsCarrera"].min()-y_pad*0.3, "@CuartayDato",
-        ha="right", va="center", fontsize=10, color="#8f98ad", alpha=0.9)
+# Fuente y firma
+fig.text(0.01, 0.01, f"Datos: temporada {SEASON}  |  Box% hardcoded",
+         ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
+fig.text(0.99, 0.01, "@CuartayDato",
+         ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
 
 plt.tight_layout()
-plt.savefig("box_vs_yards.png", dpi=DPI, facecolor=BG, bbox_inches="tight")
+plt.savefig(OUT, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close()
-print("✅ Gráfico generado: box_vs_yards.png")
+print(f"Guardado: {OUT}")

@@ -19,8 +19,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# ---------------- Config ----------------
-URL = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.csv.gz"
+# === Config ===
+SEASON     = 2025
+URL        = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 CHUNK_SIZE = 1024 * 256  # 256 KB por chunk
 
 
@@ -206,7 +207,7 @@ def radar_plot(values: dict, labels: list, title: str, outfile: str):
     GRID   = "#2b3140"
     ACCENT = "#4e9af1"
 
-    fig = plt.figure(figsize=(7.5, 7.5), dpi=240)
+    fig = plt.figure(figsize=(7.5, 7.5), dpi=200)
     fig.patch.set_facecolor(BG)
     ax = plt.subplot(111, polar=True)
     ax.set_facecolor(CARD)
@@ -223,7 +224,7 @@ def radar_plot(values: dict, labels: list, title: str, outfile: str):
     ax.set_title(title, color=INK, fontsize=14, fontweight="bold", pad=18)
 
     plt.tight_layout()
-    plt.savefig(outfile, dpi=240, bbox_inches="tight", facecolor=BG)
+    plt.savefig(outfile, dpi=200, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
     print(f"  ✅ Guardado: {outfile}")
 
@@ -240,7 +241,7 @@ def main():
         except ValueError:
             raise SystemExit("Semana inválida. Ingresa un número entero.")
 
-    print("\nCargando play-by-play 2025...")
+    print(f"\nCargando play-by-play {SEASON}...")
     df = read_csv_gz_https(URL)
     df = to_num(df, ["week", "epa", "yards_gained", "air_yards"])
 

@@ -16,7 +16,7 @@ CARD      = "#151924"
 FG        = "#EDEDED"
 ACCENT    = "#2d6cdf"
 DPI       = 200
-FIGSIZE   = (15, 10)
+FIGSIZE   = (13, 10)
 
 # Paleta rojo → amarillo → verde
 RYG = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
@@ -52,8 +52,8 @@ NICK_TO_ABBR = {
 }
 # Abreviaturas legacy → estándar (OAK→LV, SD→LAC, STL→LA, KAN→KC, SFO→SF, GNB→GB, etc.)
 ABBR_NORM = {
-    "OAK":"LV","SD":"LAC","STL":"LA","KAN":"KC","SFO":"SF","GNB":"GB",
-    "TAM":"TB","JAC":"JAX","NOR":"NO","PHO":"ARI","HST":"HOU",
+    "OAK":"LV","LVR":"LV","SD":"LAC","STL":"LA","KAN":"KC","SFO":"SF","GNB":"GB",
+    "TAM":"TB","JAC":"JAX","NOR":"NO","PHO":"ARI","HST":"HOU","NWE":"NE",
     "ARI":"ARI","ATL":"ATL","BAL":"BAL","BUF":"BUF","CAR":"CAR",
     "CHI":"CHI","CIN":"CIN","CLE":"CLE","DAL":"DAL","DEN":"DEN",
     "DET":"DET","GB":"GB","HOU":"HOU","IND":"IND","JAX":"JAX",
@@ -133,34 +133,36 @@ def plot_heatmap(rate: pd.DataFrame, count: pd.DataFrame):
 
     # Márgenes en coordenadas de datos
     LEFT_MARGIN  = 1.5    # espacio para etiquetas de posición
-    TOP_MARGIN   = 1.2    # espacio para cabeceras de ronda
+    TOP_MARGIN   = 2.6    # espacio para título + subtítulo + cabeceras de ronda
     BOTTOM_EXTRA = 0.9    # espacio para leyenda y fuente
 
-    total_w = LEFT_MARGIN + n_rnd * SX
+    RIGHT_MARGIN = 1.0   # padding derecho para equilibrar
+    total_w = LEFT_MARGIN + n_rnd * SX + RIGHT_MARGIN
     total_h = TOP_MARGIN  + n_pos * SY + BOTTOM_EXTRA
 
     fig, ax = plt.subplots(figsize=FIGSIZE, dpi=DPI)
     fig.patch.set_facecolor(BG)
     ax.set_facecolor(BG)
+    fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     ax.set_xlim(0, total_w)
     ax.set_ylim(0, total_h)
     ax.axis("off")
 
-    # ── Título ──────────────────────────────────────────────────
-    fig.text(0.03, 0.97,
-             "Tasa de éxito en el Draft NFL",
-             ha="left", va="top",
-             fontsize=20, fontweight="bold", color=FG)
-    fig.text(0.03, 0.91,
-             "% de picks que firmaron un segundo contrato (≥2 años) con el mismo equipo que los drafteó  ·  Drafts 2011–2022",
-             ha="left", va="top",
-             fontsize=10, color="#888888", fontstyle="italic")
+    # ── Título (en coordenadas de datos para evitar pisado) ─────
+    ax.text(LEFT_MARGIN, total_h - 0.25,
+            "Tasa de éxito en el Draft NFL",
+            ha="left", va="top",
+            fontsize=20, fontweight="bold", color=FG, zorder=5)
+    ax.text(LEFT_MARGIN, total_h - 1.05,
+            "% de picks que firmaron un segundo contrato (≥2 años) con el mismo equipo que los drafteó  ·  Drafts 2011–2022",
+            ha="left", va="top",
+            fontsize=10, color="#888888", fontstyle="italic", zorder=5)
 
     # ── Cabeceras de ronda ───────────────────────────────────────
     rnd_labels_short = ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]
     for c, lbl in enumerate(rnd_labels_short):
         cx = LEFT_MARGIN + c * SX + CW / 2
-        cy = total_h - TOP_MARGIN * 0.45
+        cy = total_h - TOP_MARGIN * 0.72
         # Píldora de fondo
         pill = plt.Rectangle((LEFT_MARGIN + c * SX, cy - 0.28),
                               CW, 0.52,

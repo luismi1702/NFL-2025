@@ -1,12 +1,14 @@
 # jugada_semana_max_wpa.py
 # Texto + resumen: "La jugada con mayor WPA de la semana"
-# Fuente: nflverse play_by_play_2025 (descarga directa)
+# Fuente: nflverse play_by_play_{SEASON} (descarga directa)
 # Salida por consola en castellano (tweet sugerido + resumen + top3 opcional)
 
 import pandas as pd
 import numpy as np
 
-URL = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.csv.gz"
+# === Config ===
+SEASON = 2025
+URL    = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 
 def to_num(df, cols):
     for c in cols:
@@ -28,7 +30,7 @@ def main():
     except:
         raise SystemExit("Semana inválida.")
 
-    print("Descargando play-by-play 2025…")
+    print(f"Descargando play-by-play {SEASON}...")
     df = pd.read_csv(URL, low_memory=False, compression="infer")
 
     if "week" not in df.columns:
@@ -99,9 +101,9 @@ def main():
     epa_txt = f" · EPA {epa:+.3f}" if pd.notna(epa) else ""
 
     tweet = (
-        f"🏆 Jugada con mayor impacto (WPA) — Semana {semana}\n"
+        f"[TWEET] Jugada con mayor impacto (WPA) - Semana {semana} NFL {SEASON}\n"
         f"{qtr_txt}{posteam} vs {defteam}: {actor} ({yards_txt}) "
-        f"→ WPA {wpa:+.3f}{epa_txt}\n"
+        f"-> WPA {wpa:+.3f}{epa_txt}\n"
         f"@CuartayDato"
     )
 
@@ -123,29 +125,28 @@ def main():
     print("\n" + "\n".join(resumen))
 
     # Opcional: Top 3 jugadas WPA
-    ver_top3 = input("\n¿Mostrar TOP 3 jugadas por WPA de la semana? (s/n): ").strip().lower()
+    ver_top3 = input("\nMostrar TOP 3 jugadas por WPA de la semana? (s/n): ").strip().lower()
     if ver_top3 == "s":
         top3 = plays.head(3).copy()
-        filas = []
-        for i, (_, row) in enumerate(top3.iterrows(), 1):
+
+        def fmt_row(i, row):
             t_ptype = str(row.get(playtype_c, "NA")) if playtype_c else "NA"
             t_post  = str(row.get("posteam", "NA"))
             t_def   = str(row.get("defteam", "NA"))
             t_wpa   = float(row[wpa_c])
-            t_epa   = float(row.get(epa_c, np.nan)) if epa_c else np.nan
-            t_yards = int(row.get(yardsg_c, np.nan)) if yardsg_c and pd.notna(row.get(yardsg_c, np.nan)) else None
+            t_yards_raw = row.get(yardsg_c, np.nan) if yardsg_c else np.nan
+            t_yards = f"{int(t_yards_raw)}y" if pd.notna(t_yards_raw) else "-"
             t_desc  = str(row.get(desc_col, "")).strip() if desc_col else ""
             if t_ptype == "pass":
-                t_actor = f"{row.get(passer_c,'')} → {row.get(receiver_c,'')}".strip(" → ")
+                t_actor = f"{row.get(passer_c, '')} -> {row.get(receiver_c, '')}".strip(" -> ")
             elif t_ptype == "run":
                 t_actor = str(row.get(rusher_c, "")) or "carrera"
             else:
-                t_actor = str(row.get(passer_c,'')) or str(row.get(rusher_c,'')) or str(row.get(receiver_c,'')) or t_ptype
-            filas.append(
-                f"{i}) {t_post} vs {t_def}: {t_actor} "
-                f"({(str(t_yards)+'y') if t_yards is not None else '—'}) → WPA {t_wpa:+.3f}"
-                + (f" · {t_desc}" if t_desc else "")
-            )
+                t_actor = str(row.get(passer_c, "")) or str(row.get(rusher_c, "")) or t_ptype
+            suffix = f" | {t_desc}" if t_desc else ""
+            return f"{i}) {t_post} vs {t_def}: {t_actor} ({t_yards}) -> WPA {t_wpa:+.3f}{suffix}"
+
+        filas = [fmt_row(i, row) for i, (_, row) in enumerate(top3.iterrows(), 1)]
         print("\nTOP 3 WPA (semana):\n" + "\n".join(filas))
 
 if __name__ == "__main__":

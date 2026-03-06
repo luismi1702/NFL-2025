@@ -1,19 +1,28 @@
-# dato_semana_outlier.py
+# DatoSemana.py
 # El Dato de la Semana (OUTLIER): detecta automáticamente el rendimiento semanal más extremo
-# Descarga directa desde nflverse (2025), gráfico con logos y firma @CuartayDato
+# Descarga directa desde nflverse. Firma @CuartayDato.
 
 import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from matplotlib.colors import LinearSegmentedColormap
 
-URL = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.csv.gz"
-LOGOS_DIR = "logos"   # carpeta con logos/SIGLA.png
+# === Config ===
+SEASON    = 2025
+URL       = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
+LOGOS_DIR = "logos"
 
 # Estilo
-BG = "#0f1115"; FG = "#EDEDED"; GRID = "#2a2f3a"
-DPI = 240; FIGSIZE = (12, 9)
+BG      = "#0f1115"
+FG      = "#EDEDED"
+GRID    = "#2a2f3a"
+DPI     = 200
+FIGSIZE = (12, 9)
+RYG     = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
+
+HARD_PENALTY = {"NYJ": 4.5}
 
 # ---------- Utilidades ----------
 def to_num(df, cols):
@@ -39,7 +48,7 @@ def robust_zscores(s: pd.Series) -> pd.Series:
     return pd.Series(np.zeros(len(s)), index=s.index)
 
 def logo_image(team, base_zoom=0.055):
-    """Carga logo y ajusta zoom por aspecto; penaliza NYJ (logo muy ancho)."""
+    """Carga logo y ajusta zoom por aspecto."""
     path = os.path.join(LOGOS_DIR, f"{team}.png")
     if not os.path.exists(path):
         return None
@@ -47,14 +56,10 @@ def logo_image(team, base_zoom=0.055):
         img = plt.imread(path)
         h, w = img.shape[:2]
         aspect = w / float(h) if h else 1.0
-        if team == "NYJ":
-            zoom = base_zoom / 6.5
+        if team in HARD_PENALTY:
+            zoom = base_zoom / HARD_PENALTY[team]
         else:
-            if aspect <= 1.3:
-                div = 1.0
-            else:
-                div = 1.0 + 0.6 * (aspect - 1.3)
-            div = np.clip(div, 1.0, 2.2)
+            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
             zoom = base_zoom / div
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
@@ -136,20 +141,19 @@ def plot_outlier(series, title, week, higher_is_better, fmt, counts, out_idx, ou
     s = s.sort_values(ascending=not higher_is_better)
     teams = s.index.tolist(); vals = s.values
 
-    plt.rcParams.update({
-        "figure.facecolor": BG, "axes.facecolor": BG, "axes.edgecolor": FG,
-        "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
-        "text.color": FG, "grid.color": GRID,
-    })
     fig, ax = plt.subplots(figsize=FIGSIZE, dpi=DPI)
     fig.patch.set_facecolor(BG)
-    plt.subplots_adjust(left=0.22, right=0.96, top=0.86, bottom=0.10)
+    ax.set_facecolor(BG)
+    for spine in ax.spines.values():
+        spine.set_edgecolor(GRID)
+    ax.tick_params(colors=FG)
+    ax.xaxis.label.set_color(FG)
 
     y = np.arange(len(s))
-    # Colores suaves para todos; outlier destacado
-    ranks = np.argsort(np.argsort(vals)) / max(len(vals)-1, 1)
-    if not higher_is_better: ranks = 1.0 - ranks
-    base_colors = [plt.colormaps["RdYlGn"](p) for p in ranks]
+    ranks = np.argsort(np.argsort(vals)) / max(len(vals) - 1, 1)
+    if not higher_is_better:
+        ranks = 1.0 - ranks
+    base_colors = [RYG(p) for p in ranks]
 
     # Límites asimétricos
     vmin, vmax = float(np.min(vals)), float(np.max(vals))
@@ -184,30 +188,37 @@ def plot_outlier(series, title, week, higher_is_better, fmt, counts, out_idx, ou
             ax.text(xmin, yy, team, va="center", ha="left", fontsize=10, color=FG)
 
     # Título y subtítulo
-    ax.set_title(f"EL DATO DE LA SEMANA — Semana {week}\n{title}",
-                 fontsize=18, pad=12)
-    # Texto outlier arriba del gráfico
+    fig.text(0.5, 0.97, f"El Dato de la Semana {week}  |  NFL {SEASON}",
+             ha="center", va="top", fontsize=18, fontweight="bold", color=FG)
+    fig.text(0.5, 0.92, title,
+             ha="center", va="top", fontsize=11, color="#888888", fontstyle="italic")
+
+    # Outlier destacado
     out_val = series.loc[out_idx]
-    plays = int(counts.get(out_idx, np.nan)) if isinstance(counts, pd.Series) else np.nan
-    detalle = f"{out_idx}: {fmt.format(out_val)}"
-    if not np.isnan(plays):
-        detalle += f" • {plays} jugadas"
-    ax.text(0.01, 0.02, f"Outlier: {detalle}", transform=ax.transAxes,
+    plays = int(counts.get(out_idx, 0)) if isinstance(counts, pd.Series) else 0
+    detalle = f"Outlier: {out_idx}  {fmt.format(out_val)}"
+    if plays:
+        detalle += f"  ({plays} jugadas)"
+    ax.text(0.01, 0.02, detalle, transform=ax.transAxes,
             fontsize=10, color="#B9BDC7")
 
     # Ejes limpios
-    ax.grid(axis="x", linestyle="--", alpha=0.35)
+    ax.grid(axis="x", linestyle="--", alpha=0.25, color=GRID)
     ax.axvline(0, color=GRID, linewidth=1)
-    for spine in ["top","right","left","bottom"]:
+    for spine in ["top", "right", "left"]:
         ax.spines[spine].set_visible(False)
 
+    # Fuente
+    fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  NFL {SEASON}  ·  Solo pases y carreras",
+             ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
+
     # Firma
-    ax.text(0.96, 0.02, "@CuartayDato", transform=ax.transAxes,
-            ha="right", va="bottom", color="#888888", fontsize=10, alpha=0.85, fontstyle="italic")
+    ax.text(0.99, 0.02, "@CuartayDato", transform=ax.transAxes,
+            ha="right", va="bottom", color="#888888", fontsize=9, alpha=0.85, fontstyle="italic")
 
     plt.savefig(outfile, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
-    print(f"✅ PNG generado: {outfile}")
+    print(f"Guardado: {outfile}")
 
 # ---------- Main ----------
 if __name__ == "__main__":
@@ -217,7 +228,7 @@ if __name__ == "__main__":
     except:
         raise SystemExit("Semana inválida.")
 
-    print("Descargando datos 2025...")
+    print(f"Descargando datos NFL {SEASON}...")
     df = pd.read_csv(URL, low_memory=False, compression="infer")
     if "week" not in df.columns:
         raise SystemExit("El dataset no tiene columna 'week' (revisa la fuente).")

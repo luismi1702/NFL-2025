@@ -28,12 +28,13 @@ RAW = {
 # -----------------------------
 # 2) PARÁMETROS
 # -----------------------------
+SEASON       = 2025
 METRICA      = "Comp%"
 MARGEN       = 5.0
-OUTFILE      = "mapa_pases_nextgen_ranges_y30_fix_sin_LOS_v3.png"
+OUTFILE      = f"mapa_pases_{SEASON}.png"
 
 FIGSIZE      = (12.0, 14.0)
-DPI          = 300
+DPI          = 200
 BG           = "#0e1117"
 CARD         = "#141a22"
 COL_GREEN    = "#12c79a"
@@ -185,4 +186,4 @@ ax.text(0.90, 0.045, "@CuartayDato", ha="right", va="center",
 
 plt.savefig(OUTFILE, dpi=DPI, bbox_inches="tight", facecolor=BG)
 plt.close()
-print(f"✅ Guardado: {OUTFILE}")
+print(f"Guardado: {OUTFILE}")

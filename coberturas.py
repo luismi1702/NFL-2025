@@ -84,19 +84,19 @@ def compute_pct(part: pd.DataFrame) -> pd.DataFrame:
 # ─────────────────────────────────────────────
 # 2. Logo helper
 # ─────────────────────────────────────────────
-def add_logo(ax, team: str, y: float, x: float = -10.5, zoom: float = 0.115):
+# Normalizar todos los logos a ~60 px de pantalla independientemente de su tamaño real.
+# Fórmula: zoom = TARGET_PX / max(h, w)
+# Esto resuelve que NYJ tenga 4096x4096 px frente a los 500x500 del resto.
+TARGET_PX = 48   # píxeles de pantalla deseados por logo
+
+def add_logo(ax, team: str, y: float, x: float = -9.5):
     path = os.path.join(LOGO_DIR, f"{team}.png")
     if not os.path.exists(path):
         return
     img = plt.imread(path)
     h, w = img.shape[:2]
-    aspect = w / float(h) if h else 1.0
-    z = zoom
-    if team == "NYJ":
-        z *= 0.85
-    elif aspect > 2.0:
-        z *= 0.7
-    ab = AnnotationBbox(OffsetImage(img, zoom=z, resample=True),
+    zoom = TARGET_PX / max(h, w)
+    ab = AnnotationBbox(OffsetImage(img, zoom=zoom, resample=True),
                         (x, y), frameon=False, xycoords="data")
     ax.add_artist(ab)
 
@@ -115,12 +115,11 @@ def plot_coberturas(pct_df: pd.DataFrame, season: int):
     fig.patch.set_facecolor(BG)
     ax.set_facecolor(BG)
 
-    x_logo    = -10.5
     bar_start =  0.0
     right_lim =  90.0
     bar_h     =  0.64
 
-    ax.set_xlim(x_logo - 0.5, right_lim)
+    ax.set_xlim(-12.0, right_lim)
     ax.set_ylim(-1, n)
 
     # Barras apiladas

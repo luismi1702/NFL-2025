@@ -3,21 +3,23 @@
 # Fuente: nflverse play_by_play_2025 (lectura online).
 
 import os
+import certifi
+os.environ["SSL_CERT_FILE"] = certifi.where()
 import numpy as np
 import pandas as pd
-import os, certifi
-os.environ["SSL_CERT_FILE"] = certifi.where()
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import FancyBboxPatch
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-# ---------------- Config ----------------
-URL = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.csv.gz"
+# === Config ===
+SEASON       = 2025
+URL          = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 EXP_PASS_YDS = 15   # jugada explosiva pase
 EXP_RUN_YDS  = 10   # jugada explosiva carrera
-FIGSIZE = (8.7, 13.5)
-DPI = 240
+FIGSIZE      = (8.7, 13.5)
+DPI          = 200
+HARD_PENALTY = {"NYJ": 4.5}
 
 # ---------------- Helpers base ----------------
 def success_rate(s: pd.Series) -> float:
@@ -160,11 +162,22 @@ def safe_max(series):
         return np.nan
 
 # ---------------- Dibujo ----------------
-def load_logo(team: str, zoom=0.12):
+def load_logo(team: str, base_zoom=0.12):
     path = os.path.join("logos", f"{team}.png")
-    if os.path.exists(path):
-        return plt.imread(path), zoom
-    return None, None
+    if not os.path.exists(path):
+        return None, None
+    try:
+        img = plt.imread(path)
+        h, w = img.shape[:2]
+        aspect = w / float(h) if h else 1.0
+        if team in HARD_PENALTY:
+            zoom = base_zoom / HARD_PENALTY[team]
+        else:
+            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
+            zoom = base_zoom / div
+        return img, zoom
+    except Exception:
+        return None, None
 
 def cell(ax, x, y, w, h, color, radius=0.02):
     ax.add_patch(FancyBboxPatch((x, y), w, h,
@@ -201,10 +214,7 @@ def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path):
     for x_center, abbr in [(xA, team_a), (xB, team_b)]:
         img, z = load_logo(abbr, 0.10)
         if img is not None:
-            # ↓↓↓ Ajuste SOLO para NYJ (logo muy apaisado): lo reducimos para que iguale al resto
-            if abbr == "NYJ":
-                z = z / 6.5
-            ab = AnnotationBbox(OffsetImage(img, zoom=z), (x_center, logo_y),
+            ab = AnnotationBbox(OffsetImage(img, zoom=z, resample=True), (x_center, logo_y),
                                 frameon=False, xycoords=ax.transAxes)
             ax.add_artist(ab)
 
@@ -290,7 +300,7 @@ if __name__ == "__main__":
     team_a = input("Equipo A (siglas exactas, p.ej. SF): ").strip().upper()
     team_b = input("Equipo B (siglas exactas, p.ej. DAL): ").strip().upper()
 
-    print("\nCargando play-by-play 2025...")
+    print(f"\nCargando play-by-play {SEASON}...")
     df = pd.read_csv(URL, low_memory=False, compression="infer")
     to_num(df, ["epa","yards_gained","ydstogo","down","return_yards","yardline_100",
                 "posteam_score_pre","posteam_score_post"])
@@ -317,7 +327,7 @@ if __name__ == "__main__":
     st_low  = []
     st_ranks = rank_dataframe(st, better_high_cols=st_high, better_low_cols=st_low)
 
-    out_file = f"preview_{team_a}_vs_{team_b}_2025_ranks_dark.png"
+    out_file = f"preview_{team_a}_vs_{team_b}_{SEASON}.png"
     draw_png(team_a, team_b, off, deff, st, off_ranks, deff_ranks, st_ranks, out_file)
-    print(f"\n✅ PNG generado: {out_file}\n"
-          "Asegúrate de tener los PNG en ./logos/SIGLA.png (ej.: logos/SF.png).")
+    print(f"\nPNG generado: {out_file}")
+    print("Asegurate de tener los PNG en ./logos/SIGLA.png (ej.: logos/SF.png).")

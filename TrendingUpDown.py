@@ -1,7 +1,7 @@
-# trending_up_down_viz_single_unit_horizontal.py
-# Trending Up / Down — SOLO la unidad (Ataque o Defensa) con mayor cambio para un equipo.
+# TrendingUpDown.py
+# Trending Up / Down — unidad (Ataque o Defensa) con mayor cambio para un equipo.
 # Gráfico HORIZONTAL: barras "Previas" vs "Últimas 3".
-# Descarga directa desde nflverse (2025). Firma @CuartayDato. Logos con fix NYJ.
+# Descarga directa desde nflverse. Firma @CuartayDato.
 
 import pandas as pd
 import numpy as np
@@ -9,18 +9,24 @@ import matplotlib.pyplot as plt
 import os
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-URL = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.csv.gz"
+# === Config ===
+SEASON = 2025
+URL    = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 
 # Filtros mínimos (evitan ruido)
-MIN_PLAYS_OFF_LAST3   = 40
-MIN_PLAYS_OFF_PREV    = 60
-MIN_PLAYS_DEF_LAST3   = 40
-MIN_PLAYS_DEF_PREV    = 60
+MIN_PLAYS_OFF_LAST3 = 40
+MIN_PLAYS_OFF_PREV  = 60
+MIN_PLAYS_DEF_LAST3 = 40
+MIN_PLAYS_DEF_PREV  = 60
 
 # Estilo
-BG = "#0f1115"; FG = "#EDEDED"; GRID = "#2a2f3a"
-GREEN = "#06d6a0"; RED = "#ef476f"
-LOGOS_DIR = "logos"   # coloca PNGs como logos/SF.png
+BG        = "#0f1115"
+FG        = "#EDEDED"
+GRID      = "#2a2f3a"
+GREEN     = "#06d6a0"
+RED       = "#ef476f"
+DPI       = 200
+LOGOS_DIR = "logos"
 
 def to_num(df, cols):
     for c in cols:
@@ -28,8 +34,10 @@ def to_num(df, cols):
             df[c] = pd.to_numeric(df[c], errors="coerce")
     return df
 
+HARD_PENALTY = {"NYJ": 4.5}
+
 def load_logo_image(team, base_zoom=0.10):
-    """Carga logo y devuelve OffsetImage con corrección de aspecto y caso especial NYJ."""
+    """Carga logo y devuelve OffsetImage con corrección de aspecto."""
     path = os.path.join(LOGOS_DIR, f"{team}.png")
     if not os.path.exists(path):
         return None
@@ -37,11 +45,10 @@ def load_logo_image(team, base_zoom=0.10):
         img = plt.imread(path)
         h, w = img.shape[:2]
         aspect = w / float(h) if h else 1.0
-        if team == "NYJ":
-            zoom = base_zoom / 6.5
+        if team in HARD_PENALTY:
+            zoom = base_zoom / HARD_PENALTY[team]
         else:
-            div = 1.0 if aspect <= 1.3 else (1.0 + 0.6 * (aspect - 1.3))
-            div = np.clip(div, 1.0, 2.2)
+            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
             zoom = base_zoom / div
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
@@ -136,15 +143,14 @@ def main():
         eje_label = "EPA por jugada permitido (defensa)"
         mejora_bool = (after - before) < 0  # mejora si permiten menos
 
-    # ----- Gráfico HORIZONTAL: Previas vs Últimas 3 (versión mejorada) -----
-    plt.rcParams.update({
-        "figure.facecolor": BG, "axes.facecolor": BG, "axes.edgecolor": FG,
-        "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
-        "text.color": FG, "grid.color": GRID,
-    })
-
-    fig, ax = plt.subplots(figsize=(9.5, 5.2), dpi=240)
-    fig.patch.set_facecolor(BG); ax.set_facecolor(BG)
+    # ----- Gráfico HORIZONTAL: Previas vs Últimas 3 -----
+    fig, ax = plt.subplots(figsize=(9.5, 5.2), dpi=DPI)
+    fig.patch.set_facecolor(BG)
+    ax.set_facecolor(BG)
+    for spine in ax.spines.values():
+        spine.set_edgecolor(GRID)
+    ax.tick_params(colors=FG)
+    ax.xaxis.label.set_color(FG)
 
     y_pos  = np.array([0, 1])  # 0 = Previas, 1 = Últimas 3
     vals   = [before, after]
@@ -172,12 +178,9 @@ def main():
     ax.set_yticks(y_pos)
     ax.set_yticklabels(labels, fontsize=12, color=FG)
     ax.set_xlabel(eje_label, fontsize=12, color=FG, labelpad=6)
-    ax.grid(axis="x", linestyle="--", alpha=0.35, zorder=1)
-    for sp in ["top","right"]:
+    ax.grid(axis="x", linestyle="--", alpha=0.25, color=GRID, zorder=1)
+    for sp in ["top", "right"]:
         ax.spines[sp].set_visible(False)
-    ax.spines["left"].set_color(GRID)
-    ax.spines["bottom"].set_color(GRID)
-    ax.tick_params(axis="x", colors=FG)
 
     # Título y subtítulo fuera del área del eje (evita solapes)
     fig.text(0.50, 0.96, f"Tendencia {team_choice} — {unidad_sel}",
@@ -191,17 +194,21 @@ def main():
         ab = AnnotationBbox(im, (0.08, 0.92), frameon=False, xycoords=fig.transFigure, zorder=3)
         fig.add_artist(ab)
 
-    # firma
-    fig.text(0.965, 0.06, "@CuartayDato", ha="right", va="bottom",
-             color="#888888", fontsize=10, alpha=0.9, fontstyle="italic")
+    # Fuente
+    fig.text(0.01, 0.01,
+             f"Fuente: nflverse-data  ·  NFL {SEASON}  ·  Jugadas pase+carrera",
+             ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 
-    plt.subplots_adjust(left=0.20, right=0.96, top=0.86, bottom=0.18)
-    out_name = f"trending_{team_choice}_{'OFF' if unidad_sel=='Ataque' else 'DEF'}_prev_vs_last3_horizontal.png"
-    plt.savefig(out_name, dpi=240, bbox_inches="tight", facecolor=BG)
+    # Firma
+    fig.text(0.99, 0.01, "@CuartayDato", ha="right", va="bottom",
+             color="#888888", fontsize=9, alpha=0.85, fontstyle="italic")
+
+    out_name = f"trending_{team_choice}_{'OFF' if unidad_sel=='Ataque' else 'DEF'}_{SEASON}.png"
+    plt.savefig(out_name, dpi=DPI, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
 
-    print(f"\n✅ Gráfico generado: {out_name}")
-    print(f"(Unidad mostrada: {unidad_sel}; color {'verde=mejora' if mejora_bool else 'rojo=empeora'})")
+    print(f"Grafico generado: {out_name}")
+    print(f"Unidad: {unidad_sel} | {'Mejora' if mejora_bool else 'Empeora'}")
 
 if __name__ == "__main__":
     main()

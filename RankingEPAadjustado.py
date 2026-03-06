@@ -1,5 +1,5 @@
-# adjusted_epa_rankings_split_logos_only.py
-# Ranking ofensivo y defensivo con EPA/play ajustado — logos pegados, color por rendimiento y marca @CuartayDato
+# RankingEPAadjustado.py
+# Ranking ofensivo y defensivo con EPA/play ajustado — logos, color por rendimiento y marca @CuartayDato
 
 import os
 import numpy as np
@@ -8,11 +8,17 @@ import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.colors import LinearSegmentedColormap
 
-URL = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.csv.gz"
+# === Config ===
+SEASON    = 2025
+MIN_WEEK  = 1     # semana inicial del rango analizado
+MAX_WEEK  = 18    # semana final   (18 = temporada completa; ajustar mid-season)
+MIN_PLAYS = 100   # mínimo de jugadas para incluir un equipo en el ranking
+
+URL       = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 LOGOS_DIR = "logos"
 
-OUT_OFF = "ranking_ofensivo_ajustado_2025.png"
-OUT_DEF = "ranking_defensivo_ajustado_2025.png"
+OUT_OFF = f"ranking_ofensivo_ajustado_{SEASON}.png"
+OUT_DEF = f"ranking_defensivo_ajustado_{SEASON}.png"
 
 # Tema oscuro
 BG, FG, GRID = "#0f1115", "#EDEDED", "#2a2f3a"
@@ -81,17 +87,18 @@ def colors_by_percentile(values: np.ndarray, higher_is_better: bool) -> list:
     return [RYG(pi) for pi in p]
 
 
-def plot_ranking(data_df, title, outfile, higher_is_better=True):
+def plot_ranking(data_df, title, subtitle, outfile, higher_is_better=True):
     """Genera el gráfico de ranking EPA/play ajustado."""
-    plt.rcParams.update({
-        "figure.facecolor": BG, "axes.facecolor": BG, "axes.edgecolor": FG,
-        "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
-        "text.color": FG, "grid.color": GRID,
-    })
-
-    fig, ax = plt.subplots(figsize=(14, 10), dpi=180)
+    fig, ax = plt.subplots(figsize=(14, 10), dpi=200)
     fig.patch.set_facecolor(BG)
-    plt.subplots_adjust(left=0.20, right=0.96, top=0.92, bottom=0.08)
+    ax.set_facecolor(BG)
+    fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
+
+    for spine in ax.spines.values():
+        spine.set_edgecolor(GRID)
+    ax.tick_params(colors=FG)
+    ax.xaxis.label.set_color(FG)
+    ax.yaxis.label.set_color(FG)
 
     dfp = data_df.sort_values("EPA_ajustado", ascending=not higher_is_better)
     y_pos = np.arange(len(dfp))
@@ -100,47 +107,70 @@ def plot_ranking(data_df, title, outfile, higher_is_better=True):
     vmin, vmax = float(dfp["EPA_ajustado"].min()), float(dfp["EPA_ajustado"].max())
     rng = max(vmax - vmin, 1e-6)
     left_pad = 0.012 * rng
-    right_pad = 0.09 * rng
+    right_pad = 0.11 * rng
     ax.set_xlim(vmin - left_pad, vmax + right_pad)
 
     ax.barh(y_pos, dfp["EPA_ajustado"], color=bar_colors, height=0.54)
     ax.set_yticks([])
-    ax.set_title(title, fontsize=18, pad=12)
-    ax.set_xlabel("EPA/play ajustado", fontsize=12)
+    ax.set_xlabel("EPA/play ajustado", fontsize=12, color=FG, labelpad=8)
 
-    ax.grid(axis="x", linestyle="--", alpha=0.35)
+    ax.grid(axis="x", linestyle="--", alpha=0.25, color=GRID)
     ax.axvline(0, color=GRID, linewidth=1)
 
+    # Valores al lado de cada barra
     x_right = ax.get_xlim()[1]
     for y, v in zip(y_pos, dfp["EPA_ajustado"]):
         ax.text(min(v + 0.004 * rng, x_right - 0.01 * rng),
-                y, f"{v:+.3f}".replace("+", " "),
+                y, f"{v:+.3f}",
                 va="center", ha="left", fontsize=10, color=FG)
 
-    xoff_frac = max(left_pad / rng * 0.60, 0.006)
+    # Logos
     add_logos_to_positions(ax, dfp["Equipo"], y_pos,
-                           base_zoom=0.045, x_offset_fraction=xoff_frac)
-
+                           base_zoom=0.045, x_offset_fraction=0.09)
     ax.invert_yaxis()
 
-    # --- Marca de agua sutil con @CuartayDato ---
-    ax.text(0.99, 0.01, "@CuartayDato",
-            transform=ax.transAxes,
-            ha="right", va="bottom",
-            color="#888888", fontsize=9, alpha=0.8,
-            fontstyle="italic")
+    # Título y subtítulo
+    fig.text(0.5, 0.97, title,
+             ha="center", va="top",
+             fontsize=17, fontweight="bold", color=FG)
+    fig.text(0.5, 0.92, subtitle,
+             ha="center", va="top",
+             fontsize=9.5, color="#888888", fontstyle="italic")
+
+    # Fuente
+    fig.text(0.01, 0.01,
+             "Fuente: nflverse-data (nflverse)  ·  Solo jugadas de pase y carrera",
+             ha="left", va="bottom",
+             fontsize=7.5, color="#555555", fontstyle="italic")
+
+    # Firma
+    fig.text(0.99, 0.01, "@CuartayDato",
+             ha="right", va="bottom",
+             color="#888888", fontsize=9, alpha=0.85, fontstyle="italic")
 
     plt.savefig(outfile, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
 
 
 def main():
-    print("Descargando datos NFL 2025 (nflverse)...")
+    print(f"Descargando datos NFL {SEASON} semanas {MIN_WEEK}-{MAX_WEEK}...")
     df = pd.read_csv(URL, low_memory=False, compression="infer")
-    to_num(df, ["epa"])
+    to_num(df, ["epa", "week"])
 
-    # Jugadas válidas
-    df = df[df["play_type"].isin(["pass", "run"]) & df["posteam"].notna() & df["defteam"].notna()].copy()
+    # Filtro de semana y jugadas válidas
+    df = df[
+        df["week"].between(MIN_WEEK, MAX_WEEK) &
+        df["play_type"].isin(["pass", "run"]) &
+        df["posteam"].notna() &
+        df["defteam"].notna()
+    ].copy()
+
+    # Filtro de muestra mínima
+    off_counts = df.groupby("posteam")["epa"].count()
+    def_counts = df.groupby("defteam")["epa"].count()
+    valid_off = off_counts[off_counts >= MIN_PLAYS].index
+    valid_def = def_counts[def_counts >= MIN_PLAYS].index
+    print(f"Equipos con >={MIN_PLAYS} jugadas — ataque: {len(valid_off)}, defensa: {len(valid_def)}")
 
     # Baselines sin ajuste
     off_mean = df.groupby("posteam")["epa"].mean()
@@ -149,31 +179,38 @@ def main():
     # Ajuste ofensivo
     df["opp_def_allow_mean"] = df["defteam"].map(def_mean)
     df["epa_off_adj"] = df["epa"] - df["opp_def_allow_mean"]
-    off_rank = df.groupby("posteam")["epa_off_adj"].mean().sort_values(ascending=False)
+    off_rank = (df[df["posteam"].isin(valid_off)]
+                .groupby("posteam")["epa_off_adj"].mean()
+                .sort_values(ascending=False))
     off_df = off_rank.to_frame(name="EPA_ajustado").reset_index(names="Equipo")
 
     # Ajuste defensivo
     df["opp_off_gen_mean"] = df["posteam"].map(off_mean)
     df["epa_def_adj"] = df["epa"] - df["opp_off_gen_mean"]
-    def_rank = df.groupby("defteam")["epa_def_adj"].mean().sort_values(ascending=True)
+    def_rank = (df[df["defteam"].isin(valid_def)]
+                .groupby("defteam")["epa_def_adj"].mean()
+                .sort_values(ascending=True))
     def_df = def_rank.to_frame(name="EPA_ajustado").reset_index(names="Equipo")
 
     # Gráficos
+    week_range = f"S{MIN_WEEK}-S{MAX_WEEK}" if MAX_WEEK < 18 else "Temporada completa"
     plot_ranking(
         data_df=off_df,
-        title="ATAQUE — EPA/play ajustado por rival (más alto = mejor)",
+        title=f"Ranking ofensivo NFL {SEASON} — EPA/play ajustado  |  {week_range}",
+        subtitle="EPA por jugada ajustado por la calidad de la defensa rival  ·  Más alto = mejor ataque",
         outfile=OUT_OFF,
         higher_is_better=True
     )
-    print(f"✔ PNG ofensivo guardado: {OUT_OFF}")
+    print(f"Guardado: {OUT_OFF}")
 
     plot_ranking(
         data_df=def_df,
-        title="DEFENSA — EPA/play ajustado por rival (más bajo = mejor)",
+        title=f"Ranking defensivo NFL {SEASON} — EPA/play ajustado  |  {week_range}",
+        subtitle="EPA por jugada ajustado por la calidad del ataque rival  ·  Más bajo = mejor defensa",
         outfile=OUT_DEF,
         higher_is_better=False
     )
-    print(f"✔ PNG defensivo guardado: {OUT_DEF}")
+    print(f"Guardado: {OUT_DEF}")
 
 
 if __name__ == "__main__":
