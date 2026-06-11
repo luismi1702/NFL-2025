@@ -15,7 +15,7 @@ MAX_WEEK = 18
 URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 
 FIGSIZE   = (12.0, 14.5)
-DPI       = 200
+DPI       = 170
 BG        = "#0e1117"
 CARD      = "#141a22"
 COL_GREEN  = "#12c79a"
@@ -35,16 +35,22 @@ MARGEN  = 5.0
 Y_MAX   = 30.0
 
 RANGE_YDS = {
-    "Cortos":    (0.0,  9.0),
-    "Medios":    (10.0, 19.0),
+    "Cortos":    (0.0,  10.0),
+    "Medios":    (10.0, 20.0),
     "Profundos": (20.0, 30.0),
 }
-ZONAS   = ["Izquierda", "Centro", "Derecha"]
-COL_X   = {"Izquierda": 0.27, "Centro": 0.50, "Derecha": 0.73}
-W_BLOCK = 0.18
+ZONAS = ["Izquierda", "Centro", "Derecha"]
+COL_X = {"Izquierda": 0.27, "Centro": 0.50, "Derecha": 0.73}
 
-INNER_PAD_Y_DEFAULT = 0.004
-INNER_PAD_Y_CORTOS  = 0.001
+FIELD_LEFT  = 0.165
+FIELD_RIGHT = 0.835
+SEP_LC = 0.385
+SEP_CR = 0.615
+ZONE_X = {
+    "Izquierda": (FIELD_LEFT, SEP_LC),
+    "Centro":    (SEP_LC,     SEP_CR),
+    "Derecha":   (SEP_CR,     FIELD_RIGHT),
+}
 
 # ── INPUT ─────────────────────────────────────────────────────────────────────
 QB_INPUT = input("Nombre del QB (ej: Mahomes, Lamar, Allen): ").strip()
@@ -199,19 +205,16 @@ for zona in ZONAS:
             ha="center", va="bottom", color=INK_DIM,
             fontsize=10, fontweight="bold", transform=ax.transAxes)
 
-# Bloques
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+
+# ── Campo coloreado por rendimiento ───────────────────────────────────────────
+# Cada celda usa el color de rendimiento como base; franjas alternas dan
+# textura de campo sin superponer nada verde encima.
 for profundidad, (y0_yds, y1_yds) in RANGE_YDS.items():
     y0_ax = yard_to_ax(y0_yds, BASE_Y, TOP_Y)
     y1_ax = yard_to_ax(y1_yds, BASE_Y, TOP_Y)
-
-    if y0_yds == 0.0:
-        y0_ax += INNER_PAD_Y_CORTOS
-        y1_ax -= INNER_PAD_Y_DEFAULT
-    else:
-        y0_ax += INNER_PAD_Y_DEFAULT
-        y1_ax -= INNER_PAD_Y_DEFAULT
-
-    H_block_ax = max(0.05, y1_ax - y0_ax)
+    H_ax  = y1_ax - y0_ax
 
     for zona in ZONAS:
         row   = df_stats[(df_stats["Profundidad"] == profundidad) & (df_stats["Zona"] == zona)].iloc[0]
@@ -219,26 +222,47 @@ for profundidad, (y0_yds, y1_yds) in RANGE_YDS.items():
         media = float(row["MediaLiga"])
         face  = color_for(val, media, MARGEN)
 
-        cx = COL_X[zona]
-        x0 = cx - W_BLOCK / 2
+        x0, x1 = ZONE_X[zona]
+        w = x1 - x0
 
-        ax.add_patch(
-            patches.FancyBboxPatch((x0, y0_ax), W_BLOCK, H_block_ax,
-                                   boxstyle="round,pad=0.012,rounding_size=0.016",
-                                   linewidth=0, facecolor=face, transform=ax.transAxes, alpha=0.98)
-        )
+        # Franja base (color de rendimiento)
+        ax.add_patch(patches.Rectangle(
+            (x0, y0_ax), w, H_ax,
+            facecolor=face, transform=ax.transAxes, zorder=1))
 
-        att  = int(row["Intentos"])
-        cmp_ = int(row["Comp"])
-        td   = int(row["TD"])
-        y_mid = (y0_ax + y1_ax) / 2
+        # Franja alterna cada 5 yardas (blanco muy tenue → textura de campo)
+        for i, ys in enumerate(range(int(y0_yds), int(y1_yds), 5)):
+            ys0 = yard_to_ax(ys,            BASE_Y, TOP_Y)
+            ys1 = yard_to_ax(ys + 5,        BASE_Y, TOP_Y)
+            if i % 2 == 0:
+                ax.add_patch(patches.Rectangle(
+                    (x0, ys0), w, ys1 - ys0,
+                    facecolor="white", alpha=0.10,
+                    transform=ax.transAxes, zorder=2))
 
-        ax.text(cx, y_mid + H_block_ax * 0.20, f"{val:.1f}%",
+        att   = int(row["Intentos"])
+        cmp_  = int(row["Comp"])
+        td    = int(row["TD"])
+        cx    = COL_X[zona]
+        y_mid = y0_ax + H_ax / 2
+
+        ax.text(cx, y_mid + H_ax * 0.12, f"{val:.1f}%",
                 ha="center", va="center", color="white",
-                fontsize=FS_VAL, fontweight="bold", transform=ax.transAxes)
-        ax.text(cx, y_mid - H_block_ax * 0.15, f"Cmp {cmp_}/{att} • TD {td}",
-                ha="center", va="center", color="#0c1219",
-                fontsize=FS_SUB, fontweight="bold", transform=ax.transAxes)
+                fontsize=FS_VAL, fontweight="bold", transform=ax.transAxes, zorder=5)
+        ax.text(cx, y_mid - H_ax * 0.15, f"Cmp {cmp_}/{att} • TD {td}",
+                ha="center", va="center", color="white", alpha=0.95,
+                fontsize=FS_SUB, fontweight="bold", transform=ax.transAxes, zorder=5)
+
+# Líneas de yarda cada 5 yardas
+for yv in range(0, 31, 5):
+    yy = yard_to_ax(yv, BASE_Y, TOP_Y)
+    ax.plot([FIELD_LEFT, FIELD_RIGHT], [yy, yy], color="white",
+            lw=0.9, alpha=0.55, transform=ax.transAxes, zorder=3)
+
+# Separadores de zona
+for sx in [SEP_LC, SEP_CR]:
+    ax.plot([sx, sx], [BASE_Y, TOP_Y], color="white",
+            lw=1.4, alpha=0.7, linestyle="--", transform=ax.transAxes, zorder=3)
 
 # Leyenda
 legend_y = 0.07

@@ -89,7 +89,7 @@ def colors_by_percentile(values: np.ndarray, higher_is_better: bool) -> list:
 
 def plot_ranking(data_df, title, subtitle, outfile, higher_is_better=True):
     """Genera el gráfico de ranking EPA/play ajustado."""
-    fig, ax = plt.subplots(figsize=(14, 10), dpi=200)
+    fig, ax = plt.subplots(figsize=(14, 10), dpi=170)
     fig.patch.set_facecolor(BG)
     ax.set_facecolor(BG)
     fig.subplots_adjust(left=0.0, right=1.0, top=0.87, bottom=0.05)

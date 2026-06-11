@@ -26,7 +26,7 @@ BG       = "#0f1115"
 CARD     = "#151924"
 FG       = "#EDEDED"
 GRID     = "#2a2f3a"
-DPI      = 200
+DPI      = 170
 LOGOS_DIR    = "logos"
 HARD_PENALTY = {"NYJ": 4.5}
 RYG = LinearSegmentedColormap.from_list("ryg", ["#c0392b", "#e8b84b", "#27ae60"])
@@ -82,9 +82,13 @@ def classify_def_pkg(n):
 
 def parse_off_pkg(s):
     if pd.isna(s): return None
-    rb = re.search(r"(\d+)\s*RB", str(s), re.I)
-    te = re.search(r"(\d+)\s*TE", str(s), re.I)
-    return f"{rb.group(1)}{te.group(1)}" if rb and te else None
+    s = str(s)
+    rb = re.search(r"(\d+)\s*RB", s, re.I)
+    fb = re.search(r"(\d+)\s*FB", s, re.I)
+    te = re.search(r"(\d+)\s*TE", s, re.I)
+    rb_n = (int(rb.group(1)) if rb else 0) + (int(fb.group(1)) if fb else 0)
+    te_n = int(te.group(1)) if te else 0
+    return f"{rb_n}{te_n}" if rb_n > 0 else None
 
 
 def man_zone_label(x):
@@ -94,7 +98,7 @@ def man_zone_label(x):
 
 def pressure_label(x):
     if pd.isna(x): return None
-    return "Bajo presion" if x else "Pocket limpio"
+    return "Bajo presion" if int(float(x)) else "Pocket limpio"
 
 
 def epa_group(df, col, order):

@@ -23,7 +23,7 @@ URL_PART = f"https://github.com/nflverse/nflverse-data/releases/download/pbp_par
 BG       = "#0f1115"
 FG       = "#EDEDED"
 GRID     = "#2a2f3a"
-DPI      = 200
+DPI      = 170
 LOGOS_DIR    = "logos"
 HARD_PENALTY = {"NYJ": 4.5}
 
@@ -63,16 +63,21 @@ def load_logo(team, base_zoom=0.038):
 
 def parse_personnel(s):
     """
-    Extrae RB y TE de cadenas tipo '1 RB, 1 TE, 3 WR'.
+    Extrae RB+FB y TE de cadenas tipo '1 RB, 1 TE, 3 WR' o '1 FB, 1 RB, 1 TE, 2 WR'.
+    Cuenta FB como RB (igual que raycarp) para clasificar correctamente el 21 personal.
     Devuelve código de personal estilo '11', '12', '21', etc.
     """
     if pd.isna(s):
         return None
     s = str(s)
-    rb = re.search(r"(\d+)\s*RB", s, re.IGNORECASE)
+    rb_count = 0
+    for pos in ["RB", "FB"]:
+        m = re.search(r"(\d+)\s*" + pos + r"(?:[,\s]|$)", s, re.IGNORECASE)
+        if m:
+            rb_count += int(m.group(1))
     te = re.search(r"(\d+)\s*TE", s, re.IGNORECASE)
-    if rb and te:
-        return f"{rb.group(1)}{te.group(1)}"
+    if rb_count > 0 and te:
+        return f"{rb_count}{te.group(1)}"
     return None
 
 

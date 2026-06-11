@@ -14,7 +14,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 SEASON     = 2025
 MIN_PLAYS  = 200
-DPI        = 200
+DPI        = 170
 BG         = "#0f1115"
 FG         = "#EDEDED"
 GRID       = "#2a2f3a"
@@ -166,9 +166,6 @@ plt.setp(ax.get_xticklabels(), color=FG, fontsize=8)
 # Texts
 fig.text(0.5, 0.97, f"Pass Rate Over Expectation (PROE) — NFL {SEASON}",
          ha="center", va="top", color=FG, fontsize=14, fontweight="bold")
-fig.text(0.5, 0.92,
-         "Tasa de pase real menos esperada (ajustada por marcador, down, distancia y tiempo) | + = pasa mas de lo esperado",
-         ha="center", va="top", color="#aaaaaa", fontsize=9)
 fig.text(0.01, 0.01, "Fuente: nflverse PBP",
          ha="left", va="bottom", color="#666666", fontsize=7)
 fig.text(0.99, 0.01, "@CuartayDato",

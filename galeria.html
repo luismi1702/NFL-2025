@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>@CuartayDato — NFL 2025</title>
+<style>
+:root {
+  --bg:     #080b10;
+  --card:   #0d1117;
+  --card2:  #0f1520;
+  --border: #1a2235;
+  --fg:     #dde2ec;
+  --muted:  #4a556a;
+  --blue:   #2d6cdf;
+  --blue2:  #4e8ef7;
+  --green:  #06d6a0;
+  --red:    #e05555;
+  --gold:   #C9A84C;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+
+/* SCROLLBARS */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:#2a3548}
+
+/* HEADER */
+header{
+  background:linear-gradient(180deg,#0e1420 0%,var(--card) 100%);
+  border-bottom:1px solid var(--border);
+  padding:.85rem 2rem;
+  display:flex;align-items:center;gap:1rem;
+  position:sticky;top:0;z-index:50;
+}
+header h1{
+  font-size:.95rem;font-weight:700;letter-spacing:.12em;
+  background:linear-gradient(135deg,var(--fg) 0%,var(--blue2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+header span{font-size:.72rem;color:var(--muted)}
+#srv-badge{
+  margin-left:auto;display:flex;align-items:center;gap:.45rem;
+  font-size:.72rem;padding:.3rem .85rem;border-radius:20px;
+  background:rgba(0,0,0,.3);border:1px solid var(--border);
+}
+#srv-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .3s,box-shadow .3s}
+#srv-badge.online  #srv-dot{background:var(--green);box-shadow:0 0 6px var(--green)}
+#srv-badge.online  #srv-txt{color:var(--green)}
+#srv-badge.offline #srv-dot{background:var(--red)}
+#srv-badge.offline #srv-txt{color:var(--red)}
+
+/* TABS */
+#tabs{
+  display:flex;padding:.5rem 1.5rem;gap:.25rem;
+  border-bottom:1px solid var(--border);
+  background:var(--card);overflow-x:auto;scrollbar-width:none;
+}
+#tabs::-webkit-scrollbar{display:none}
+.tab{
+  padding:.38rem .9rem;font-size:.7rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);cursor:pointer;
+  border:none;border-radius:20px;background:none;
+  white-space:nowrap;transition:color .15s,background .15s;
+}
+.tab:hover{color:var(--fg);background:rgba(255,255,255,.04)}
+.tab.active{
+  color:var(--blue2);
+  background:rgba(45,108,223,.15);
+  font-weight:600;
+}
+
+/* LAYOUT */
+#wrap{display:flex;height:calc(100vh - 90px)}
+#sidebar{width:300px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--card)}
+#panel-area{flex:1;overflow-y:auto;padding:1.6rem 2rem;background:var(--bg)}
+
+/* SCRIPT LIST */
+.cat-label{
+  font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--blue2);font-weight:700;
+  padding:.7rem 1rem .35rem;
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:.5rem;
+}
+.cat-label::before{content:'';display:inline-block;width:3px;height:10px;background:var(--blue);border-radius:2px;flex-shrink:0}
+.sitem{
+  display:flex;align-items:center;gap:.7rem;
+  padding:.52rem 1rem .52rem 1.1rem;
+  cursor:pointer;border-left:2px solid transparent;
+  transition:background .12s,border-color .12s;
+}
+.sitem:hover{background:linear-gradient(90deg,rgba(45,108,223,.08) 0%,transparent 80%)}
+.sitem.active{
+  background:linear-gradient(90deg,rgba(45,108,223,.14) 0%,transparent 80%);
+  border-left-color:var(--blue2);
+}
+.si-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--border);flex-shrink:0;
+  transition:background .2s,box-shadow .2s;
+}
+.sitem.has-png .si-dot{background:var(--green);box-shadow:0 0 5px rgba(6,214,160,.6)}
+.si-name{font-size:.79rem;color:var(--fg);flex:1;line-height:1.3}
+.si-badge{
+  font-size:.57rem;padding:.1rem .4rem;border-radius:4px;
+  background:rgba(155,143,240,.12);color:#9b8ff0;
+  border:1px solid rgba(155,143,240,.2);flex-shrink:0;
+}
+
+/* PANEL */
+#panel-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;gap:.6rem;color:var(--muted);font-size:.82rem;
+}
+#panel-empty::before{
+  content:'⚡';font-size:2rem;opacity:.2;
+}
+#panel{display:none;flex-direction:column;gap:1.3rem}
+#panel.visible{display:flex}
+.p-head-cat{
+  font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--blue2);font-weight:700;
+  display:flex;align-items:center;gap:.4rem;
+}
+.p-head-cat::before{content:'';display:inline-block;width:3px;height:9px;background:var(--blue);border-radius:2px}
+.p-head-name{font-size:1.25rem;font-weight:700;margin:.3rem 0 .15rem;letter-spacing:.02em}
+.p-head-desc{font-size:.78rem;color:var(--muted);line-height:1.5}
+.p-divider{border:none;border-top:1px solid var(--border);margin:-.1rem 0}
+
+/* inputs */
+.input-row{display:flex;gap:.8rem;flex-wrap:wrap}
+.input-group{display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:150px}
+.input-group label{font-size:.61rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+.input-group input,
+.input-group select{
+  background:rgba(0,0,0,.35);
+  border:1px solid var(--border);
+  color:var(--fg);padding:.48rem .8rem;
+  border-radius:7px;font-size:.84rem;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+  appearance:none;-webkit-appearance:none;
+}
+.input-group select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a556a'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right .7rem center;
+  padding-right:2rem;cursor:pointer;
+}
+.input-group input:focus,
+.input-group select:focus{
+  border-color:var(--blue);
+  box-shadow:0 0 0 3px rgba(45,108,223,.15);
+}
+
+/* run btn */
+#run-btn{
+  align-self:flex-start;
+  background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);
+  border:none;color:#fff;
+  padding:.58rem 1.6rem;border-radius:7px;
+  font-size:.81rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  cursor:pointer;display:flex;align-items:center;gap:.5rem;
+  transition:box-shadow .2s,transform .15s,opacity .15s;
+  box-shadow:0 2px 14px rgba(45,108,223,.35);
+}
+#run-btn:hover{box-shadow:0 4px 22px rgba(45,108,223,.55);transform:translateY(-1px)}
+#run-btn:active{transform:translateY(0)}
+#run-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.offline-hint{
+  font-size:.74rem;color:var(--red);
+  padding:.5rem .9rem;
+  background:rgba(224,85,85,.08);
+  border:1px solid rgba(224,85,85,.25);
+  border-radius:6px;line-height:1.5;
+}
+
+/* log */
+#log{
+  background:rgba(4,6,12,.9);
+  border:1px solid var(--border);
+  border-left:3px solid var(--blue);
+  border-radius:7px;
+  padding:.85rem 1rem;
+  font-family:'Consolas','Fira Code',monospace;
+  font-size:.71rem;color:#6a7890;
+  white-space:pre-wrap;max-height:220px;overflow-y:auto;
+  display:none;line-height:1.65;
+}
+#log.visible{display:block}
+
+/* images */
+#results{display:flex;flex-direction:column;gap:1.1rem}
+.res-card{
+  background:#060910;
+  border:1px solid var(--border);
+  border-radius:10px;overflow:hidden;
+  transition:box-shadow .2s,border-color .2s;
+}
+.res-card:hover{
+  box-shadow:0 6px 30px rgba(0,0,0,.5);
+  border-color:#253050;
+}
+.res-card img{width:100%;display:block;cursor:zoom-in;transition:transform .3s}
+.res-card:hover img{transform:scale(1.005)}
+.res-foot{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.55rem 1rem;border-top:1px solid var(--border);
+}
+.res-name{font-size:.68rem;color:var(--muted)}
+.dl-btn{
+  background:rgba(6,214,160,.1);color:var(--green);
+  border:1px solid rgba(6,214,160,.25);
+  padding:.28rem .85rem;border-radius:5px;
+  font-size:.67rem;font-weight:700;text-decoration:none;
+  letter-spacing:.06em;transition:background .15s;
+}
+.dl-btn:hover{background:rgba(6,214,160,.2)}
+
+/* spinner */
+.spin{
+  width:13px;height:13px;
+  border:2px solid rgba(255,255,255,.15);
+  border-top-color:rgba(255,255,255,.8);
+  border-radius:50%;
+  animation:spin .65s linear infinite;display:inline-block;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* lightbox */
+#lb{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.94);backdrop-filter:blur(4px);
+  z-index:300;align-items:center;justify-content:center;
+  flex-direction:column;gap:.9rem;cursor:zoom-out;
+}
+#lb.open{display:flex}
+#lb-img{max-width:96vw;max-height:88vh;border-radius:6px;cursor:default;box-shadow:0 8px 60px rgba(0,0,0,.8)}
+#lb-foot{display:flex;gap:.8rem;align-items:center}
+#lb-name{font-size:.74rem;color:var(--muted)}
+#lb-dl{
+  background:rgba(6,214,160,.1);color:var(--green);
+  border:1px solid rgba(6,214,160,.25);
+  padding:.32rem .95rem;border-radius:5px;
+  font-size:.7rem;font-weight:700;text-decoration:none;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2d6cdf" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+  <h1>@CuartayDato</h1><span>NFL 2025</span>
+  <div id="srv-badge"><span id="srv-dot"></span><span id="srv-txt">Comprobando servidor...</span></div>
+</header>
+
+<div id="tabs"></div>
+
+<div id="wrap">
+  <!-- sidebar: lista de scripts -->
+  <nav id="sidebar"></nav>
+
+  <!-- panel derecho -->
+  <div id="panel-area">
+    <div id="panel-empty">← Selecciona un script</div>
+    <div id="panel">
+      <div>
+        <div class="p-head-cat" id="p-cat"></div>
+        <div class="p-head-name" id="p-name"></div>
+        <div class="p-head-desc" id="p-desc"></div>
+      </div>
+      <hr class="p-divider">
+      <div id="p-inputs" class="input-row"></div>
+      <button id="run-btn">▶ Ejecutar</button>
+      <div id="offline-hint" class="offline-hint" style="display:none">
+        El servidor no está activo. Abre <strong>ABRIR DASHBOARD.bat</strong> para poder ejecutar scripts.
+      </div>
+      <div id="log"></div>
+      <div id="results"></div>
+    </div>
+  </div>
+</div>
+
+<!-- lightbox -->
+<div id="lb" onclick="if(event.target===this||event.target===document.getElementById('lb-foot'))closeLb()">
+  <img id="lb-img" src="" alt="">
+  <div id="lb-foot">
+    <span id="lb-name"></span>
+    <a id="lb-dl" class="dl-btn" href="" download="">⬇ Descargar</a>
+  </div>
+</div>
+
+<script>
+const API    = 'http://localhost:8765';
+const SEASON = 2025;
+const TEAMS  = ['ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN',
+                 'DET','GB','HOU','IND','JAX','KC','LAC','LAR','LV','MIA',
+                 'MIN','NE','NO','NYG','NYJ','PHI','PIT','SEA','SF','TB','TEN','WAS'];
+
+const SCRIPTS = [
+  // QBs
+  { file:'comparador_qbs.py',              name:'Comparador QBs',          cat:'QBs',        desc:'Radar 6 métricas EPA + DAKOTA',                     inputs:['QB 1|Mahomes','QB 2|Allen'],    pngs:[] },
+  { file:'qb_overview.py',                   name:'QBs Overview',             cat:'QBs',        desc:'EPA/play vs CPOE · tamaño=volumen · color=DAKOTA', inputs:[],                               pngs:['qb_overview_'+SEASON+'.png'] },
+  { file:'QBsTotalEPA.py',                  name:'QBs Total EPA',            cat:'QBs',        desc:'Scatter EPA Red Zone vs 3er down',                 inputs:[],                               pngs:['scatter_QB_totalEPA_RZ_vs_3rd_'+SEASON+'.png'] },
+  { file:'qb_presion.py',                   name:'QBs bajo presión',         cat:'QBs',        desc:'EPA bajo presión vs pocket limpio',                 inputs:[],                               pngs:['qb_presion_'+SEASON+'.png'] },
+  { file:'mapa_pases_por_zona.py',          name:'Mapa de pases',            cat:'QBs',        desc:'Completitud por zona del campo',                    inputs:['QB|Mahomes'],                   pngs:[] },
+  // Receptores
+  { file:'comparador_wrs.py',               name:'Comparador WRs',           cat:'Receptores', desc:'Radar comparativo entre dos WRs',                   inputs:['WR 1|Diggs','WR 2|Adams'],      pngs:[] },
+  { file:'comparador_tes.py',               name:'Comparador TEs',           cat:'Receptores', desc:'Radar comparativo entre dos TEs',                   inputs:['TE 1|Kelce','TE 2|Andrews'],    pngs:[] },
+  { file:'ranking_wrs.py',                  name:'Ranking WRs',              cat:'Receptores', desc:'Scatter EPA/target Red Zone vs 3er down',          inputs:[],                               pngs:['ranking_wrs_'+SEASON+'.png'] },
+  { file:'ranking_tes.py',                  name:'Ranking TEs',              cat:'Receptores', desc:'Scatter EPA/target Red Zone vs 3er down',          inputs:[],                               pngs:['ranking_tes_'+SEASON+'.png'] },
+  { file:'target_share.py',                 name:'Target Share',             cat:'Receptores', desc:'TGT%, AY%, WOPR y RACR por receptor',               inputs:['Equipo|SF'],                    pngs:TEAMS.map(t=>'target_share_'+t+'_'+SEASON+'.png') },
+  // Carrera
+  { file:'comparador_rbs.py',               name:'Comparador RBs',           cat:'Carrera',    desc:'Radar comparativo entre dos RBs',                   inputs:['RB 1|McCaffrey','RB 2|Henry'],  pngs:[] },
+  { file:'ranking_rbs.py',                  name:'Ranking RBs',              cat:'Carrera',    desc:'Scatter EPA/acarreo Red Zone vs 3er down',         inputs:[],                               pngs:['ranking_rbs_'+SEASON+'.png'] },
+  { file:'run_gap.py',                      name:'Run Gap Ofensivo',         cat:'Carrera',    desc:'Fan chart EPA/acarreo por hueco — un equipo o 32', inputs:['Equipo (Enter=todos)|'],         pngs:['run_gap_'+SEASON+'.png'] },
+  { file:'run_gap_defensa.py',              name:'Run Gap Defensivo',        cat:'Carrera',    desc:'Fan chart EPA cedido por hueco — un equipo o 32',   inputs:['Equipo (Enter=todos)|'],         pngs:['run_gap_defensa_'+SEASON+'.png'] },
+  { file:'play_action.py',                  name:'Play Action',              cat:'Carrera',    desc:'EPA diferencial con/sin play-action',               inputs:[],                               pngs:['play_action_'+SEASON+'.png'] },
+  { file:'oline_presion.py',                name:'O-Line Presión',           cat:'Carrera',    desc:'Tasa de presión permitida por OL',                  inputs:[],                               pngs:['oline_presion_'+SEASON+'.png'] },
+  // Personal
+  { file:'ataque_vs_personal_ofensivo.py',  name:'Ataque vs Personal Of.',   cat:'Personal',   desc:'EPA por paquete ofensivo — 32 equipos',             inputs:[],                               pngs:['ataque_vs_personal_ofensivo_'+SEASON+'.png'] },
+  { file:'ataque_vs_personal_defensivo.py', name:'Ataque vs Personal Def.',  cat:'Personal',   desc:'EPA según paquete defensivo rival',                 inputs:[],                               pngs:['ataque_vs_personal_defensivo_'+SEASON+'.png'] },
+  { file:'defensa_vs_personal_ofensivo.py', name:'Defensa vs Personal Of.',  cat:'Personal',   desc:'EPA cedido según personal ofensivo rival',          inputs:[],                               pngs:['defensa_vs_personal_ofensivo_'+SEASON+'.png'] },
+  { file:'coberturas.py',                   name:'Coberturas',               cat:'Personal',   desc:'Distribución Cover 0-6-9 por equipo',                 inputs:[],                               pngs:['coberturas_'+SEASON+'.png'] },
+  { file:'informe_equipo.py',               name:'Informe Equipo',           cat:'Personal',   desc:'Informe completo ataque + defensa',                 inputs:['Equipo|SF'],                    pngs:TEAMS.flatMap(t=>['informe_ataque_'+t+'_'+SEASON+'.png','informe_defensa_'+t+'_'+SEASON+'.png']) },
+  { file:'matchup_intel.py',                name:'Matchup Intel',            cat:'Personal',   desc:'Mismatches automáticos: EXPLOIT / NEUTRO / RIESGO', inputs:['Ataque|SF','Defensa|KC'],       pngs:[] },
+  { file:'tendencias_playcalling.py',       name:'Tendencias Playcalling',   cat:'Personal',   desc:'Pass% y EPA por down × distancia vs media NFL',     inputs:['Equipo|SF'],                    pngs:TEAMS.map(t=>'tendencias_playcalling_'+t+'_'+SEASON+'.png') },
+  { file:'red_zone_personal.py',            name:'Red Zone Personal',        cat:'Personal',   desc:'EPA en red zone por personal ofensivo — equipo o grid', inputs:['Equipo (Enter=grid)|'],        pngs:['red_zone_personal_'+SEASON+'.png'] },
+  // Defensa
+  { file:'comparador_dts.py',               name:'Comparador DTs',           cat:'Defensa',    desc:'Radar DT/NT: sacks, QB hits, TFL, fumbles, EPA on/off',        inputs:['DT 1|Donald','DT 2|Simmons'],  pngs:[] },
+  { file:'comparador_edges.py',             name:'Comparador Edges',         cat:'Defensa',    desc:'Radar Edge Rushers: sacks, hits, TFL, EPA on/off',  inputs:['Edge 1|Bosa','Edge 2|Hendrickson'], pngs:[] },
+  { file:'comparador_lbs.py',              name:'Comparador LBs',           cat:'Defensa',    desc:'Radar ILB/MLB: tackles, TFL, sacks, INT, PD, EPA on/off', inputs:['LB 1|Wagner','LB 2|White'],    pngs:[] },
+  { file:'comparador_cbs.py',              name:'Comparador CBs',           cat:'Defensa',    desc:'Radar Cornerbacks: PD, INT, tackles, TFL, fumbles forzados, EPA on/off', inputs:['CB 1|McDuffie','CB 2|Sauce'], pngs:[] },
+  { file:'comparador_safeties.py',         name:'Comparador Safeties',      cat:'Defensa',    desc:'Radar Safeties: tackles, PD, INT, blitz, TFL, EPA on/off',     inputs:['Safety 1|Adams','Safety 2|Byard'], pngs:[] },
+  { file:'cuarto_down.py',                  name:'4th Down',                 cat:'Defensa',    desc:'Análisis de conversiones en 4th down',              inputs:[],                               pngs:['cuarto_down_'+SEASON+'.png'] },
+  { file:'power_rankings.py',               name:'Power Rankings',           cat:'Defensa',    desc:'Rankings por EPA/play y calendario',                inputs:['Semana|18'],                    pngs:['power_rankings_'+SEASON+'.png'] },
+  // Resúmenes
+  { file:'series_success.py',               name:'Series Success',           cat:'Resúmenes',  desc:'Heatmap: % posesiones TD · FG · 1st · Punt · TO',  inputs:[],                               pngs:['series_success_'+SEASON+'.png'] },
+  { file:'DatoSemana.py',                   name:'Dato de la Semana',        cat:'Resúmenes',  desc:'Outlier estadístico de la semana (z-score)',        inputs:['Semana|5'],                     pngs:['DatoSemana_'+SEASON+'.png'] },
+  { file:'MVPsSemana.py',                   name:'MVPs Semana',              cat:'Resúmenes',  desc:'Candidatos MVP de la semana',                       inputs:['Semana|5','Top-3 (s/n)|s'],     pngs:['MVPsSemana_'+SEASON+'.png'] },
+  { file:'MVPsSeason.py',                   name:'MVPs Temporada',           cat:'Resúmenes',  desc:'Seguimiento MVP de la temporada',                   inputs:['Top-3 (s/n)|s'],                pngs:['MVPsSeason_'+SEASON+'.png'] },
+  { file:'season_arc.py',                   name:'Season Arc',               cat:'Resúmenes',  desc:'Trayectoria de rendimiento de un equipo',           inputs:['Modo (A/D)|A','Equipos (Enter=auto)|'], pngs:[] },
+  { file:'resumen_partido.py',              name:'Resumen Partido',          cat:'Resúmenes',  desc:'Resumen estadístico de un partido',                 inputs:['Equipo A|SF','Equipo B|DAL','Semana|5'], pngs:[] },
+  { file:'Previas.py',                      name:'Previas',                  cat:'Resúmenes',  desc:'Preview de partido o jornada completa',  inputs:['select:Modo|partido,jornada','when:partido:Equipo A|SF','when:partido:Equipo B|DAL','when:jornada:Semana|18'],  pngs:[] },
+  // Draft
+  { file:'draft_success.py',                name:'Draft Success',            cat:'Draft',      desc:'Heatmap éxito por rango de pick y posición',        inputs:[],                               pngs:['draft_success_por_posicion.png'] },
+  { file:'draft_success_r1.py',             name:'Draft Success R1',         cat:'Draft',      desc:'Primera ronda dividida en tramos de 5 picks',       inputs:['Posicion|QB','Tramo|1-5'],      pngs:['draft_success_r1_por_eleccion.png'] },
+  { file:'draft_grid.py',                   name:'Draft Grid',               cat:'Draft',      desc:'Exito en el draft por posicion y ronda (R1-R7) · grid 32 equipos o detalle por equipo', inputs:['select:Modo|grid,equipo','when:equipo:Equipo|SF'], pngs:['draft_grid_equipos.png','draft_grid_equipo.png'] },
+  { file:'draft_r1_radar.py',               name:'Draft Radar',              cat:'Draft',      desc:'Capital de draft por posición (todo el draft) · un equipo o los 32 con media de liga', inputs:['select:Modo|equipo,grid','when:equipo:Equipo|SF'], pngs:['draft_radar_equipo.png','draft_r1_radar_grid.png'] },
+  { file:'draft_value_cliff.py',            name:'Value Cliff',              cat:'Draft',      desc:'¿A partir de qué ronda es un riesgo draftear cada posición?', inputs:['select:Modo|grid,posicion','when:posicion:Posición|QB'], pngs:['draft_value_cliff.png'] },
+  { file:'draft_ranking_equipos.py',        name:'Ranking Draft Equipos',    cat:'Draft',      desc:'Ranking de equipos por éxito histórico en el draft · heatmap por equipo · grid 32 equipos', inputs:['select:Modo|ranking,equipo,grid','when:equipo:Equipo|SF'], pngs:['draft_ranking_equipos.png','draft_heatmap_equipo.png','draft_grid_heatmap.png'] },
+  { file:'draft_eval_2026.py',              name:'Draft Eval 2026',          cat:'Draft',      desc:'Éxitos esperados por equipo en el Draft 2026 · tasas históricas por posición × ronda', inputs:[], pngs:['draft_eval_2026.png'] },
+  // Otros
+  { file:'proe.py',                         name:'PROE',                     cat:'Otros',      desc:'Probabilidad de extender posesión en 4th down',     inputs:[],                               pngs:['proe_'+SEASON+'.png'] },
+  { file:'valor_turnovers.py',              name:'Valor Turnovers',          cat:'Otros',      desc:'Valor de los turnovers en EPA',                     inputs:[],                               pngs:['valor_turnovers_'+SEASON+'.png'] },
+  { file:'RankingEPAadjustado.py',          name:'EPA Ajustado',             cat:'Otros',      desc:'Rankings EPA ajustado por rival',                   inputs:[],                               pngs:['RankingEPAadjustado_'+SEASON+'.png'] },
+  { file:'Manning_bot.py',                  name:'Manning Bot',              cat:'Otros',      desc:'Predictor de resultados NFL (XGBoost ~68%)',         inputs:['Reentrenar modelo (s/N)|N','Semana|18'], pngs:[] },
+  { file:'clutch_performance.py',           name:'Clutch Performance',       cat:'Resúmenes',  desc:'EPA en 4Q cerrados (≤7 pts): equipo o scatter 32', inputs:['Equipo (Enter=scatter)|'],       pngs:['clutch_performance_'+SEASON+'.png'] },
+  { file:'game_script.py',                  name:'Game Script',              cat:'Resúmenes',  desc:'EPA · PROE · 3er/4th down por contexto de marcador', inputs:['Equipo (Enter=scatter)|'],       pngs:['game_script_'+SEASON+'.png'] },
+];
+
+// ── Estado ─────────────────────────────────────────────────────────────────
+let serverOnline = false;
+let current      = null;
+let pollT        = null;
+let activeCat    = 'Todos';
+
+// ── Servidor: ping cada 5s ─────────────────────────────────────────────────
+async function pingServer() {
+  try {
+    const r = await fetch(API + '/api/outputs', { signal: AbortSignal.timeout(1500) });
+    if (r.ok) {
+      serverOnline = true;
+      const badge = document.getElementById('srv-badge');
+      badge.className = 'online';
+      document.getElementById('srv-txt').textContent = 'Servidor activo';
+      // refresca PNGs conocidos via API
+      const pngs = await r.json();
+      updatePngBadges(pngs);
+    }
+  } catch {
+    serverOnline = false;
+    const badge = document.getElementById('srv-badge');
+    badge.className = 'offline';
+    document.getElementById('srv-txt').textContent = 'Servidor inactivo';
+  }
+  // actualiza el botón del panel si está abierto
+  if (current) updateRunBtn();
+}
+setInterval(pingServer, 5000);
+pingServer();
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+const cats = ['Todos', ...new Set(SCRIPTS.map(s => s.cat))];
+const tabsEl = document.getElementById('tabs');
+cats.forEach(c => {
+  const b = document.createElement('button');
+  b.className = 'tab' + (c === 'Todos' ? ' active' : '');
+  b.textContent = c;
+  b.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    b.classList.add('active');
+    activeCat = c;
+    buildSidebar();
+  };
+  tabsEl.appendChild(b);
+});
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+function buildSidebar() {
+  const nav = document.getElementById('sidebar');
+  nav.innerHTML = '';
+  const filtered = SCRIPTS.filter(s => activeCat === 'Todos' || s.cat === activeCat);
+  const groups = {};
+  filtered.forEach(s => { if (!groups[s.cat]) groups[s.cat] = []; groups[s.cat].push(s); });
+  Object.entries(groups).forEach(([cat, list]) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'cat-label';
+    lbl.textContent = cat;
+    nav.appendChild(lbl);
+    list.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'sitem' + (current === s ? ' active' : '');
+      item.id = 'si-' + s.file;
+      const hasPng = s.pngs.some(p => window._knownPngs && window._knownPngs.includes(p));
+      if (hasPng) item.classList.add('has-png');
+      item.innerHTML = `
+        <span class="si-dot"></span>
+        <span class="si-name">${s.name}</span>
+        ${s.inputs.length ? '<span class="si-badge">input</span>' : ''}`;
+      item.onclick = () => openPanel(s);
+      nav.appendChild(item);
+    });
+  });
+}
+buildSidebar();
+
+// Actualiza dots del sidebar cuando hay PNGs nuevos
+function updatePngBadges(pngs) {
+  window._knownPngs = pngs;
+  SCRIPTS.forEach(s => {
+    const el = document.getElementById('si-' + s.file);
+    if (!el) return;
+    const has = s.pngs.some(p => pngs.includes(p));
+    el.classList.toggle('has-png', has);
+  });
+}
+
+// ── Panel ──────────────────────────────────────────────────────────────────
+function openPanel(s) {
+  current = s;
+  buildSidebar(); // actualiza active
+
+  document.getElementById('panel-empty').style.display = 'none';
+  const panel = document.getElementById('panel');
+  panel.classList.add('visible');
+
+  document.getElementById('p-cat').textContent  = s.cat;
+  document.getElementById('p-name').textContent = s.name;
+  document.getElementById('p-desc').textContent = s.desc;
+
+  // inputs
+  const inp = document.getElementById('p-inputs');
+  inp.innerHTML = '';
+  s.inputs.forEach(def => {
+    if (def.startsWith('select:')) {
+      // Formato: 'select:Label|opcion1,opcion2'
+      const [label, optsStr] = def.slice(7).split('|');
+      const optHtml = optsStr.split(',').map(o => `<option value="${o}">${o}</option>`).join('');
+      inp.innerHTML += `<div class="input-group"><label>${label}</label><select data-select-master>${optHtml}</select></div>`;
+    } else if (def.startsWith('when:')) {
+      // Formato: 'when:valor:Label|placeholder'
+      const rest = def.slice(5);
+      const ci = rest.indexOf(':');
+      const showVal = rest.slice(0, ci);
+      const [label, ph] = rest.slice(ci + 1).split('|');
+      inp.innerHTML += `<div class="input-group" data-when="${showVal}" style="display:none"><label>${label}</label><input type="text" placeholder="${ph}" data-ph="${ph}"></div>`;
+    } else {
+      const [label, ph] = def.split('|');
+      inp.innerHTML += `<div class="input-group"><label>${label}</label><input type="text" placeholder="${ph}" data-ph="${ph}"></div>`;
+    }
+  });
+  // Mostrar/ocultar campos condicionales según el select
+  const master = inp.querySelector('[data-select-master]');
+  if (master) {
+    const refresh = () => inp.querySelectorAll('[data-when]').forEach(d => {
+      d.style.display = d.dataset.when === master.value ? '' : 'none';
+    });
+    master.addEventListener('change', refresh);
+    refresh();
+  }
+
+  // reset
+  document.getElementById('log').className = 'log';
+  document.getElementById('log').textContent = '';
+  document.getElementById('results').innerHTML = '';
+
+  updateRunBtn();
+
+  // muestra PNGs ya existentes
+  loadExistingPngs(s);
+}
+
+function updateRunBtn() {
+  const btn  = document.getElementById('run-btn');
+  const hint = document.getElementById('offline-hint');
+  if (serverOnline) {
+    btn.style.display = 'flex';
+    btn.disabled      = false;
+    btn.innerHTML     = '▶ Ejecutar';
+    hint.style.display = 'none';
+  } else {
+    btn.style.display  = 'none';
+    hint.style.display = 'block';
+  }
+}
+
+function loadExistingPngs(s) {
+  const div = document.getElementById('results');
+  div.innerHTML = '';
+  // base: url relativa (funciona desde file://)
+  const base = serverOnline ? API + '/img/' : './';
+  const ts   = Date.now();
+  s.pngs.forEach(png => {
+    const img = new Image();
+    img.onload = () => {
+      div.insertAdjacentHTML('beforeend', `
+        <div class="res-card">
+          <img src="${base + encodeURIComponent(png)}?t=${ts}" alt="${png}" onclick="openLb('${png}','${base}',${ts})">
+          <div class="res-foot">
+            <span class="res-name">${png}</span>
+            <a class="dl-btn" href="${base + encodeURIComponent(png)}" download="${png}">⬇ Descargar</a>
+          </div>
+        </div>`);
+    };
+    img.src = base + encodeURIComponent(png) + '?t=' + ts;
+  });
+}
+
+// ── Run ────────────────────────────────────────────────────────────────────
+document.getElementById('run-btn').onclick = async () => {
+  const inputs = [...document.querySelectorAll('#p-inputs .input-group')].map(div => {
+    const sel = div.querySelector('select');
+    if (sel) return sel.value;
+    const i = div.querySelector('input');
+    if (!i) return '';
+    return div.style.display === 'none' ? '' : (i.value.trim() || i.dataset.ph);
+  });
+
+  const btn = document.getElementById('run-btn');
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spin"></span>Ejecutando...';
+
+  const logEl = document.getElementById('log');
+  logEl.className   = 'log visible';
+  logEl.textContent = 'Iniciando...\n';
+  document.getElementById('results').innerHTML = '';
+
+  let res;
+  try {
+    res = await fetch(API + '/api/run', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ file: current.file, inputs }),
+    });
+  } catch {
+    logEl.textContent = 'No se pudo conectar con el servidor.\nAbre ABRIR DASHBOARD.bat primero.';
+    btn.disabled = false; btn.innerHTML = '▶ Ejecutar';
+    return;
+  }
+
+  const { jid } = await res.json();
+  pollT = setInterval(async () => {
+    const jr  = await fetch(API + '/api/job/' + jid);
+    const job = await jr.json();
+    logEl.textContent = job.log || 'Ejecutando...';
+    logEl.scrollTop   = 9999;
+
+    if (job.s !== 'run') {
+      clearInterval(pollT); pollT = null;
+      btn.disabled  = false;
+      btn.innerHTML = '↺ Ejecutar de nuevo';
+      logEl.className = 'log visible ' + (job.s === 'ok' ? '' : 'log-err');
+
+      // muestra PNGs nuevos
+      if (job.imgs?.length) {
+        const ts2 = Date.now();
+        job.imgs.forEach(png => {
+          document.getElementById('results').insertAdjacentHTML('beforeend', `
+            <div class="res-card">
+              <img src="${API}/img/${encodeURIComponent(png)}?t=${ts2}" onclick="openLb('${png}','${API}/img/',${ts2})" alt="${png}">
+              <div class="res-foot">
+                <span class="res-name">${png}</span>
+                <a class="dl-btn" href="${API}/img/${encodeURIComponent(png)}" download="${png}">⬇ Descargar</a>
+              </div>
+            </div>`);
+        });
+      }
+      await pingServer();
+    }
+  }, 1200);
+};
+
+// ── Lightbox ───────────────────────────────────────────────────────────────
+function openLb(png, base, ts) {
+  const rawSrc = (base || './') + encodeURIComponent(png);
+  const src    = ts ? rawSrc + '?t=' + ts : rawSrc;
+  document.getElementById('lb-img').src  = src;
+  document.getElementById('lb-name').textContent = png;
+  document.getElementById('lb-dl').href     = rawSrc;
+  document.getElementById('lb-dl').download = png;
+  document.getElementById('lb').classList.add('open');
+}
+function closeLb() { document.getElementById('lb').classList.remove('open'); }
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeLb(); });
+
+// ── CSS extra ──────────────────────────────────────────────────────────────
+// log rojo para errores
+const style = document.createElement('style');
+style.textContent = '.log-err { color: var(--red) !important; }';
+document.head.appendChild(style);
+</script>
+</body>
+</html>

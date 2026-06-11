@@ -18,7 +18,7 @@ LOGOS_DIR = "logos"
 BG      = "#0f1115"
 FG      = "#EDEDED"
 GRID    = "#2a2f3a"
-DPI     = 200
+DPI     = 170
 FIGSIZE = (12, 9)
 RYG     = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 

@@ -19,20 +19,14 @@ BG        = "#0f1115"
 CARD      = "#151924"
 FG        = "#EDEDED"
 ACCENT    = "#2d6cdf"
-DPI       = 150
+DPI       = 128
 RYG       = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
 POS_ORDER    = ["QB", "RB", "WR", "TE", "OL", "DL", "LB", "DB"]
 NCOLS        = 4   # columnas de equipos
 
-# Agrupación de rondas
-ROUND_GROUPS = [
-    ([1, 2], "R1-2"),
-    ([3, 4], "R3-4"),
-    ([5, 6, 7], "R5-7"),
-]
-RND_LABELS   = [lbl for _, lbl in ROUND_GROUPS]
-NRND         = len(ROUND_GROUPS)  # 3
+RND_LABELS = ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]
+NRND       = 7
 
 POS_MAP = {
     "QB":"QB","RB":"RB","FB":"RB","WR":"WR","TE":"TE",
@@ -104,14 +98,6 @@ def load_data():
     ]["gsis_id"].unique()
 
     draft["success"] = draft["gsis_id"].isin(second).astype(int)
-
-    # Asignar grupo de ronda
-    rnd_map = {}
-    for rounds, lbl in ROUND_GROUPS:
-        for r in rounds:
-            rnd_map[r] = lbl
-    draft["rnd_group"] = draft["round"].map(rnd_map)
-
     return draft
 
 
@@ -156,9 +142,9 @@ def plot_grid(df: pd.DataFrame):
     nrows = int(np.ceil(len(teams_sorted) / NCOLS))  # 8
 
     # ── Dimensiones de cada mini-heatmap (coord de datos) ──────
-    CW, CH = 1.72, 0.62     # celda (más ancha al tener sólo 3 columnas)
-    GX, GY = 0.14, 0.14     # gap
-    SX, SY = CW + GX, CH + GY   # step = 1.86, 0.76
+    CW, CH = 0.82, 0.62     # celda
+    GX, GY = 0.10, 0.14     # gap
+    SX, SY = CW + GX, CH + GY
 
     LM  = 0.70   # left margin dentro del bloque (etiquetas pos)
     TM  = 1.35   # top margin dentro del bloque (logo + rondas)
@@ -189,7 +175,7 @@ def plot_grid(df: pd.DataFrame):
             "Éxito en el Draft NFL por equipo, posición y ronda  |  2011–2022",
             ha="center", va="top", fontsize=18, fontweight="bold", color=FG, zorder=5)
     ax.text(total_w / 2, total_h - 1.05,
-            "% de picks que firmaron segundo contrato (≥2 años) con su equipo de draft  ·  Rondas agrupadas: R1-2 · R3-4 · R5-7",
+            "% de picks que firmaron segundo contrato (>=2 anos) con su equipo de draft  ·  Drafts 2011-2022",
             ha="center", va="top", fontsize=9, color="#888888", fontstyle="italic", zorder=5)
 
     # ── Mini-heatmaps ────────────────────────────────────────────
@@ -236,10 +222,12 @@ def plot_grid(df: pd.DataFrame):
 
         # --- Celdas ---
         team_df = df[df["team_norm"] == team]
-        rate_m  = team_df.groupby(["pos_group","rnd_group"])["success"].mean().mul(100).unstack()
-        count_m = team_df.groupby(["pos_group","rnd_group"])["success"].count().unstack()
-        rate_m  = rate_m.reindex(POS_ORDER).reindex(columns=RND_LABELS)
-        count_m = count_m.reindex(POS_ORDER).reindex(columns=RND_LABELS)
+        rate_m  = team_df.groupby(["pos_group","round"])["success"].mean().mul(100).unstack()
+        count_m = team_df.groupby(["pos_group","round"])["success"].count().unstack()
+        rate_m  = rate_m.reindex(POS_ORDER).reindex(columns=range(1, 8))
+        count_m = count_m.reindex(POS_ORDER).reindex(columns=range(1, 8))
+        rate_m.columns  = RND_LABELS
+        count_m.columns = RND_LABELS
 
         for r_idx, pos in enumerate(POS_ORDER):
             cell_y = by + BH - TM - (r_idx + 1) * SY + GY / 2
@@ -295,9 +283,155 @@ def plot_grid(df: pd.DataFrame):
 
 
 # ─────────────────────────────────────────────
-# 4. Main
+# 4. Modo equipo (standalone)
+# ─────────────────────────────────────────────
+def plot_equipo(df: pd.DataFrame, team: str):
+    team = team.upper()
+    team_df = df[df["team_norm"] == team]
+    if team_df.empty:
+        print(f"No se encontraron picks para {team}.")
+        return
+
+    rate_global = float(df[df["team_norm"] == team]["success"].mean() * 100)
+
+    CW, CH = 1.55, 1.05
+    GX, GY = 0.14, 0.20
+    SX, SY = CW + GX, CH + GY
+
+    LM = 1.10
+    TM = 3.00
+    RM = 0.40
+    BM = 1.20
+
+    total_w = LM + NRND * SX + RM
+    total_h = TM + 8 * SY + BM
+
+    fig, ax = plt.subplots(figsize=(14, 11), dpi=160)
+    fig.patch.set_facecolor(BG)
+    ax.set_facecolor(BG)
+    fig.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
+    ax.set_xlim(0, total_w)
+    ax.set_ylim(0, total_h)
+    ax.axis("off")
+
+    # Logo
+    path = os.path.join(LOGOS_DIR, f"{team}.png")
+    if os.path.exists(path):
+        try:
+            img = plt.imread(path)
+            h, w = img.shape[:2]
+            aspect = w / float(h) if h else 1.0
+            zoom = 0.14 if team != "NYJ" else 0.14 / 4.5
+            divisor = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
+            zoom /= divisor
+            ab = AnnotationBbox(
+                OffsetImage(img, zoom=zoom, resample=True),
+                (LM * 0.42, total_h - TM * 0.45),
+                frameon=False, xycoords="data",
+                box_alignment=(0.5, 0.5), pad=0
+            )
+            ax.add_artist(ab)
+        except Exception:
+            pass
+
+    # Título
+    ax.text(LM, total_h - 0.32,
+            f"{team} — Éxito en el Draft por posición y ronda",
+            ha="left", va="top", fontsize=16, fontweight="bold", color=FG, zorder=5)
+    ax.text(LM, total_h - 1.05,
+            f"% de picks con segundo contrato (≥2 años) con el equipo  ·  Tasa global: {rate_global:.1f}%  ·  2011–2022",
+            ha="left", va="top", fontsize=9, color="#888888", fontstyle="italic", zorder=5)
+
+    # Cabeceras de ronda
+    for c_idx, lbl in enumerate(RND_LABELS):
+        cx = LM + c_idx * SX + CW / 2
+        cy = total_h - TM * 0.72
+        pill = mpatches.FancyBboxPatch(
+            (LM + c_idx * SX, cy - 0.28), CW, 0.52,
+            boxstyle="round,pad=0.01,rounding_size=0.10",
+            linewidth=0, facecolor=CARD, zorder=1
+        )
+        ax.add_patch(pill)
+        ax.text(cx, cy, lbl, ha="center", va="center",
+                fontsize=12, fontweight="bold", color=ACCENT, zorder=2)
+
+    # Celdas
+    rate_m  = team_df.groupby(["pos_group","round"])["success"].mean().mul(100).unstack()
+    count_m = team_df.groupby(["pos_group","round"])["success"].count().unstack()
+    rate_m  = rate_m.reindex(POS_ORDER).reindex(columns=range(1, 8))
+    count_m = count_m.reindex(POS_ORDER).reindex(columns=range(1, 8))
+    rate_m.columns  = RND_LABELS
+    count_m.columns = RND_LABELS
+
+    v_min = float(rate_m.min().min())
+    v_max = float(rate_m.max().max())
+    v_range = max(v_max - v_min, 1.0)
+
+    for r_idx, pos in enumerate(POS_ORDER):
+        cell_y = total_h - TM - (r_idx + 1) * SY + GY / 2
+
+        ax.text(LM - 0.12, cell_y + CH / 2,
+                pos, ha="right", va="center",
+                fontsize=12, fontweight="bold", color=FG, zorder=4)
+
+        for c_idx, lbl in enumerate(RND_LABELS):
+            cell_x = LM + c_idx * SX
+            val = rate_m.loc[pos, lbl]  if pos in rate_m.index  else np.nan
+            n   = count_m.loc[pos, lbl] if pos in count_m.index else 0
+            n   = 0 if pd.isna(n) else int(n)
+
+            cell_color = RYG((val - v_min) / v_range) if n > 0 and not np.isnan(val) else "#1a1f2b"
+
+            cell = mpatches.FancyBboxPatch(
+                (cell_x, cell_y), CW, CH,
+                boxstyle="round,pad=0.01,rounding_size=0.10",
+                linewidth=0, facecolor=cell_color, zorder=2
+            )
+            ax.add_patch(cell)
+
+            if n > 0 and not np.isnan(val):
+                norm = (val - v_min) / v_range
+                ink     = "#0f1115" if norm > 0.45 else FG
+                ink_sub = "#1a2a1a" if norm > 0.45 else "#666666"
+                ax.text(cell_x + CW / 2, cell_y + CH * 0.63,
+                        f"{val:.0f}%",
+                        ha="center", va="center",
+                        fontsize=16, fontweight="bold", color=ink, zorder=4)
+                ax.text(cell_x + CW / 2, cell_y + CH * 0.25,
+                        f"n={n}",
+                        ha="center", va="center",
+                        fontsize=9, color=ink_sub, zorder=4)
+            else:
+                ax.text(cell_x + CW / 2, cell_y + CH / 2, "—",
+                        ha="center", va="center",
+                        fontsize=14, color="#2a3245", zorder=4)
+
+    # Fuente y firma
+    ax.text(LM, BM * 0.38,
+            "Fuente: Pro Football Reference & OverTheCap via nflreadpy",
+            ha="left", va="center", fontsize=7.5, color="#555555", fontstyle="italic")
+    ax.text(total_w - 0.1, BM * 0.38,
+            "@CuartayDato",
+            ha="right", va="center",
+            fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
+
+    out = "draft_grid_equipo.png"
+    plt.savefig(out, dpi=160, facecolor=BG, bbox_inches="tight")
+    plt.close()
+    print(f"Guardado: {out}")
+
+
+# ─────────────────────────────────────────────
+# 5. Main
 # ─────────────────────────────────────────────
 if __name__ == "__main__":
+    modo   = input("¿Grid o Equipo? (grid/equipo): ").strip().lower()
+    eq_raw = input("Equipo (ej: SF) — vacío si grid: ").strip()
+
     df = load_data()
     print(f"\nTotal picks: {len(df)} | Equipos: {df['team_norm'].nunique()}")
-    plot_grid(df)
+
+    if modo.startswith("e") and eq_raw:
+        plot_equipo(df, eq_raw)
+    else:
+        plot_grid(df)

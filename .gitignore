@@ -1,0 +1,14 @@
+# Caches de datos regenerables (generar_caches.py / Manning_bot.py / contenders_tracker.py)
+pbp_cache/
+__pycache__/
+*.pkl
+
+# Outputs generados en lote
+draft_calendar/
+kw_frames/
+
+# Capturas de referencia (nombres GUID de Windows)
+{*.png
+
+# Personal - nunca commitear
+docs/superpowers/

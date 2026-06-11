@@ -17,7 +17,7 @@ URL    = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_
 BG     = "#0f1115"
 FG     = "#EDEDED"
 GRID   = "#2a2f3a"
-DPI    = 200
+DPI    = 170
 LOGOS_DIR    = "logos"
 HARD_PENALTY = {"NYJ": 4.5}
 RYG = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
@@ -76,8 +76,10 @@ def find_qb(all_qbs, query, df, passer_nm_col):
     if not matches:
         raise SystemExit(f"QB '{query}' no encontrado. "
                          f"Prueba con otra parte del nombre.")
-    # pick the one with most plays
-    return max(matches, key=lambda n: df[df[passer_nm_col] == n].shape[0])
+    best = max(matches, key=lambda n: df[df[passer_nm_col] == n].shape[0])
+    if len(matches) > 1:
+        print(f"  [!] '{query}' coincide con: {', '.join(matches)} >> seleccionado: {best}")
+    return best
 
 
 def compute_qb_metrics(qb_df, cols):
@@ -126,13 +128,20 @@ def compute_qb_metrics(qb_df, cols):
     else:
         cpoe_val = float("nan")
 
+    # DAKOTA: composite QB score = EPA/play + CPOE (misma escala decimal en nflfastR)
+    if not pd.isna(epa_overall) and not pd.isna(cpoe_val):
+        dakota = epa_overall + cpoe_val
+    else:
+        dakota = float("nan")
+
     return {
         "EPA global":         epa_overall,
         "EPA Red Zone":       epa_rz,
-        "EPA 3a bajada":      epa_3rd,
+        "EPA 3er down":      epa_3rd,
         "EPA bajo presion":   epa_pressure,
         "EPA pocket limpio":  epa_clean,
         "CPOE":               cpoe_val,
+        "DAKOTA":             dakota,
     }
 
 # ── INPUT ──────────────────────────────────────────────────────────────────────
@@ -171,7 +180,7 @@ print(f"Comparando: {qb1_name} vs {qb2_name}")
 METRIC_KEYS = [
     "EPA global",
     "EPA Red Zone",
-    "EPA 3a bajada",
+    "EPA 3er down",
     "EPA bajo presion",
     "EPA pocket limpio",
     "CPOE",
@@ -220,6 +229,12 @@ for metric in METRIC_KEYS:
     s1 = f"{v1:+.3f}" if not pd.isna(v1) else "  N/D "
     s2 = f"{v2:+.3f}" if not pd.isna(v2) else "  N/D "
     print(f"{metric:<22} {s1:<18} {s2:<18}")
+# DAKOTA (fuera del radar, solo consola + anotación)
+d1 = qb1_raw.get("DAKOTA", float("nan"))
+d2 = qb2_raw.get("DAKOTA", float("nan"))
+ds1 = f"{d1:+.3f}" if not pd.isna(d1) else "  N/D "
+ds2 = f"{d2:+.3f}" if not pd.isna(d2) else "  N/D "
+print(f"{'DAKOTA':<22} {ds1:<18} {ds2:<18}  (EPA/play + CPOE)")
 print()
 
 # ── RADAR CHART ───────────────────────────────────────────────────────────────
@@ -304,6 +319,12 @@ fig.text(0.5, 0.97, f"{qb1_name} vs {qb2_name}",
 fig.text(0.5, 0.92,
          f"Comparacion radar \u2014 6 dimensiones | Normalizadas entre QBs con \u2265{MIN_PASS_PLAYS} pases",
          ha="center", va="top", fontsize=9, color="#888888", fontstyle="italic")
+# DAKOTA como anotación bajo el subtítulo
+_ds1 = f"{d1:+.3f}" if not pd.isna(d1) else "N/D"
+_ds2 = f"{d2:+.3f}" if not pd.isna(d2) else "N/D"
+fig.text(0.5, 0.895,
+         f"DAKOTA  {qb1_name.split('.')[-1].strip()}: {_ds1}   |   {qb2_name.split('.')[-1].strip()}: {_ds2}",
+         ha="center", va="top", fontsize=8.5, color="#C9A84C", fontweight="bold")
 fig.text(0.01, 0.01, f"Fuente: nflverse-data  \u00b7  NFL {SEASON}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig.text(0.99, 0.01, "@CuartayDato",

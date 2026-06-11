@@ -16,7 +16,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 SEASON    = 2025
 ROLL      = 3
 MIN_PLAYS = 15
-DPI       = 200
+DPI       = 170
 BG        = "#0f1115"
 FG        = "#EDEDED"
 GRID      = "#2a2f3a"

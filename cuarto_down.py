@@ -15,7 +15,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 SEASON       = 2025
-DPI          = 200
+DPI          = 170
 BG           = "#0f1115"
 FG           = "#EDEDED"
 GRID         = "#2a2f3a"

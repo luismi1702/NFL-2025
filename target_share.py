@@ -18,7 +18,7 @@ URL          = f"https://github.com/nflverse/nflverse-data/releases/download/pbp
 BG           = "#0f1115"
 FG           = "#EDEDED"
 GRID         = "#2a2f3a"
-DPI          = 200
+DPI          = 170
 LOGOS_DIR    = "logos"
 HARD_PENALTY = {"NYJ": 4.5}
 RYG          = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
@@ -71,7 +71,7 @@ team = input("Equipo (siglas, p.ej. KC): ").strip().upper()
 # ── Load data ────────────────────────────────────────────────────────────────
 print(f"Descargando PBP {SEASON}...")
 df = pd.read_csv(URL, low_memory=False, compression="infer")
-to_num(df, ["epa", "air_yards"])
+to_num(df, ["epa", "air_yards", "yards_gained", "complete_pass"])
 
 # ── Filter ───────────────────────────────────────────────────────────────────
 df = df[(df["play_type"] == "pass") & (df["posteam"] == team)].copy()
@@ -97,8 +97,24 @@ grp = (
     )
     .reset_index()
 )
+
+# Receiving yards (completions only) for RACR
+completions = targeted[targeted["complete_pass"] == 1].copy()
+rec_grp = (completions.groupby(receiver_col)["yards_gained"]
+           .sum().reset_index()
+           .rename(columns={"yards_gained": "rec_yards_sum"}))
+grp = grp.merge(rec_grp, on=receiver_col, how="left")
+grp["rec_yards_sum"] = grp["rec_yards_sum"].fillna(0)
+
 grp["target_share"]    = grp["targets"] / total_targets * 100
 grp["air_yards_share"] = grp["air_yards_sum"] / total_air * 100 if total_air else 0.0
+
+# WOPR: Weighted Opportunity Rating = 1.5 × TGT% + 0.7 × AY% (en decimal)
+grp["wopr"] = 1.5 * (grp["target_share"] / 100) + 0.7 * (grp["air_yards_share"] / 100)
+# RACR: Receiver Air Conversion Ratio = rec_yards / air_yards
+grp["racr"] = np.where(grp["air_yards_sum"] > 0,
+                        grp["rec_yards_sum"] / grp["air_yards_sum"], np.nan)
+
 grp = grp.sort_values("targets", ascending=False).reset_index(drop=True)
 
 # ── Top-8 + Otros ─────────────────────────────────────────────────────────────
@@ -106,24 +122,39 @@ TOP = 8
 if len(grp) > TOP:
     top8  = grp.iloc[:TOP].copy()
     otros = grp.iloc[TOP:].copy()
+    _ts  = otros["target_share"].sum()
+    _ays = otros["air_yards_share"].sum()
+    _ry  = otros["rec_yards_sum"].sum()
+    _ay  = otros["air_yards_sum"].sum()
     otros_row = pd.DataFrame([{
         receiver_col:      "Otros",
         "targets":         otros["targets"].sum(),
-        "air_yards_sum":   otros["air_yards_sum"].sum(),
-        "target_share":    otros["target_share"].sum(),
-        "air_yards_share": otros["air_yards_share"].sum(),
+        "air_yards_sum":   _ay,
+        "rec_yards_sum":   _ry,
+        "target_share":    _ts,
+        "air_yards_share": _ays,
+        "wopr":            1.5 * (_ts / 100) + 0.7 * (_ays / 100),
+        "racr":            _ry / _ay if _ay > 0 else np.nan,
     }])
     grp_plot = pd.concat([top8, otros_row], ignore_index=True)
 else:
     grp_plot = grp.copy()
 
-grp_plot["label"] = grp_plot[receiver_col].apply(short_name)
+# Etiquetas con WOPR y RACR para el eje Y
+def make_label(row):
+    name  = short_name(row[receiver_col])
+    racr_s = f"{row['racr']:.2f}" if not pd.isna(row['racr']) else "N/D"
+    return f"{name}  WOPR {row['wopr']:.2f} · RACR {racr_s}"
+
+grp_plot["label"] = grp_plot.apply(make_label, axis=1)
 
 # ── Print to console ──────────────────────────────────────────────────────────
-print(f"\n{'Receptor':<22} {'Targets':>7}  {'Target %':>9}  {'Air Yds %':>10}")
-print("-" * 55)
+print(f"\n{'Receptor':<22} {'Targets':>7}  {'Target %':>9}  {'Air Yds %':>10}  {'WOPR':>6}  {'RACR':>6}")
+print("-" * 72)
 for _, row in grp_plot.iterrows():
-    print(f"{row['label']:<22} {row['targets']:>7.0f}  {row['target_share']:>9.1f}%  {row['air_yards_share']:>9.1f}%")
+    racr_s = f"{row['racr']:.2f}" if not pd.isna(row['racr']) else " N/D"
+    print(f"{row['label']:<22} {row['targets']:>7.0f}  {row['target_share']:>9.1f}%  "
+          f"{row['air_yards_share']:>9.1f}%  {row['wopr']:>6.3f}  {racr_s:>6}")
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 def bar_colors(series, cmap):

@@ -22,7 +22,7 @@ LOGOS_DIR = "logos"
 BG           = "#0f1115"
 FG           = "#EDEDED"
 GRID         = "#2a2f3a"
-DPI          = 200
+DPI          = 170
 HARD_PENALTY = {"NYJ": 4.5}
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────

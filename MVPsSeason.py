@@ -50,11 +50,13 @@ def _norm_name(s: str) -> str:
 
 def build_rookie_sets(players_df: pd.DataFrame):
     """
-    Devuelve (rookie_ids, rookie_names_norm) para SEASON de forma robusta.
+    Devuelve (rookie_ids, rookie_names_norm) para SEASON.
     Estrategia en cascada:
-      1) first_season / rookie_season / rookie_year / first_year / debut_season
-      2) draft_year == SEASON
-      3) primer año por jugador == SEASON (via 'season' column)
+      1) rookie_year / entry_year / first_season / rookie_season / first_year / debut_season == SEASON
+      2) years_exp == 0  (rookies en activo esta temporada)
+      3) draft_year == SEASON
+    Los nombres normalizados incluyen tanto nombres completos como el formato
+    abreviado del PBP (F.Apellido) generado desde first_name + last_name.
     """
     df = players_df.copy()
     cols_lower = {c.lower(): c for c in df.columns}
@@ -65,31 +67,24 @@ def build_rookie_sets(players_df: pd.DataFrame):
                 return cols_lower[o.lower()]
         return None
 
-    first_like = getc("first_season", "rookie_season", "rookie_year", "first_year", "debut_season")
+    # Estrategia 1: columna de año de rookie/entrada
+    first_like = getc("rookie_year", "entry_year", "first_season",
+                      "rookie_season", "first_year", "debut_season")
     if first_like:
         df[first_like] = pd.to_numeric(df[first_like], errors="coerce")
         rook = df[df[first_like] == SEASON].copy()
     else:
-        draft_col = getc("draft_year")
-        if draft_col:
-            df[draft_col] = pd.to_numeric(df[draft_col], errors="coerce")
-            rook = df[df[draft_col] == SEASON].copy()
+        # Estrategia 2: years_exp == 0
+        exp_col = getc("years_exp")
+        if exp_col:
+            df[exp_col] = pd.to_numeric(df[exp_col], errors="coerce")
+            rook = df[df[exp_col] == 0].copy()
         else:
-            season_col = getc("season")
-            id_col = getc("gsis_id", "nfl_id", "pfr_player_id", "pfr_id", "esb_id", "espn_id", "sportradar_id")
-            name_col = getc("full_name", "display_name", "gsis_name", "player_name")
-            if season_col:
-                df[season_col] = pd.to_numeric(df[season_col], errors="coerce")
-                if id_col:
-                    firsty = df.groupby(id_col)[season_col].min().reset_index()
-                    rook_ids_sel = set(firsty[firsty[season_col] == SEASON][id_col].astype(str))
-                    rook = df[df[id_col].astype(str).isin(rook_ids_sel)].copy()
-                elif name_col:
-                    firsty = df.groupby(name_col)[season_col].min().reset_index()
-                    rook_names_sel = set(firsty[firsty[season_col] == SEASON][name_col].astype(str))
-                    rook = df[df[name_col].astype(str).isin(rook_names_sel)].copy()
-                else:
-                    rook = df.iloc[0:0].copy()
+            # Estrategia 3: draft_year
+            draft_col = getc("draft_year")
+            if draft_col:
+                df[draft_col] = pd.to_numeric(df[draft_col], errors="coerce")
+                rook = df[df[draft_col] == SEASON].copy()
             else:
                 rook = df.iloc[0:0].copy()
 
@@ -99,9 +94,17 @@ def build_rookie_sets(players_df: pd.DataFrame):
             rookie_ids |= set(rook[col].dropna().astype(str).unique())
 
     rookie_names_norm = set()
-    for col in ["full_name", "display_name", "gsis_name", "player_name"]:
-        if col in df.columns:
+    # Nombres completos/display
+    for col in ["full_name", "display_name", "gsis_name", "player_name", "football_name"]:
+        if col in rook.columns:
             rookie_names_norm |= set(_norm_name(x) for x in rook[col].dropna().astype(str).unique())
+    # Nombres abreviados estilo PBP: "F.Apellido"
+    fn_col = getc("first_name")
+    ln_col = getc("last_name")
+    if fn_col and ln_col and fn_col in rook.columns and ln_col in rook.columns:
+        abbrevs = (rook[fn_col].str.strip().str[:1] + "." +
+                   rook[ln_col].str.strip()).dropna()
+        rookie_names_norm |= set(_norm_name(x) for x in abbrevs.unique())
 
     return rookie_ids, rookie_names_norm
 
@@ -111,8 +114,69 @@ def is_rookie_name(name_val, rookie_names_norm: set) -> bool:
     return _norm_name(name_val) in rookie_names_norm
 
 
+def build_pbp_rookie_names(pbp_df: pd.DataFrame, rookie_ids: set,
+                           players_df: pd.DataFrame | None = None) -> tuple[set, dict]:
+    """
+    Cruza el PBP con rookie_ids (GSIS IDs) para obtener los nombres
+    tal como aparecen en el PBP — evita falsos positivos por abreviaturas.
+    """
+    ID_NAME_PAIRS = [
+        ("passer_player_id",               "passer_player_name"),
+        ("receiver_player_id",             "receiver_player_name"),
+        ("rusher_player_id",               "rusher_player_name"),
+        ("sack_player_id",                 "sack_player_name"),
+        ("forced_fumble_player_1_player_id", "forced_fumble_player_1_player_name"),
+        ("forced_fumble_player_2_player_id", "forced_fumble_player_2_player_name"),
+        ("pass_defense_1_player_id",       "pass_defense_1_player_name"),
+        ("pass_defense_2_player_id",       "pass_defense_2_player_name"),
+        ("tackle_for_loss_1_player_id",    "tackle_for_loss_1_player_name"),
+        ("tackle_for_loss_2_player_id",    "tackle_for_loss_2_player_name"),
+        ("interception_player_id",         "interception_player_name"),
+    ]
+    # id → full name desde players.csv
+    # Solo columnas que tienen nombre completo (first + last); excluimos football_name (puede ser solo el primero)
+    id_to_full = {}
+    if players_df is not None:
+        gsis_col = next((c for c in ["gsis_id"] if c in players_df.columns), None)
+        full_col  = next((c for c in ["display_name", "full_name"]
+                          if c in players_df.columns), None)
+        if gsis_col and full_col:
+            rooks_pl = players_df[players_df[gsis_col].astype(str).isin(rookie_ids)]
+            for _, row in rooks_pl.iterrows():
+                gsis = str(row[gsis_col])
+                name = str(row[full_col])
+                # solo aceptamos si tiene al menos un espacio (nombre + apellido) y no es nan
+                if gsis not in id_to_full and " " in name and name.lower() != "nan":
+                    id_to_full[gsis] = name
+
+    pbp_rookie_names = set()
+    norm_to_full: dict[str, str] = {}   # "jwilliams" → "Jameson Williams"
+
+    for id_col, name_col in ID_NAME_PAIRS:
+        if id_col in pbp_df.columns and name_col in pbp_df.columns:
+            sub = pbp_df[[id_col, name_col]].dropna(subset=[id_col, name_col])
+            sub = sub[sub[id_col].astype(str).isin(rookie_ids)]
+            for _, row in sub.drop_duplicates(subset=[id_col]).iterrows():
+                norm = _norm_name(str(row[name_col]))
+                pbp_rookie_names.add(norm)
+                if norm not in norm_to_full:
+                    full = id_to_full.get(str(row[id_col]), "")
+                    if full:
+                        norm_to_full[norm] = full
+
+    return pbp_rookie_names, norm_to_full
+
+
+def _is_rook_by_id(series, id_col, rookie_ids):
+    """Devuelve máscara booleana: True si el player_id de la fila está en rookie_ids."""
+    if id_col and id_col in series.columns:
+        return series[id_col].astype(str).isin(rookie_ids)
+    return pd.Series(False, index=series.index)
+
+
 # ---------------- Ataque (vectorizado) ----------------
-def calc_ataque(d, play_type, passer, receiver, rusher, posteam, rookie_names_norm):
+def calc_ataque(d, play_type, passer, receiver, rusher, posteam, rookie_ids,
+                passer_id=None, receiver_id=None, rusher_id=None):
     credits = {}
     rook_credits = {}
 
@@ -131,8 +195,8 @@ def calc_ataque(d, play_type, passer, receiver, rusher, posteam, rookie_names_no
             for k, v in qb_extra.items():
                 credits[k] = credits.get(k, 0.0) + v
 
-            # rookies QB
-            passes["_is_rook"] = passes[passer].apply(lambda n: is_rookie_name(n, rookie_names_norm))
+            # rookies QB — por ID
+            passes["_is_rook"] = _is_rook_by_id(passes, passer_id, rookie_ids)
             rook_passes = passes[passes["_is_rook"]]
             if not rook_passes.empty:
                 rk_base = rook_passes.groupby("_key_qb")["epa"].sum() * 0.5
@@ -152,7 +216,8 @@ def calc_ataque(d, play_type, passer, receiver, rusher, posteam, rookie_names_no
                     for k, v in rec_total.items():
                         credits[k] = credits.get(k, 0.0) + v
 
-                    rec_plays["_is_rook"] = rec_plays[receiver].apply(lambda n: is_rookie_name(n, rookie_names_norm))
+                    # rookies receptor — por ID
+                    rec_plays["_is_rook"] = _is_rook_by_id(rec_plays, receiver_id, rookie_ids)
                     rook_rec = rec_plays[rec_plays["_is_rook"]]
                     if not rook_rec.empty:
                         rk_rec = rook_rec.groupby("_key_rec")["epa"].sum() * 0.5
@@ -168,7 +233,8 @@ def calc_ataque(d, play_type, passer, receiver, rusher, posteam, rookie_names_no
             for k, v in run_total.items():
                 credits[k] = credits.get(k, 0.0) + v
 
-            runs["_is_rook"] = runs[rusher].apply(lambda n: is_rookie_name(n, rookie_names_norm))
+            # rookies rusher — por ID
+            runs["_is_rook"] = _is_rook_by_id(runs, rusher_id, rookie_ids)
             rook_runs = runs[runs["_is_rook"]]
             if not rook_runs.empty:
                 rk_run = rook_runs.groupby("_key")["epa"].sum()
@@ -179,12 +245,12 @@ def calc_ataque(d, play_type, passer, receiver, rusher, posteam, rookie_names_no
 
 
 # ---------------- Defensa (vectorizado) ----------------
-def _add_def_credits(sub, name_col1, name_col2, team_col, credits, rook_credits, rookie_names_norm, multiplier=-1.0):
+def _add_def_credits(sub, name_col1, name_col2, team_col, credits, rook_credits,
+                     rookie_ids, id_col1=None, id_col2=None, multiplier=-1.0):
     """Para jugadas defensivas con hasta 2 jugadores, acumula crédito dividido."""
     if sub.empty:
         return
 
-    # jugadas con solo nm1
     if name_col1 and name_col2:
         only1 = sub[sub[name_col1].notna() & sub[name_col2].isna()].copy()
         only2 = sub[sub[name_col2].notna() & sub[name_col1].isna()].copy()
@@ -196,7 +262,7 @@ def _add_def_credits(sub, name_col1, name_col2, team_col, credits, rook_credits,
     else:
         return
 
-    def _accum(rows, col, factor):
+    def _accum(rows, col, id_col, factor):
         if rows.empty or not col:
             return
         rows = rows.copy()
@@ -204,21 +270,23 @@ def _add_def_credits(sub, name_col1, name_col2, team_col, credits, rook_credits,
         totals = rows.groupby("_key")["epa"].sum() * multiplier * factor
         for k, v in totals.items():
             credits[k] = credits.get(k, 0.0) + v
-        # rookies
-        rows["_is_rook"] = rows[col].apply(lambda n: is_rookie_name(n, rookie_names_norm))
+        # rookies — por ID
+        rows["_is_rook"] = _is_rook_by_id(rows, id_col, rookie_ids)
         rook_rows = rows[rows["_is_rook"]]
         if not rook_rows.empty:
             rk = rook_rows.groupby("_key")["epa"].sum() * multiplier * factor
             for k, v in rk.items():
                 rook_credits[k] = rook_credits.get(k, 0.0) + v
 
-    _accum(only1, name_col1, 1.0)
-    _accum(only2, name_col2, 1.0)
-    _accum(both,  name_col1, 0.5)
-    _accum(both,  name_col2, 0.5)
+    _accum(only1, name_col1, id_col1, 1.0)
+    _accum(only2, name_col2, id_col2, 1.0)
+    _accum(both,  name_col1, id_col1, 0.5)
+    _accum(both,  name_col2, id_col2, 0.5)
 
 
-def calc_defensa(d, int_nm, sack_nm, tfl1_nm, tfl2_nm, ff1_nm, ff2_nm, pd1_nm, pd2_nm, defteam, rookie_names_norm):
+def calc_defensa(d, int_nm, sack_nm, tfl1_nm, tfl2_nm, ff1_nm, ff2_nm, pd1_nm, pd2_nm, defteam, rookie_ids,
+                 int_id=None, sack_id=None, tfl1_id=None, tfl2_id=None,
+                 ff1_id=None, ff2_id=None, pd1_id=None, pd2_id=None):
     credits = {}
     rook_credits = {}
 
@@ -227,33 +295,33 @@ def calc_defensa(d, int_nm, sack_nm, tfl1_nm, tfl2_nm, ff1_nm, ff2_nm, pd1_nm, p
     # Intercepciones
     if int_nm:
         sub = base[base[int_nm].notna()]
-        _add_def_credits(sub, int_nm, None, defteam, credits, rook_credits, rookie_names_norm)
+        _add_def_credits(sub, int_nm, None, defteam, credits, rook_credits, rookie_ids, id_col1=int_id)
 
     # Sacks
     if sack_nm and "sack" in d.columns:
         sub = base[(base["sack"] == 1) & base[sack_nm].notna()]
-        _add_def_credits(sub, sack_nm, None, defteam, credits, rook_credits, rookie_names_norm)
+        _add_def_credits(sub, sack_nm, None, defteam, credits, rook_credits, rookie_ids, id_col1=sack_id)
 
     # TFL
     if tfl1_nm or tfl2_nm:
         mask = pd.Series(False, index=base.index)
         if tfl1_nm: mask |= base[tfl1_nm].notna()
         if tfl2_nm: mask |= base[tfl2_nm].notna()
-        _add_def_credits(base[mask], tfl1_nm, tfl2_nm, defteam, credits, rook_credits, rookie_names_norm)
+        _add_def_credits(base[mask], tfl1_nm, tfl2_nm, defteam, credits, rook_credits, rookie_ids, id_col1=tfl1_id, id_col2=tfl2_id)
 
     # Fumbles forzados
     if ff1_nm or ff2_nm:
         mask = pd.Series(False, index=base.index)
         if ff1_nm: mask |= base[ff1_nm].notna()
         if ff2_nm: mask |= base[ff2_nm].notna()
-        _add_def_credits(base[mask], ff1_nm, ff2_nm, defteam, credits, rook_credits, rookie_names_norm)
+        _add_def_credits(base[mask], ff1_nm, ff2_nm, defteam, credits, rook_credits, rookie_ids, id_col1=ff1_id, id_col2=ff2_id)
 
     # Passes defendidos
     if pd1_nm or pd2_nm:
         mask = pd.Series(False, index=base.index)
         if pd1_nm: mask |= base[pd1_nm].notna()
         if pd2_nm: mask |= base[pd2_nm].notna()
-        _add_def_credits(base[mask], pd1_nm, pd2_nm, defteam, credits, rook_credits, rookie_names_norm)
+        _add_def_credits(base[mask], pd1_nm, pd2_nm, defteam, credits, rook_credits, rookie_ids, id_col1=pd1_id, id_col2=pd2_id)
 
     return credits, rook_credits
 
@@ -297,6 +365,7 @@ def main():
     posteam = pick_col(df, "posteam")
     defteam = pick_col(df, "defteam")
 
+    # Nombre columns
     passer_nm   = pick_col(df, "passer", "passer_player_name")
     receiver_nm = pick_col(df, "receiver", "receiver_player_name")
     rusher_nm   = pick_col(df, "rusher", "rusher_player_name")
@@ -315,16 +384,36 @@ def main():
     kr_nm     = pick_col(df, "kickoff_returner_player_name", "returner_player_name")
     pr_nm     = pick_col(df, "punt_returner_player_name",   "returner_player_name")
 
-    # Rookies
+    # ID columns (para detección de rookies sin ambigüedad)
+    passer_id_nm   = pick_col(df, "passer_player_id")
+    receiver_id_nm = pick_col(df, "receiver_player_id")
+    rusher_id_nm   = pick_col(df, "rusher_player_id")
+    int_id_nm   = pick_col(df, "interception_player_id")
+    sack_id_nm  = pick_col(df, "sack_player_id")
+    tfl1_id_nm  = pick_col(df, "tackle_for_loss_1_player_id")
+    tfl2_id_nm  = pick_col(df, "tackle_for_loss_2_player_id")
+    ff1_id_nm   = pick_col(df, "forced_fumble_player_1_player_id")
+    ff2_id_nm   = pick_col(df, "forced_fumble_player_2_player_id")
+    pd1_id_nm   = pick_col(df, "pass_defense_1_player_id")
+    pd2_id_nm   = pick_col(df, "pass_defense_2_player_id")
+
+    # Rookies: IDs desde players.csv
     print("Descargando players.csv para detectar rookies...")
     players = pd.read_csv(URL_PLAYERS, low_memory=False)
-    _, rookie_names_norm = build_rookie_sets(players)
-    print(f"Rookies detectados: {len(rookie_names_norm)}")
+    rookie_ids, _ = build_rookie_sets(players)
+    print(f"  Rookies por ID (players.csv): {len(rookie_ids)}")
+    _, rookie_fullnames = build_pbp_rookie_names(df, rookie_ids, players)
+    print(f"  Rookies con jugadas en PBP: {len(rookie_fullnames)}")
 
     # Calcular
-    of_credit, of_rook   = calc_ataque(df, play_type, passer_nm, receiver_nm, rusher_nm, posteam, rookie_names_norm)
-    def_credit, def_rook = calc_defensa(df, int_nm, sack_nm, tfl1_nm, tfl2_nm, ff1_nm, ff2_nm, pd1_nm, pd2_nm, defteam, rookie_names_norm)
-    st_credit            = calc_st(df, play_type, kr_nm, pr_nm, kicker_nm, punter_nm, posteam)
+    of_credit, of_rook   = calc_ataque(
+        df, play_type, passer_nm, receiver_nm, rusher_nm, posteam, rookie_ids,
+        passer_id=passer_id_nm, receiver_id=receiver_id_nm, rusher_id=rusher_id_nm)
+    def_credit, def_rook = calc_defensa(
+        df, int_nm, sack_nm, tfl1_nm, tfl2_nm, ff1_nm, ff2_nm, pd1_nm, pd2_nm, defteam, rookie_ids,
+        int_id=int_id_nm, sack_id=sack_id_nm, tfl1_id=tfl1_id_nm, tfl2_id=tfl2_id_nm,
+        ff1_id=ff1_id_nm, ff2_id=ff2_id_nm, pd1_id=pd1_id_nm, pd2_id=pd2_id_nm)
+    st_credit = calc_st(df, play_type, kr_nm, pr_nm, kicker_nm, punter_nm, posteam)
 
     def top1(dct):
         if not dct:
@@ -338,12 +427,24 @@ def main():
     dr_name,   dr_val   = top1(def_rook)
     st_name,   st_val   = top1(st_credit)
 
+    def fmt(name, val, is_rookie=False):
+        if name is None:
+            return "sin datos"
+        s = f"{name}  EPA {val:+.3f}"
+        if is_rookie and name:
+            # name es "X.Apellido (TEAM)" → extraemos la parte antes del espacio
+            abbrev = name.split("(")[0].strip()
+            full = rookie_fullnames.get(_norm_name(abbrev), "")
+            if full:
+                s += f"  [{full}]"
+        return s
+
     print(f"\n========== LIDERES EPA — TEMPORADA {SEASON} ==========")
-    print(f"  ATAQUE             : {of_name}  EPA {of_val:+.3f}"   if of_name   else "  ATAQUE             : sin datos")
-    print(f"  DEFENSA            : {def_name}  EPA {def_val:+.3f}" if def_name  else "  DEFENSA            : sin datos")
-    print(f"  ROOKIE ATAQUE      : {of_r_name}  EPA {of_r_val:+.3f}" if of_r_name else "  ROOKIE ATAQUE      : sin datos")
-    print(f"  ROOKIE DEFENSA     : {dr_name}  EPA {dr_val:+.3f}"   if dr_name   else "  ROOKIE DEFENSA     : sin datos")
-    print(f"  EQUIPOS ESPECIALES : {st_name}  EPA {st_val:+.3f}"   if st_name   else "  EQUIPOS ESPECIALES : sin datos")
+    print(f"  ATAQUE             : {fmt(of_name,   of_val)}")
+    print(f"  DEFENSA            : {fmt(def_name,  def_val)}")
+    print(f"  ROOKIE ATAQUE      : {fmt(of_r_name, of_r_val,  is_rookie=True)}")
+    print(f"  ROOKIE DEFENSA     : {fmt(dr_name,   dr_val,    is_rookie=True)}")
+    print(f"  EQUIPOS ESPECIALES : {fmt(st_name,   st_val)}")
 
     show_top3 = input("\nMostrar top-3 por categoria? (s/n): ").strip().lower()
     if show_top3 == "s":

@@ -1,6 +1,6 @@
 # coberturas.py
-# Coberturas defensivas por equipo — datos FTN via nflreadpy
-# Cover 0, Cover 1, 2-Man, Cover 2, Cover 3, Cover 4, Cover 6, Combo
+# Coberturas defensivas por equipo — datos FTN via nflverse pbp_participation
+# Cover 0, Cover 1, 2-Man, Cover 2, Cover 3, Cover 4, Cover 6, Cover 9, Combo
 
 import os
 import numpy as np
@@ -8,18 +8,19 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-import nflreadpy
 
 # === Config ===
 LOGO_DIR  = "logos"
 FIGSIZE   = (16, 18)
-DPI       = 200
+DPI       = 170
 BG        = "#0f1115"
 FG        = "#EDEDED"
-SEASON    = 2024   # FTN data disponible hasta 2024; cambiar cuando haya 2025
+SEASON    = 2025
+
+PARTICIPATION_URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp_participation/pbp_participation_{SEASON}.csv"
 
 # Orden visual y colores de coberturas
-ORDER = ["COVER 0", "COVER 1", "2-MAN", "COVER 2", "COVER 3", "COVER 4", "COVER 6", "COMBO"]
+ORDER = ["COVER 0", "COVER 1", "2-MAN", "COVER 2", "COVER 3", "COVER 4", "COVER 6", "COVER 9", "COMBO"]
 COLORS = {
     "COVER 0": "#e63946",
     "COVER 1": "#ff6b6b",
@@ -28,6 +29,7 @@ COLORS = {
     "COVER 3": "#2a9d8f",
     "COVER 4": "#457b9d",
     "COVER 6": "#6a4c93",
+    "COVER 9": "#9b5de5",
     "COMBO":   "#8ecae6",
 }
 
@@ -39,6 +41,7 @@ COV_MAP = {
     "COVER_3": "COVER 3",
     "COVER_4": "COVER 4",
     "COVER_6": "COVER 6",
+    "COVER_9": "COVER 9",
     "2_MAN":   "2-MAN",
     "COMBO":   "COMBO",
 }
@@ -47,8 +50,8 @@ COV_MAP = {
 # 1. Carga y limpieza de datos
 # ─────────────────────────────────────────────
 def load_coverage(season: int) -> pd.DataFrame:
-    print(f"Descargando datos de participacion {season} (FTN Data)...")
-    part = nflreadpy.load_participation(seasons=season).to_pandas()
+    print(f"Descargando pbp_participation {season}...")
+    part = pd.read_csv(PARTICIPATION_URL, low_memory=False)
 
     # Filtrar jugadas con cobertura registrada y valida
     part = part[
@@ -57,7 +60,7 @@ def load_coverage(season: int) -> pd.DataFrame:
         (part["defense_coverage_type"] != "BLOWN")
     ].copy()
 
-    # Derivar equipo defensor desde el game_id ("2024_01_AWAY_HOME")
+    # Derivar equipo defensor desde el game_id ("2025_01_AWAY_HOME")
     split = part["nflverse_game_id"].str.split("_", expand=True)
     away_team = split[2]
     home_team = split[3]
@@ -163,7 +166,7 @@ def plot_coberturas(pct_df: pd.DataFrame, season: int):
               frameon=False, fontsize=10, labelcolor=FG)
 
     # Fuente debajo del titulo
-    ax.text(0.55, 1.014, "Fuente: FTN Data via nflreadpy",
+    ax.text(0.55, 1.014, "Fuente: FTN Data via nflverse pbp_participation",
             transform=ax.transAxes, ha="center", va="bottom",
             fontsize=8, color="#666666", fontstyle="italic")
 

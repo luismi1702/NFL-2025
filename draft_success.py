@@ -15,7 +15,7 @@ BG        = "#0f1115"
 CARD      = "#151924"
 FG        = "#EDEDED"
 ACCENT    = "#2d6cdf"
-DPI       = 200
+DPI       = 170
 FIGSIZE   = (13, 10)
 
 # Paleta rojo → amarillo → verde

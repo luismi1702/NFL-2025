@@ -22,7 +22,7 @@ URL_PART = f"https://github.com/nflverse/nflverse-data/releases/download/pbp_par
 BG       = "#0f1115"
 FG       = "#EDEDED"
 GRID     = "#2a2f3a"
-DPI      = 200
+DPI      = 170
 LOGOS_DIR    = "logos"
 HARD_PENALTY = {"NYJ": 4.5}
 
@@ -56,11 +56,12 @@ def load_logo(team, base_zoom=0.038):
 
 
 def count_dbs(s):
-    """Cuenta DBs (CB+FS+SS) en cadena tipo '3 CB, 2 DT, 1 FS, 2 ILB, 2 OLB, 1 SS'."""
+    """Cuenta DBs (CB+FS+SS+S+DB) en cadena tipo '3 CB, 2 DT, 1 FS, 2 ILB, 2 OLB, 1 SS'.
+    Incluye 'S' (safety genérico) igual que raycarp para no subcontar DBs."""
     if pd.isna(s):
         return None
     total = 0
-    for pos in ["CB", "FS", "SS", "DB"]:
+    for pos in ["CB", "FS", "SS", "S", "DB"]:
         m = re.search(r"(\d+)\s+" + pos + r"(?:[,\s]|$)", str(s))
         if m:
             total += int(m.group(1))

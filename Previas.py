@@ -18,7 +18,7 @@ URL          = f"https://github.com/nflverse/nflverse-data/releases/download/pbp
 EXP_PASS_YDS = 15   # jugada explosiva pase
 EXP_RUN_YDS  = 10   # jugada explosiva carrera
 FIGSIZE      = (8.7, 13.5)
-DPI          = 200
+DPI          = 170
 HARD_PENALTY = {"NYJ": 4.5}
 
 # ---------------- Helpers base ----------------
@@ -293,41 +293,124 @@ def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path):
             color="#888888", fontsize=9, alpha=0.85, fontstyle="italic")
 
     plt.savefig(out_path, dpi=DPI, bbox_inches="tight", facecolor=BG)
-    plt.close(fig)
+    return fig
 
 # ---------------- Main ----------------
 if __name__ == "__main__":
-    team_a = input("Equipo A (siglas exactas, p.ej. SF): ").strip().upper()
-    team_b = input("Equipo B (siglas exactas, p.ej. DAL): ").strip().upper()
+    from matplotlib.backends.backend_pdf import PdfPages
 
+    # ── Inputs (siempre 4 en orden fijo; los vacíos se ignoran según modo) ────
+    modo     = input("¿Partido o Jornada? (p/j): ").strip().lower()
+    team_a   = input("Equipo A: ").strip().upper()
+    team_b   = input("Equipo B: ").strip().upper()
+    week_raw = input("Semana: ").strip()
+
+    if modo.startswith("p"):
+        week_raw = ""
+    else:
+        team_a = team_b = ""
+
+    # ── Cargar PBP ───────────────────────────────────────────────────────────
     print(f"\nCargando play-by-play {SEASON}...")
     df = pd.read_csv(URL, low_memory=False, compression="infer")
     to_num(df, ["epa","yards_gained","ydstogo","down","return_yards","yardline_100",
-                "posteam_score_pre","posteam_score_post"])
+                "posteam_score_pre","posteam_score_post","week"])
 
-    off_basic  = compute_offense(df)
-    deff_basic = compute_defense(df)
+    # ── Modo semana ───────────────────────────────────────────────────────────
+    if week_raw:
+        import urllib.request, json as _json
 
-    drv_df = compute_drive_level(df)
+        try:
+            week_num = int(week_raw)
+        except ValueError:
+            raise SystemExit("Semana inválida.")
+
+        # Intentar detectar partidos desde el PBP (semanas ya jugadas)
+        matchups = []
+        week_pbp = df[df["week"] == week_num] if "week" in df.columns else pd.DataFrame()
+        if not week_pbp.empty and "home_team" in df.columns and "away_team" in df.columns:
+            games = week_pbp[["game_id","home_team","away_team"]].drop_duplicates("game_id")
+            for _, row in games.iterrows():
+                away = str(row["away_team"]).strip().upper()
+                home = str(row["home_team"]).strip().upper()
+                if away not in ("NAN","") and home not in ("NAN",""):
+                    matchups.append((away, home))
+            print(f"  Partidos detectados desde PBP.")
+
+        # Fallback: ESPN scoreboard API (semanas futuras o sin datos en PBP)
+        if not matchups:
+            espn_url = (f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
+                        f"?seasontype=2&week={week_num}&dates={SEASON}")
+            print(f"  Consultando ESPN API para semana {week_num}...")
+            try:
+                with urllib.request.urlopen(espn_url, timeout=10) as resp:
+                    data = _json.loads(resp.read())
+                for event in data.get("events", []):
+                    comps = event.get("competitions", [{}])[0]
+                    home = away = None
+                    for c in comps.get("competitors", []):
+                        abbr = c.get("team", {}).get("abbreviation", "").upper()
+                        if c.get("homeAway") == "home":
+                            home = abbr
+                        else:
+                            away = abbr
+                    if home and away:
+                        matchups.append((away, home))
+            except Exception as e:
+                raise SystemExit(f"Error cargando schedule ESPN: {e}")
+
+        if not matchups:
+            raise SystemExit(f"No se encontraron partidos para semana {week_num}.")
+
+        print(f"\nPartidos semana {week_num} — {SEASON}:")
+        for a, b in matchups:
+            print(f"  {a} @ {b}")
+
+        stats_df = df[df["week"] < week_num].copy() if week_num > 1 else df.copy()
+        if stats_df.empty:
+            print("  Aviso: sin datos previos — usando temporada completa.")
+            stats_df = df.copy()
+        print(f"  Jugadas para stats: {len(stats_df):,} (semanas 1–{week_num - 1})")
+
+        pdf_path = f"previas_semana_{week_num}_{SEASON}.pdf"
+        modo_semana = True
+
+    # ── Modo dos equipos ──────────────────────────────────────────────────────
+    else:
+        matchups   = [(team_a, team_b)]
+        stats_df   = df.copy()
+        pdf_path   = None
+        modo_semana = False
+
+    # ── Stats y rankings ──────────────────────────────────────────────────────
+    off_basic  = compute_offense(stats_df)
+    deff_basic = compute_defense(stats_df)
+    drv_df     = compute_drive_level(stats_df)
     off_rz, deff_rz = compute_redzone_metrics(drv_df)
 
     off  = off_basic.join(off_rz,  how="left")
     deff = deff_basic.join(deff_rz, how="left")
+    st   = compute_special_teams(stats_df)
 
-    st = compute_special_teams(df)
+    off_high   = ["EPA/jugada","Éxito (%)","EPA/pase","EPA/carrera","Explosivas (%)",
+                  "EPA 1º down","EPA downs tardíos","%RedZone"]
+    off_ranks  = rank_dataframe(off,  better_high_cols=off_high,                 better_low_cols=["Distancia media 3º down"])
+    deff_ranks = rank_dataframe(deff, better_high_cols=[],                       better_low_cols=list(deff.columns))
+    st_ranks   = rank_dataframe(st,   better_high_cols=["FG%","EPA/jugada ST"],  better_low_cols=[])
 
-    # Rankings
-    off_high = ["EPA/jugada","Éxito (%)","EPA/pase","EPA/carrera","Explosivas (%)",
-                "EPA 1º down","EPA downs tardíos","%RedZone"]
-    off_ranks = rank_dataframe(off, better_high_cols=off_high, better_low_cols=["Distancia media 3º down"])
-
-    deff_ranks = rank_dataframe(deff, better_high_cols=[], better_low_cols=list(deff.columns))
-
-    st_high = ["FG%","EPA/jugada ST"]
-    st_low  = []
-    st_ranks = rank_dataframe(st, better_high_cols=st_high, better_low_cols=st_low)
-
-    out_file = f"preview_{team_a}_vs_{team_b}_{SEASON}.png"
-    draw_png(team_a, team_b, off, deff, st, off_ranks, deff_ranks, st_ranks, out_file)
-    print(f"\nPNG generado: {out_file}")
-    print("Asegurate de tener los PNG en ./logos/SIGLA.png (ej.: logos/SF.png).")
+    # ── Generar imágenes ──────────────────────────────────────────────────────
+    if modo_semana:
+        with PdfPages(pdf_path) as pdf:
+            for away, home in matchups:
+                out_png = f"preview_{away}_vs_{home}_{SEASON}.png"
+                fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png)
+                pdf.savefig(fig, bbox_inches="tight", facecolor="#0f1115")
+                plt.close(fig)
+                print(f"  → {out_png}")
+        print(f"\nPDF combinado: {pdf_path}  ({len(matchups)} partidos)")
+    else:
+        away, home = matchups[0]
+        out_png = f"preview_{away}_vs_{home}_{SEASON}.png"
+        fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png)
+        plt.close(fig)
+        print(f"\nPNG generado: {out_png}")
