@@ -7,13 +7,13 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pbp_loader import cargar_pbp
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON = 2025
-URL    = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
+SEASON = None   # None = auto-detectar última temporada
 BG     = "#0f1115"
 FG     = "#EDEDED"
 GRID   = "#2a2f3a"
@@ -68,9 +68,9 @@ def safe_norm(series):
 week = int(input("Semana (numero): ").strip())
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-df = pd.read_csv(URL, low_memory=False, compression="infer")
-print(f"Filas descargadas: {len(df):,}")
+# solo_reg=False: el filtro "hasta semana N" es del usuario
+df, SEASON = cargar_pbp(SEASON, solo_reg=False)
+print(f"PBP {SEASON}: {len(df):,} jugadas")
 
 to_num(df, ["epa", "week"])
 

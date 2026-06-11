@@ -7,13 +7,13 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pbp_loader import cargar_pbp
 import matplotlib.patches as mpatches
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON   = 2025
-PBP_URL  = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
+SEASON   = None   # None = auto-detectar última temporada
 BG       = "#0f1115"
 FG       = "#EDEDED"
 GRID     = "#2a2f3a"
@@ -129,9 +129,8 @@ rb1_input = input("RB 1 (apellido o nombre parcial, p.ej. McCaffrey): ").strip()
 rb2_input = input("RB 2 (apellido o nombre parcial, p.ej. Henry): ").strip()
 
 # ── DATA — PBP ─────────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-df = pd.read_csv(PBP_URL, low_memory=False, compression="infer")
-print(f"Filas descargadas: {len(df):,}")
+df, SEASON = cargar_pbp(SEASON)
+print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 
 to_num(df, ["epa", "week", "down", "yardline_100", "yards_gained", "pass_attempt"])
 

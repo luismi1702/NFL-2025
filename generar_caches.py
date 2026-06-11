@@ -22,6 +22,7 @@ Uso (desde la raíz del proyecto):
 import os, sys, argparse, warnings
 import numpy as np
 import pandas as pd
+from pbp_loader import cargar_pbp
 
 warnings.filterwarnings("ignore")
 
@@ -52,11 +53,7 @@ NUM_COLS = [
 
 
 def descargar_pbp(yr: int) -> pd.DataFrame:
-    url = (f"https://github.com/nflverse/nflverse-data/releases/download"
-           f"/pbp/play_by_play_{yr}.csv.gz")
-    print(f"Descargando PBP completo {yr}...")
-    raw = pd.read_csv(url, low_memory=False, compression="infer",
-                      usecols=lambda c: c in PBP_COLS)
+    raw, _ = cargar_pbp(yr, columns=[c for c in PBP_COLS], solo_reg=False)
     for c in NUM_COLS:
         if c in raw.columns:
             raw[c] = pd.to_numeric(raw[c], errors="coerce")

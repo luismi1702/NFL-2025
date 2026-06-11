@@ -13,7 +13,12 @@ lock = threading.Lock()
 
 
 def run_job(jid, script_file, stdin_data):
-    path = BASE / script_file
+    path = (BASE / script_file).resolve()
+    # Solo scripts .py que vivan directamente en la carpeta del proyecto
+    if path.suffix != ".py" or path.parent != BASE.resolve():
+        with lock:
+            jobs[jid] = {"s": "err", "log": f"Ruta no permitida: {script_file}", "imgs": []}
+        return
     if not path.exists():
         with lock:
             jobs[jid] = {"s": "err", "log": f"No encontrado: {script_file}", "imgs": []}

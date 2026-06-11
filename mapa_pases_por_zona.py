@@ -6,13 +6,12 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 import pandas as pd
+from pbp_loader import cargar_pbp
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-SEASON   = 2025
+SEASON   = None   # None = auto-detectar última temporada
 MIN_WEEK = 1
 MAX_WEEK = 18
-
-URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 
 FIGSIZE   = (12.0, 14.5)
 DPI       = 170
@@ -56,8 +55,8 @@ ZONE_X = {
 QB_INPUT = input("Nombre del QB (ej: Mahomes, Lamar, Allen): ").strip()
 
 # ── CARGA DE DATOS ────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-df = pd.read_csv(URL, low_memory=False, compression="infer")
+df, SEASON = cargar_pbp(SEASON)
+print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 df["week"]          = pd.to_numeric(df["week"],          errors="coerce")
 df["air_yards"]     = pd.to_numeric(df["air_yards"],     errors="coerce")
 df["complete_pass"] = pd.to_numeric(df["complete_pass"], errors="coerce")

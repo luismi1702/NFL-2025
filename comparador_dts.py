@@ -14,13 +14,11 @@ Métricas:
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pbp_loader import cargar_pbp, cargar_stats, cargar_participation
 from matplotlib.colors import LinearSegmentedColormap
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON            = 2025
-PBP_URL           = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
-STATS_URL         = f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_reg_{SEASON}.csv.gz"
-PARTICIPATION_URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp_participation/pbp_participation_{SEASON}.csv"
+SEASON            = None   # None = auto-detectar última temporada
 BG   = "#0f1115"
 FG   = "#EDEDED"
 GRID = "#2a2f3a"
@@ -161,8 +159,7 @@ p1_input = input("DT 1 (apellido o nombre parcial, p.ej. Donald): ").strip()
 p2_input = input("DT 2 (apellido o nombre parcial, p.ej. Simmons): ").strip()
 
 # ── DATA — STATS PLAYER ────────────────────────────────────────────────────────
-print(f"Descargando stats_player {SEASON}...")
-df_stats = pd.read_csv(STATS_URL, low_memory=False, compression="infer")
+df_stats, SEASON = cargar_stats(SEASON)
 to_num(df_stats, ["def_sacks", "def_qb_hits", "def_tackles_for_loss",
                   "def_fumbles_forced", "games"])
 
@@ -173,9 +170,8 @@ dt_stats = df_stats[
 print(f"DTs con ≥{MIN_GAMES} partidos: {len(dt_stats)}")
 
 # ── DATA — PBP ─────────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-df_pbp = pd.read_csv(PBP_URL, low_memory=False, compression="infer")
-print(f"Filas descargadas: {len(df_pbp):,}")
+df_pbp, SEASON = cargar_pbp(SEASON)
+print(f"PBP {SEASON}: {len(df_pbp):,} jugadas REG")
 to_num(df_pbp, ["epa", "sack"])
 
 sack_col = pick_col(df_pbp, "sack_player_name")
@@ -187,9 +183,8 @@ sack_df  = df_pbp[
 print(f"Jugadas de sack con EPA: {len(sack_df):,}")
 
 # ── DATA — PARTICIPACIÓN ────────────────────────────────────────────────────────
-print(f"Descargando pbp_participation {SEASON}...")
 try:
-    part_df = pd.read_csv(PARTICIPATION_URL, low_memory=False, compression="infer")
+    part_df, _ = cargar_participation(SEASON)
     if "play_id" in part_df.columns:
         part_df["play_id"] = pd.to_numeric(part_df["play_id"], errors="coerce")
     if "play_id" in df_pbp.columns:

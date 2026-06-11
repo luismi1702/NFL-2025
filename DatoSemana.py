@@ -6,12 +6,12 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pbp_loader import cargar_pbp
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.colors import LinearSegmentedColormap
 
 # === Config ===
-SEASON    = 2025
-URL       = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
+SEASON    = None   # None = auto-detectar última temporada
 LOGOS_DIR = "logos"
 
 # Estilo
@@ -228,10 +228,8 @@ if __name__ == "__main__":
     except:
         raise SystemExit("Semana inválida.")
 
-    print(f"Descargando datos NFL {SEASON}...")
-    df = pd.read_csv(URL, low_memory=False, compression="infer")
-    if "week" not in df.columns:
-        raise SystemExit("El dataset no tiene columna 'week' (revisa la fuente).")
+    # solo_reg=False: el filtro semanal es del usuario (semanas 19+ = playoffs)
+    df, SEASON = cargar_pbp(SEASON, solo_reg=False)
 
     dfw = df[df["week"] == week].copy()
     if dfw.empty:

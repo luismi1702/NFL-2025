@@ -2,6 +2,25 @@
 
 ---
 
+## [2026-06-12] — Auditoría completa: pbp_loader.py + 43 scripts migrados
+
+**Qué se hizo:**
+- `pbp_loader.py` (nuevo, única excepción a "scripts independientes"): carga compartida con cache local (`pbp_full_{yr}.parquet`, parquet oficial de nflverse), filtro REG, auto-detección de temporada y re-descarga solo cuando hay jornadas nuevas. También `cargar_stats()` y `cargar_participation()`
+- **43 scripts migrados al loader**. Tres bugs/problemas sistémicos resueltos de golpe:
+  1. ~45 scripts mezclaban playoffs en stats "de temporada" (no filtraban season_type) — ahora REG por defecto
+  2. ~45 scripts re-descargaban 90MB de PBP en cada ejecución — ahora cache local compartido
+  3. `SEASON=2025` hardcodeado en 43 scripts — ahora `SEASON=None` auto-detecta (lista para 2026 sin tocar nada)
+- Scripts de partido/semana concreta (resumen_partido, Previas, DatoSemana, MVPsSemana, power_rankings) usan `solo_reg=False`: mantienen acceso a playoffs vía su propio filtro de semana
+- `contenders_tracker.py`: blindado el manejo de booleanos numpy (`is True` → `pd.isna`/`bool()`)
+- `server.py`: solo ejecuta `.py` que vivan en la carpeta del proyecto (validación de ruta)
+- `galeria.html`: añadida entrada para contenders_tracker
+- CLAUDE.md: nota de participación corregida (FTN 2016-2025 con rutas/presión/coberturas) y convención de carga documentada
+- Verificado: 58 scripts compilan; smoke tests OK (qb_overview, coberturas, comparador_wrs end-to-end con cache)
+
+**Pendiente (huecos detectados en la auditoría):** special_teams.py, air_yards.py, arbol_rutas.py, presion_blitz.py, man_vs_zone.py, penalizaciones.py, simulador_playoffs.py
+
+---
+
 ## [2026-06-11] — contenders_tracker.py autosuficiente + recalibración de umbrales
 
 **Qué se hizo:**

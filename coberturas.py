@@ -8,6 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from pbp_loader import cargar_participation
 
 # === Config ===
 LOGO_DIR  = "logos"
@@ -15,9 +16,7 @@ FIGSIZE   = (16, 18)
 DPI       = 170
 BG        = "#0f1115"
 FG        = "#EDEDED"
-SEASON    = 2025
-
-PARTICIPATION_URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp_participation/pbp_participation_{SEASON}.csv"
+SEASON    = None   # None = auto-detectar última temporada
 
 # Orden visual y colores de coberturas
 ORDER = ["COVER 0", "COVER 1", "2-MAN", "COVER 2", "COVER 3", "COVER 4", "COVER 6", "COVER 9", "COMBO"]
@@ -49,9 +48,8 @@ COV_MAP = {
 # ─────────────────────────────────────────────
 # 1. Carga y limpieza de datos
 # ─────────────────────────────────────────────
-def load_coverage(season: int) -> pd.DataFrame:
-    print(f"Descargando pbp_participation {season}...")
-    part = pd.read_csv(PARTICIPATION_URL, low_memory=False)
+def load_coverage(season):
+    part, season = cargar_participation(season)
 
     # Filtrar jugadas con cobertura registrada y valida
     part = part[
@@ -71,7 +69,7 @@ def load_coverage(season: int) -> pd.DataFrame:
     part["cobertura"] = part["defense_coverage_type"].map(COV_MAP)
     part = part[part["cobertura"].notna()]
 
-    return part
+    return part, season
 
 
 def compute_pct(part: pd.DataFrame) -> pd.DataFrame:
@@ -186,7 +184,7 @@ def plot_coberturas(pct_df: pd.DataFrame, season: int):
 # 4. Main
 # ─────────────────────────────────────────────
 if __name__ == "__main__":
-    part   = load_coverage(SEASON)
+    part, SEASON = load_coverage(SEASON)
     pct_df = compute_pct(part)
 
     print(f"\nEquipos procesados: {len(pct_df)}")

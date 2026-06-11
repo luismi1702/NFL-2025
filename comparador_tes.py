@@ -7,14 +7,13 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pbp_loader import cargar_pbp, cargar_stats
 import matplotlib.patches as mpatches
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON    = 2025
-PBP_URL   = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
-STATS_URL = f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_reg_{SEASON}.csv.gz"
+SEASON    = None   # None = auto-detectar última temporada
 BG        = "#0f1115"
 FG        = "#EDEDED"
 GRID      = "#2a2f3a"
@@ -159,9 +158,8 @@ te1_input = input("TE 1 (apellido o nombre parcial, p.ej. Kelce): ").strip()
 te2_input = input("TE 2 (apellido o nombre parcial, p.ej. Andrews): ").strip()
 
 # ── DATA — PBP ─────────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-df = pd.read_csv(PBP_URL, low_memory=False, compression="infer")
-print(f"Filas descargadas: {len(df):,}")
+df, SEASON = cargar_pbp(SEASON)
+print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 
 to_num(df, ["epa", "week", "down", "yardline_100", "air_yards",
             "yards_after_catch", "complete_pass", "pass_attempt"])
@@ -180,9 +178,8 @@ target_df = df[
 print(f"Objetivos con EPA y receptor: {len(target_df):,}")
 
 # ── DATA — STATS PLAYER ────────────────────────────────────────────────────────
-print(f"Descargando stats_player {SEASON}...")
 try:
-    df_stats = pd.read_csv(STATS_URL, low_memory=False, compression="infer")
+    df_stats, _ = cargar_stats(SEASON)
     to_num(df_stats, ["wopr", "targets"])
     # Keep only TEs with enough targets for WOPR normalization context
     te_stats = df_stats[

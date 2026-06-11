@@ -6,10 +6,10 @@
 
 import pandas as pd
 import numpy as np
+from pbp_loader import cargar_pbp
 
 # === Config ===
-SEASON = 2025
-URL    = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
+SEASON = None   # None = auto-detectar última temporada
 
 def to_num(df, cols):
     for c in cols:
@@ -134,8 +134,9 @@ def main():
     except ValueError:
         raise SystemExit("Semana invalida.")
 
-    print(f"Descargando pbp {SEASON}...")
-    df = pd.read_csv(URL, low_memory=False, compression="infer")
+    global SEASON
+    # solo_reg=False: el filtro semanal es del usuario (semanas 19+ = playoffs)
+    df, SEASON = cargar_pbp(SEASON, solo_reg=False)
     to_num(df, ["week", "epa", "sack"])
 
     d = df[df["week"] == week].copy()

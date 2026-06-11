@@ -10,11 +10,12 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pbp_loader import cargar_pbp
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON       = 2025
+SEASON       = None   # None = auto-detectar última temporada
 DPI          = 170
 BG           = "#0f1115"
 FG           = "#EDEDED"
@@ -23,8 +24,6 @@ RYG          = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "
 LOGOS_DIR    = "logos"
 HARD_PENALTY = {"NYJ": 4.5}
 MIN_PLAYS    = 15   # mínimo de 4to-down decisiones para incluir al equipo
-
-URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 
 # ── MODELO DE RECOMENDACIÓN ────────────────────────────────────────────────────
 def recommend_go(ydstogo, yardline_100, wp_pos):
@@ -81,9 +80,8 @@ def load_logo(team, base_zoom=0.038):
         return None
 
 # ── CARGA DE DATOS ─────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-df = pd.read_csv(URL, low_memory=False, compression="infer")
-print(f"Filas: {len(df):,}")
+df, SEASON = cargar_pbp(SEASON)
+print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 
 # ── FILTRO 4TO DOWN ────────────────────────────────────────────────────────────
 mask = (

@@ -11,14 +11,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from pbp_loader import cargar_pbp
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-SEASON    = 2025
+SEASON    = None   # None = auto-detectar última temporada
 MIN_PLAYS = 25
-URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 
 BG     = "#0f1115"
 CARD   = "#151924"
@@ -100,8 +100,8 @@ team = input("Equipo (Enter=scatter 32 equipos): ").strip().upper()
 modo = "equipo" if team else "grid"
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-raw = pd.read_csv(URL, low_memory=False, compression="infer")
+raw, SEASON = cargar_pbp(SEASON)
+print(f"PBP {SEASON}: {len(raw):,} jugadas REG")
 for col in ["epa", "score_differential", "down"]:
     raw[col] = pd.to_numeric(raw[col], errors="coerce")
 

@@ -7,16 +7,15 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from pbp_loader import cargar_pbp
 
 # === Config ===
-SEASON           = 2025
+SEASON           = None  # None = auto-detectar última temporada
 MIN_WEEK         = 1
 MAX_WEEK         = 18
 MIN_QB_PLAYS_RZ  = 50   # mínimo jugadas en red zone
 MIN_QB_PLAYS_3RD = 50   # mínimo jugadas en 3er down
 
-URL       = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
-OUT       = f"scatter_QB_totalEPA_RZ_vs_3rd_{SEASON}.png"
 LOGOS_DIR = "logos"
 
 BG           = "#0f1115"
@@ -144,8 +143,10 @@ def plot_qb_scatter(qbs_df, team_map, title, xlabel, ylabel, outfile):
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 def main():
-    print(f"Descargando play-by-play {SEASON} semanas {MIN_WEEK}-{MAX_WEEK}...")
-    df = pd.read_csv(URL, low_memory=False, compression="infer")
+    global SEASON, OUT
+    df, SEASON = cargar_pbp(SEASON)
+    OUT = f"scatter_QB_totalEPA_RZ_vs_3rd_{SEASON}.png"
+    print(f"PBP {SEASON} semanas {MIN_WEEK}-{MAX_WEEK}: {len(df):,} jugadas REG")
     to_num(df, ["epa", "down", "yardline_100", "week"])
 
     passer_id_col   = pick_col(df, "passer_player_id", "passer_id")

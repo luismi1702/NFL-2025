@@ -5,20 +5,17 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pbp_loader import cargar_pbp
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.colors import LinearSegmentedColormap
 
 # === Config ===
-SEASON    = 2025
+SEASON    = None  # None = auto-detectar última temporada
 MIN_WEEK  = 1     # semana inicial del rango analizado
 MAX_WEEK  = 18    # semana final   (18 = temporada completa; ajustar mid-season)
 MIN_PLAYS = 100   # mínimo de jugadas para incluir un equipo en el ranking
 
-URL       = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 LOGOS_DIR = "logos"
-
-OUT_OFF = f"ranking_ofensivo_ajustado_{SEASON}.png"
-OUT_DEF = f"ranking_defensivo_ajustado_{SEASON}.png"
 
 # Tema oscuro
 BG, FG, GRID = "#0f1115", "#EDEDED", "#2a2f3a"
@@ -153,8 +150,11 @@ def plot_ranking(data_df, title, subtitle, outfile, higher_is_better=True):
 
 
 def main():
-    print(f"Descargando datos NFL {SEASON} semanas {MIN_WEEK}-{MAX_WEEK}...")
-    df = pd.read_csv(URL, low_memory=False, compression="infer")
+    global SEASON, OUT_OFF, OUT_DEF
+    df, SEASON = cargar_pbp(SEASON)
+    OUT_OFF = f"ranking_ofensivo_ajustado_{SEASON}.png"
+    OUT_DEF = f"ranking_defensivo_ajustado_{SEASON}.png"
+    print(f"PBP {SEASON} semanas {MIN_WEEK}-{MAX_WEEK}: {len(df):,} jugadas REG")
     to_num(df, ["epa", "week"])
 
     # Filtro de semana y jugadas válidas

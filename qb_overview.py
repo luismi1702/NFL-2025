@@ -11,14 +11,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+from pbp_loader import cargar_pbp
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-SEASON       = 2025
+SEASON       = None  # None = auto-detectar última temporada
 MIN_ATTEMPTS = 150   # intentos mínimos para aparecer
 MIN_CPOE     =  50   # pases con CPOE válido mínimos
-URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 
 BG    = "#0f1115"
 FG    = "#EDEDED"
@@ -58,9 +58,8 @@ def short_name(name):
 
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-df = pd.read_csv(URL, low_memory=False, compression="infer")
-print(f"Filas: {len(df):,}")
+df, SEASON = cargar_pbp(SEASON)
+print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 
 for col in ["epa", "cpoe"]:
     if col in df.columns:

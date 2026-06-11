@@ -14,10 +14,10 @@ from matplotlib.path import Path as MPath
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from pbp_loader import cargar_pbp
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON   = 2025
-URL_PBP  = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
+SEASON   = None   # None = auto-detectar última temporada
 BG       = "#0f1115"
 FG       = "#EDEDED"
 GRID     = "#2a2f3a"
@@ -400,12 +400,9 @@ def draw_heatmap(epa_piv, n_piv):
 team_input = input("Equipo (siglas, ej: SF — Enter = todos los equipos): ").strip().upper()
 
 # ── CARGA DE DATOS ─────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-pbp = pd.read_csv(
-    URL_PBP, low_memory=False, compression="infer",
-    usecols=["play_type", "posteam", "epa", "run_location", "run_gap",
-             "qb_scramble", "yards_gained", "rush_touchdown", "fumble"]
-)
+pbp, SEASON = cargar_pbp(SEASON, columns=["play_type", "posteam", "epa",
+                                          "run_location", "run_gap", "qb_scramble",
+                                          "yards_gained", "rush_touchdown", "fumble"])
 for col in ["epa", "qb_scramble", "yards_gained", "rush_touchdown", "fumble"]:
     pbp[col] = pd.to_numeric(pbp[col], errors="coerce")
 pbp["qb_scramble"] = pbp["qb_scramble"].fillna(0)

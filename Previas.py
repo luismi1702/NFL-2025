@@ -9,12 +9,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from pbp_loader import cargar_pbp
 from matplotlib.patches import FancyBboxPatch
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # === Config ===
-SEASON       = 2025
-URL          = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
+SEASON       = None   # None = auto-detectar última temporada
 EXP_PASS_YDS = 15   # jugada explosiva pase
 EXP_RUN_YDS  = 10   # jugada explosiva carrera
 FIGSIZE      = (8.7, 13.5)
@@ -311,8 +311,8 @@ if __name__ == "__main__":
         team_a = team_b = ""
 
     # ── Cargar PBP ───────────────────────────────────────────────────────────
-    print(f"\nCargando play-by-play {SEASON}...")
-    df = pd.read_csv(URL, low_memory=False, compression="infer")
+    # solo_reg=False: las previas pueden ser de partidos de playoffs
+    df, SEASON = cargar_pbp(SEASON, solo_reg=False)
     to_num(df, ["epa","yards_gained","ydstogo","down","return_yards","yardline_100",
                 "posteam_score_pre","posteam_score_post","week"])
 

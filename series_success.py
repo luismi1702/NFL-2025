@@ -13,12 +13,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import Normalize, LinearSegmentedColormap
+from pbp_loader import cargar_pbp
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON   = 2025
-URL_PBP  = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
+SEASON   = None   # None = auto-detectar última temporada
 BG       = "#0f1115"
 FG       = "#EDEDED"
 GRID     = "#2a2f3a"
@@ -53,12 +53,9 @@ def load_logo(team, base_zoom=0.038):
 
 
 # ── CARGA DE DATOS ─────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-pbp = pd.read_csv(
-    URL_PBP, low_memory=False, compression="infer",
-    usecols=["game_id", "posteam", "series", "series_result", "play_type", "week"]
-)
-print(f"PBP filas: {len(pbp):,}")
+pbp, SEASON = cargar_pbp(SEASON, columns=["game_id", "posteam", "series",
+                                          "series_result", "play_type", "week"])
+print(f"PBP {SEASON}: {len(pbp):,} jugadas REG")
 
 # ── FILTRAR ────────────────────────────────────────────────────────────────────
 # Quedarse con la última jugada de cada serie (la que tiene el series_result)

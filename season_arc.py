@@ -9,11 +9,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+from pbp_loader import cargar_pbp
 from matplotlib.ticker import FuncFormatter
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON    = 2025
+SEASON    = None   # None = auto-detectar última temporada
 ROLL      = 3
 MIN_PLAYS = 15
 DPI       = 170
@@ -28,8 +29,6 @@ HIGHLIGHT_COLORS = [
     "#06d6a0", "#ffd166", "#ef476f",
     "#4e9af1", "#ff9f1c", "#c77dff",
 ]
-
-URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 
 # ── HELPERS ────────────────────────────────────────────────────────────────────
 def load_logo(team, base_zoom=0.028):
@@ -71,9 +70,8 @@ else:
 print(f"Modo: {mode_label}")
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-df = pd.read_csv(URL, low_memory=False, compression="infer")
-print(f"Filas: {len(df):,}")
+df, SEASON = cargar_pbp(SEASON)
+print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 
 mask = (
     df["play_type"].isin(["pass", "run"]) &

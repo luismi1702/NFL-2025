@@ -9,10 +9,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+from pbp_loader import cargar_pbp
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON     = 2025
+SEASON     = None   # None = auto-detectar última temporada
 MIN_PLAYS  = 200
 DPI        = 170
 BG         = "#0f1115"
@@ -22,8 +23,6 @@ RYG        = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#0
 
 LOGOS_DIR    = "logos"
 HARD_PENALTY = {"NYJ": 4.5}
-
-URL = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 
 # ── HELPERS ────────────────────────────────────────────────────────────────────
 def pick_col(df, *candidates):
@@ -51,10 +50,8 @@ def load_logo(team, base_zoom=0.055):
         return None
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-df = pd.read_csv(URL, low_memory=False, compression="infer")
-
-print(f"Filas descargadas: {len(df):,}")
+df, SEASON = cargar_pbp(SEASON)
+print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 
 # Filter pass + run plays
 mask = (

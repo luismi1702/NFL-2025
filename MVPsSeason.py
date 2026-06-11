@@ -13,10 +13,10 @@
 import pandas as pd
 import numpy as np
 import re
+from pbp_loader import cargar_pbp
 
 # === Config ===
-SEASON = 2025
-URL_PBP     = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
+SEASON = None   # None = auto-detectar última temporada
 URL_PLAYERS = "https://github.com/nflverse/nflverse-data/releases/download/players/players.csv"
 
 # ---------------- Helpers ----------------
@@ -354,8 +354,9 @@ def calc_st(d, play_type, kr_nm, pr_nm, kicker_nm, punter_nm, posteam):
 
 # ---------------- Main ----------------
 def main():
-    print(f"Descargando play-by-play {SEASON}...")
-    df = pd.read_csv(URL_PBP, low_memory=False, compression="infer")
+    global SEASON
+    df, SEASON = cargar_pbp(SEASON)
+    print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 
     play_type = pick_col(df, "play_type")
     if play_type is None or "epa" not in df.columns:

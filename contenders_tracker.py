@@ -232,8 +232,8 @@ def compute(sch: pd.DataFrame, season: int, max_week: int):
         for metric, cfg in THRESHOLDS.items():
             val = row.get(metric, np.nan)
             cumple[metric] = meets(val, cfg["umbral"], cfg["lb"])
-        n_ok   = sum(1 for v in cumple.values() if v is True)
-        n_miss = sum(1 for v in cumple.values() if v is False)
+        n_ok   = sum(1 for v in cumple.values() if v is not None and bool(v))
+        n_miss = sum(1 for v in cumple.values() if v is not None and not bool(v))
         n_na   = sum(1 for v in cumple.values() if v is None)
         results.append({
             "team": row["team"],
@@ -317,7 +317,7 @@ def render(df, season, week, n_weeks_played):
         is_cont = row["contender"]
 
         # Separador contenders / no contenders
-        if prev_contender is True and not is_cont:
+        if bool(prev_contender) and not is_cont:
             ax.axhline(n_rows - i, color=GOLD, lw=1.5, xmin=0.01, xmax=0.99, alpha=0.7)
         prev_contender = is_cont
 
@@ -344,15 +344,15 @@ def render(df, season, week, n_weeks_played):
         for j, metric in enumerate(metric_keys):
             x    = COL_START + j * COL_W + COL_W / 2
             val  = row.get(f"ok_{metric}", None)
-            if val is True:
-                color, sym = "#06d6a0", "✓"
-                tcol = "#000"
-            elif val is False:
-                color, sym = "#d84a4a", "✗"
-                tcol = FG
-            else:
+            if pd.isna(val):           # pd.isna y bool() para tolerar numpy bools
                 color, sym = DIM, "–"
                 tcol = "#666"
+            elif bool(val):
+                color, sym = "#06d6a0", "✓"
+                tcol = "#000"
+            else:
+                color, sym = "#d84a4a", "✗"
+                tcol = FG
 
             cell_w = COL_W * 0.85
             cell = FancyBboxPatch((x - cell_w/2, y - 0.35), cell_w, 0.70,
@@ -409,7 +409,7 @@ def main():
     print("-" * 50)
     for _, row in df.iterrows():
         fallan = [THRESHOLDS[m]["label"] for m in THRESHOLDS
-                  if row.get(f"ok_{m}") is False]
+                  if pd.notna(row.get(f"ok_{m}")) and not bool(row.get(f"ok_{m}"))]
         status = "CONTENDER" if row["contender"] else ", ".join(fallan[:3])
         print(f"{row['team']:>5}  {int(row['n_ok'])}/{TOTAL}  {status}")
 

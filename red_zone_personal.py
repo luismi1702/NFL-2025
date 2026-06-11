@@ -10,13 +10,12 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pbp_loader import cargar_pbp, cargar_participation
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-SEASON  = 2025
-URL_PBP = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
-URL_PART= f"https://github.com/nflverse/nflverse-data/releases/download/pbp_participation/pbp_participation_{SEASON}.parquet"
+SEASON  = None   # None = auto-detectar última temporada
 
 BG    = "#0f1115"
 CARD  = "#151924"
@@ -90,13 +89,13 @@ team = input("Equipo (siglas, ej: SF) o Enter para grid 32 equipos: ").strip().u
 modo = "equipo" if team else "grid"
 
 # ── CARGA ─────────────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-pbp = pd.read_csv(URL_PBP, low_memory=False, compression="infer")
+pbp, SEASON = cargar_pbp(SEASON)
 pbp["epa"]     = pd.to_numeric(pbp["epa"],     errors="coerce")
 pbp["play_id"] = pd.to_numeric(pbp["play_id"], errors="coerce")
+print(f"PBP {SEASON}: {len(pbp):,} jugadas REG")
 
-print(f"Descargando participacion {SEASON}...")
-part = pd.read_parquet(URL_PART, columns=["nflverse_game_id", "play_id", "offense_personnel"])
+part, _ = cargar_participation(SEASON)
+part = part[["nflverse_game_id", "play_id", "offense_personnel"]]
 part = part.rename(columns={"nflverse_game_id": "game_id"})
 part["play_id"] = pd.to_numeric(part["play_id"], errors="coerce")
 

@@ -8,13 +8,11 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pbp_loader import cargar_pbp, cargar_stats
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SEASON       = 2025
-PBP_URL      = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
-STATS_URL    = f"https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_reg_{SEASON}.csv.gz"
-OUT          = f"scatter_RB_RZ_vs_3rd_{SEASON}.png"
+SEASON       = None   # None = auto-detectar última temporada
 LOGOS_DIR    = "logos"
 BG           = "#0f1115"
 FG           = "#EDEDED"
@@ -73,13 +71,12 @@ def volume_zoom(n, n_min, n_max):
     return ZOOM_MIN + t * (ZOOM_MAX - ZOOM_MIN)
 
 # ── Datos ─────────────────────────────────────────────────────────────────────
-print(f"Descargando PBP {SEASON}...")
-df = pd.read_csv(PBP_URL, low_memory=False, compression="infer")
+df, SEASON = cargar_pbp(SEASON)
 to_num(df, ["epa", "yardline_100", "down"])
-print(f"  {len(df):,} filas")
+print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 
-print(f"Descargando stats_player {SEASON}...")
-df_stats = pd.read_csv(STATS_URL, low_memory=False, compression="infer")
+df_stats, _ = cargar_stats(SEASON)
+OUT = f"scatter_RB_RZ_vs_3rd_{SEASON}.png"
 
 name_col_s = pick_col(df_stats, "player_name", "player_display_name")
 disp_col_s = pick_col(df_stats, "player_display_name", "player_name")
