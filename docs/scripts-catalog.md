@@ -68,7 +68,7 @@
 ## Análisis de equipo / matchup
 | Script | Descripción |
 |--------|-------------|
-| informe_equipo.py | Team card de un equipo: 2 PNGs (ataque y defensa). Banda superior con 3 KPIs y DONDE DOMINA en fila; columna izquierda con cada faceta en pista de ranking 1→32; franja de carrera por hueco (LE->RE) al pie; derecha con debilidades, identidad y bloque PRESION (KPI + origen en mini-campo de 4 flechas). Defensa usa presiones reales de PFR; ataque, atribucion de sacks+QB hits |
+| informe_equipo.py | Team card de un equipo: 2 PNGs (ataque y defensa). Banda superior con 3 KPIs y DONDE DOMINA en fila; columna izquierda con cada faceta en pista de ranking 1→32; franja de carrera por hueco al pie (en ataque LE->RE; en defensa el defensor que cubre cada hueco, con el orden invertido); derecha con debilidades, identidad y bloque PRESION (KPI + origen en mini-campo de 4 flechas). Defensa usa presiones reales de PFR; ataque, atribucion de sacks+QB hits |
 | matchup_intel.py | Intel táctica A vs B — mismatches automáticos (EXPLOIT / NEUTRO / RIESGO) |
 | game_script.py | Análisis del game script: cómo juega un equipo según el marcador |
 | RankingEPAadjustado.py | Rankings ajustados por EPA y calendario |

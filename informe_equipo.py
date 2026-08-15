@@ -6,8 +6,10 @@ Rediseño jul-2026 — "team card" presentable:
   - Banda superior: 3 KPIs con su ranking + DONDE DOMINA en fila
   - Columna izquierda: cada faceta como punto sobre una pista de ranking 1→32
     (un solo eje universal: izquierda = top de la liga, derecha = cola)
-  - Columna izquierda: al pie, franja de CARRERA POR HUECO (LE->RE, que se lee
-    como la linea ofensiva)
+  - Columna izquierda: al pie, franja de CARRERA POR HUECO. En ataque son los
+    huecos propios (LE->RE); en defensa se nombra al DEFENSOR que cubre cada
+    uno y se invierte el orden, porque la izquierda del ataque es la derecha
+    de la defensa
   - Columna derecha: debilidades, identidad y un bloque PRESION que reune
     el KPI, el % y el origen (mini-campo con las cuatro flechas)
 Datos: nflverse PBP + NGS participation (coberturas, personal, presión).
@@ -460,8 +462,23 @@ def pares_identidad(es_off):
 
 # ── CARRERA POR HUECO ─────────────────────────────────────────────────────────
 GAP_ORDER = ["LE", "LT", "LG", "C", "RG", "RT", "RE"]
+
+# En ataque los huecos son los de la propia línea, de izquierda a derecha.
 GAP_CORTO = {"LE": "LE", "LT": "LT", "LG": "LG", "C": "C",
              "RG": "RG", "RT": "RT", "RE": "RE"}
+
+# En defensa hay que hacer dos cosas que no son evidentes:
+#   1. Nombrar al DEFENSOR que cubre el hueco, no al liniero rival: el que
+#      defiende el hueco del left guard es un DT, no un guard.
+#   2. DAR LA VUELTA al orden, porque la izquierda del ataque es la derecha de
+#      la defensa. El hueco "LT" del rival lo cubre el DE DERECHO nuestro.
+# Es la misma traducción que ya hace DL_DISPLAY en run_gap_defensa.py.
+GAP_ORDER_DEF = ["RE", "RT", "RG", "C", "LG", "LT", "LE"]   # izq→dcha DEFENSIVA
+GAP_DEF_LABEL = {
+    "RE": "Exterior\nizq",  "RT": "DE\nizq",  "RG": "DT\nizq",
+    "C":  "NT",
+    "LG": "DT\ndcha",       "LT": "DE\ndcha", "LE": "Exterior\ndcha",
+}
 
 
 def classify_gap(loc, gap):
@@ -530,9 +547,11 @@ def dibujar_huecos(ax, es_off, y0, y1, x0, x1):
         return
 
     # El título va en su propia línea: pegado a las celdas chocaba con "LE"
-    w = (x1 - x0 - 2.6) / len(GAP_ORDER)
-    y_cell1, y_cell0 = y1 - 4.4, y0 + 2.6
-    for i, h in enumerate(GAP_ORDER):
+    orden  = GAP_ORDER if es_off else GAP_ORDER_DEF
+    etiqs  = GAP_CORTO if es_off else GAP_DEF_LABEL
+    w = (x1 - x0 - 2.6) / len(orden)
+    y_cell1, y_cell0 = y1 - 4.8, y0 + 2.6
+    for i, h in enumerate(orden):
         cx0 = x0 + 1.3 + i * w
         d = datos.get(h)
         if not d:
@@ -554,12 +573,16 @@ def dibujar_huecos(ax, es_off, y0, y1, x0, x1):
             ax.text(cx0 + w / 2, (y_cell0 + y_cell1) / 2 - 0.75,
                     f"#{d['rank']} · n={d['n']}", ha="center", va="center",
                     color=txt, fontsize=6, zorder=2)
-        ax.text(cx0 + w / 2, y_cell1 + 0.75, GAP_CORTO[h], ha="center",
-                va="center", color=FG, fontsize=7.5, fontweight="bold", zorder=3)
+        ax.text(cx0 + w / 2, y_cell1 + 1.35, etiqs[h], ha="center",
+                va="center", color=FG, fontsize=7.2, fontweight="bold",
+                zorder=3, linespacing=1.15)
 
     ax.text(x0 + 1.3, y0 + 1.0,
-            "EPA por acarreo diseñado  ·  color = ranking de liga  ·  "
-            "los huecos van de izquierda a derecha como la línea ofensiva",
+            ("EPA por acarreo diseñado  ·  color = ranking de liga  ·  "
+             "los huecos van de izquierda a derecha como la línea ofensiva"
+             if es_off else
+             "EPA por acarreo diseñado permitido  ·  color = ranking de liga  ·  "
+             "visto desde la defensa: el hueco del LT rival lo cubre nuestro DE derecho"),
             ha="left", va="center", fontsize=6.2, color="#666666",
             fontstyle="italic", zorder=3)
 
