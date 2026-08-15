@@ -67,6 +67,16 @@ nueva.
 
 ## Scripts nuevos
 
+### Cruzar dline_presion_origen con oline_presion_origen en matchup_intel
+Tenemos las dos mitades: por dónde presiona cada defensa y por dónde cede cada
+línea ofensiva. Cruzarlas antes de un partido da el mismatch más directo que se
+puede contar — "Green Bay mete el 77% de su presión por fuera y este ataque es
+justo donde más cede". No necesita datos nuevos: los dos scripts ya calculan
+sus tablas.
+
+Limitación conocida: el cruce es por origen (interior/exterior/blitz), no por
+lado ni por hueco — eso no existe en datos públicos (ver pff-wishlist item 9).
+
 ### Equipos especiales
 Ni un script para kickers, punters ni retornadores. Fase entera sin cubrir y
 sin competencia en español. Ver columnas del PBP arriba.

@@ -51,6 +51,23 @@ del usuario (jul-2026): no hacerlo a medias — se construye en agosto directame
 con los datos completos de PFF (presiones con hurries incluidos y pass rush
 win rate por jugador, item 7).
 
+9. **Alineación del rusher: lado y gap** — ago-2026. Poder decir "de ese 9%
+   de presión con blitz de secundario, un 5% entra por fuera del RT y un 4%
+   por el hueco entre C y LG". Comprobado que NO existe en datos públicos:
+   - `run_location`/`run_gap` del PBP solo existen para CARRERAS (10.298
+     filas, todas play_type=run). `pass_location` es dónde se lanzó el balón,
+     no por dónde llegó la presión.
+   - `depth_chart_position` no distingue lado: da DE, OLB, DT, CB — nunca
+     LDE/RDE ni LOLB/ROLB.
+   - `participation.defense_positions` es la lista de quién está en el campo
+     ("CB;CB;FB;ILB;ILB;K;OLB;OLB;RB;SS;TE"), sin alineación.
+   - La descripción del sack nombra al autor y nada más.
+   Es charting de alineación (técnica 0-9, lado). PFF lo tiene por snap de
+   pass rush. Con ello, `dline_presion_origen.py` pasaría de 4 orígenes a
+   orígenes × lado, y su espejo `oline_presion_origen.py` podría por fin
+   decir el lado (hoy su pie dice "sin lado en los datos públicos").
+   Es la extensión defensiva natural del item 1.
+
 ## Decisión de timing
 
 Suscribirse a finales de AGOSTO 2026 (anual): un pago cubre temporada completa
