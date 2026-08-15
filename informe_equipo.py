@@ -6,6 +6,8 @@ Rediseño jul-2026 — "team card" presentable:
   - Banda superior: 3 KPIs con su ranking + DONDE DOMINA en fila
   - Columna izquierda: cada faceta como punto sobre una pista de ranking 1→32
     (un solo eje universal: izquierda = top de la liga, derecha = cola)
+  - Columna izquierda: al pie, franja de CARRERA POR HUECO (LE->RE, que se lee
+    como la linea ofensiva)
   - Columna derecha: debilidades, identidad y un bloque PRESION que reune
     el KPI, el % y el origen (mini-campo con las cuatro flechas)
 Datos: nflverse PBP + NGS participation (coberturas, personal, presión).
@@ -456,6 +458,112 @@ def pares_identidad(es_off):
     return pares
 
 
+# ── CARRERA POR HUECO ─────────────────────────────────────────────────────────
+GAP_ORDER = ["LE", "LT", "LG", "C", "RG", "RT", "RE"]
+GAP_CORTO = {"LE": "LE", "LT": "LT", "LG": "LG", "C": "C",
+             "RG": "RG", "RT": "RT", "RE": "RE"}
+
+
+def classify_gap(loc, gap):
+    """Misma clasificación que run_gap.py, para que los dos coincidan."""
+    if pd.isna(loc):
+        return None
+    if loc == "middle":
+        return "C"
+    if pd.isna(gap):
+        return None
+    if loc == "left":
+        return {"end": "LE", "tackle": "LT", "guard": "LG"}.get(gap)
+    if loc == "right":
+        return {"guard": "RG", "tackle": "RT", "end": "RE"}.get(gap)
+    return None
+
+
+def carrera_por_hueco(es_off):
+    """EPA/acarreo por hueco, con rank de liga. Solo acarreos DISEÑADOS:
+    los scrambles del QB no dicen nada de cómo corre el equipo por un hueco."""
+    try:
+        col = "posteam" if es_off else "defteam"
+        need = ["run_location", "run_gap", "qb_scramble", "play_type", "epa", col]
+        if any(c not in pbp.columns for c in need):
+            return None
+        r = pbp[(pbp["play_type"] == "run") &
+                (pd.to_numeric(pbp["qb_scramble"], errors="coerce").fillna(0) == 0) &
+                pbp["epa"].notna()].copy()
+        r["hueco"] = [classify_gap(l, g) for l, g in
+                      zip(r["run_location"], r["run_gap"])]
+        r = r[r["hueco"].notna()]
+        if r.empty:
+            return None
+
+        out = {}
+        for h in GAP_ORDER:
+            sub = r[r["hueco"] == h]
+            g = sub.groupby(col)["epa"].agg(epa="mean", n="count")
+            g = g[g["n"] >= 10]                    # muestra mínima por hueco
+            if team not in g.index:
+                out[h] = None
+                continue
+            # rank 1 = mejor: más EPA en ataque, menos EPA permitido en defensa
+            orden = g.sort_values("epa", ascending=not es_off)
+            out[h] = dict(epa=float(g.loc[team, "epa"]),
+                          n=int(g.loc[team, "n"]),
+                          rank=list(orden.index).index(team) + 1,
+                          n_teams=len(orden),
+                          lg=float(r[r["hueco"] == h]["epa"].mean()))
+        return out if any(v for v in out.values()) else None
+    except Exception as e:
+        print(f"  Aviso: sin carrera por hueco ({type(e).__name__})")
+        return None
+
+
+def dibujar_huecos(ax, es_off, y0, y1, x0, x1):
+    """Franja de 7 celdas: los huecos van LE→RE, o sea de izquierda a derecha
+    igual que la línea ofensiva, así que la franja se lee como el campo."""
+    datos = carrera_por_hueco(es_off)
+    titulo = "CARRERA POR HUECO" if es_off else "CARRERA PERMITIDA POR HUECO"
+    ax.text(x0 + 1.3, y1 - 1.0, titulo, ha="left", va="center", fontsize=8.5,
+            fontweight="bold", color="#8fa1c0", zorder=3)
+    if not datos:
+        ax.text(x0 + 1.3, (y0 + y1) / 2 - 1.2, "Sin muestra por hueco",
+                ha="left", va="center", fontsize=7.5, color="#777777", zorder=3)
+        return
+
+    # El título va en su propia línea: pegado a las celdas chocaba con "LE"
+    w = (x1 - x0 - 2.6) / len(GAP_ORDER)
+    y_cell1, y_cell0 = y1 - 4.4, y0 + 2.6
+    for i, h in enumerate(GAP_ORDER):
+        cx0 = x0 + 1.3 + i * w
+        d = datos.get(h)
+        if not d:
+            ax.add_patch(plt.Rectangle((cx0, y_cell0), w - 0.25,
+                                       y_cell1 - y_cell0, facecolor="#1e2430",
+                                       edgecolor=BG, linewidth=0.6, zorder=1))
+            ax.text(cx0 + w / 2, (y_cell0 + y_cell1) / 2, "—", ha="center",
+                    va="center", color="#444444", fontsize=8, zorder=2)
+        else:
+            bgc = rank_color(d["rank"], d["n_teams"])
+            ax.add_patch(plt.Rectangle((cx0, y_cell0), w - 0.25,
+                                       y_cell1 - y_cell0, facecolor=bgc,
+                                       edgecolor=BG, linewidth=0.6, zorder=1))
+            lum = 0.299 * bgc[0] + 0.587 * bgc[1] + 0.114 * bgc[2]
+            txt = "#0a0e13" if lum > 0.45 else FG
+            ax.text(cx0 + w / 2, (y_cell0 + y_cell1) / 2 + 0.75,
+                    f"{d['epa']:+.2f}", ha="center", va="center", color=txt,
+                    fontsize=8, fontweight="bold", zorder=2)
+            ax.text(cx0 + w / 2, (y_cell0 + y_cell1) / 2 - 0.75,
+                    f"#{d['rank']} · n={d['n']}", ha="center", va="center",
+                    color=txt, fontsize=6, zorder=2)
+        ax.text(cx0 + w / 2, y_cell1 + 0.75, GAP_CORTO[h], ha="center",
+                va="center", color=FG, fontsize=7.5, fontweight="bold", zorder=3)
+
+    ax.text(x0 + 1.3, y0 + 1.0,
+            "EPA por acarreo diseñado  ·  color = ranking de liga  ·  "
+            "los huecos van de izquierda a derecha como la línea ofensiva",
+            ha="left", va="center", fontsize=6.2, color="#666666",
+            fontstyle="italic", zorder=3)
+
+
 def presion_por_equipo(es_off):
     """(serie de presión por equipo, etiqueta). Misma fuente que el reparto.
 
@@ -670,8 +778,15 @@ def draw_informe(side, outfile):
     ax.add_patch(plt.Rectangle((1.2, 1.5), 60.6, 80.2, color=CARD, zorder=0))
     x_lbl, x_t0, x_t1, x_val = 14.5, 17.5, 46.0, 47.5
 
+    # La franja de huecos se reserva al pie de la columna; las secciones de
+    # ranking se reparten lo que queda. Aprieta las filas de 3.22 a ~2.63, aun
+    # por encima del suelo de 2.4 que necesitan para no solaparse.
+    H_HUECOS = 11.4
+    y0_huecos, y1_huecos = 2.6, 2.6 + H_HUECOS
+    dibujar_huecos(ax, es_off, y0_huecos, y1_huecos, 1.2, 61.8)
+
     # Espaciado dinámico: todo debe caber entre y_top y y_bot pase lo que pase
-    y_top, y_bot = 79.5, 3.6
+    y_top, y_bot = 79.5, y1_huecos + 1.6
     n_items    = sum(len(items) for _, items in secs)
     cab, gap   = 3.4, 1.1                      # cabecera de sección + hueco
     row_h = (y_top - y_bot - len(secs) * (cab + gap)) / max(n_items, 1)
