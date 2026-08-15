@@ -45,10 +45,10 @@
 | Script | Descripción |
 |--------|-------------|
 | comparador_edges.py | Radar Edge Rushers: sacks, QB hits, TFL, fumbles, EPA |
-| comparador_cbs.py | Radar comparativo CBs |
+| comparador_cbs.py | Radar de COBERTURA de dos CBs: rating permitido, % completados, yardas/objetivo, YAC/recepcion, % placajes fallados, INT/PJ. Fuente pfr_advstats; 5 de 6 metricas invertidas (menos es mejor) |
 | comparador_lbs.py | Radar comparativo LBs |
 | comparador_dts.py | Radar comparativo DTs |
-| comparador_safeties.py | Radar comparativo Safeties |
+| comparador_safeties.py | Radar de Safeties: 4 metricas de cobertura (invertidas) + placajes/PJ y jugadas de balon/PJ. Fuente pfr_advstats |
 | oline_presion.py | Tasa de presión permitida por línea ofensiva |
 | oline_presion_origen.py | Por dónde cede presión cada OL. Enter = heatmap 32 (presión FTN + origen: interior DT/NT, exterior DE/OLB, blitz LB/DB, vía atribución de sacks+QB hits). Sigla = diagrama de campo con flechas de origen y los titulares de cada puesto. Nota: la presión cedida POR liniero concreto (LT vs RT) no existe en datos públicos — es charting de pago (PFF Premium Stats / SIS / FTN StatsHub) |
 | cuarto_down.py | Conversiones en 4º down |

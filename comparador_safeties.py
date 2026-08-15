@@ -1,20 +1,24 @@
 """
 comparador_safeties.py
-Radar chart comparando dos Safeties (FS/SS) en 6 dimensiones.
+Radar chart comparando dos Safeties en 6 dimensiones.
 
-Métricas:
-  1. Tackles totales (solo + asistencias) — run support
-  2. Pases defendidos
-  3. Intercepciones
-  4. Blitz (QB hits + sacks)
-  5. TFL
-  6. Impacto por partido: (tackles + pases defendidos) / PJ
+Fuente: pfr_advstats (Pro Football Reference). Combina cobertura real (lo que
+le pasa al rival cuando ataca a este safety) con apoyo en carrera, que es la
+otra mitad del puesto. Sustituye a las estadísticas de conteo.
+
+Métricas (4 se invierten: menos es mejor):
+  1. Rating de pasador permitido
+  2. % de pases completados permitido
+  3. Yardas por objetivo
+  4. % de placajes fallados
+  5. Placajes por partido (apoyo en carrera)
+  6. Jugadas de balon por partido (intercepciones + pases desviados)
 """
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_stats, salida, season_cli, sello
+from pbp_loader import cargar_pfr, salida, season_cli, sello
 from matplotlib.colors import LinearSegmentedColormap
 
 import sys
@@ -30,8 +34,8 @@ GRID = "#2a2f3a"
 DPI  = 170
 RYG  = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
-S_POSITIONS = {"FS", "SS", "DB", "S"}
-MIN_GAMES   = 6
+S_POSITIONS = {"S", "FS", "SS"}
+MIN_TARGETS  = 25   # objetivos minimos para entrar en la normalización
 
 P1_COLOR = "#06d6a0"
 P2_COLOR = "#ffd166"
@@ -63,79 +67,65 @@ def find_player(query, s_stats, nm_col):
     matches = s_stats[s_stats[nm_col].str.lower().str.contains(query.lower(), na=False)]
     if matches.empty:
         raise SystemExit(f"Safety '{query}' no encontrado. Prueba con otra parte del nombre.")
-    row = matches.sort_values("def_tackles_total", ascending=False).iloc[0]
+    row = matches.sort_values("tgt", ascending=False).iloc[0]
     if len(matches) > 1:
         names = ", ".join(matches[nm_col].tolist())
         print(f"  [!] '{query}' coincide con: {names} >> seleccionado: {row[nm_col]}")
     return row[nm_col], row
 
 
-def compute_s_metrics(player_name, stats_row):
-    tackles = (
-        float(stats_row.get("def_tackles", 0) or 0) +
-        float(stats_row.get("def_tackle_assists", 0) or 0)
-    )
-    pds   = float(stats_row.get("def_pass_defended", float("nan")))
-    ints  = float(stats_row.get("def_interceptions", float("nan")))
-    blitz = (
-        float(stats_row.get("def_qb_hits", 0) or 0) +
-        float(stats_row.get("def_sacks", 0) or 0)
-    )
-    tfl   = float(stats_row.get("def_tackles_for_loss", float("nan")))
-
-    games = float(stats_row.get("games", 0) or 0)
-    impacto_pj = (tackles + pds) / games if games > 0 else float("nan")
-
-    return {
-        "Tackles totales":       tackles,
-        "Pases defendidos":      pds,
-        "Intercepciones":        ints,
-        "Blitz (QB hits+sacks)": blitz,
-        "TFL":                   tfl,
-        "Impacto/PJ":            impacto_pj,
-    }
 
 # ── INPUT ──────────────────────────────────────────────────────────────────────
 p1_input = input("Safety 1 (apellido o nombre parcial, p.ej. Adams): ").strip()
 p2_input = input("Safety 2 (apellido o nombre parcial, p.ej. Byard): ").strip()
 
 # ── DATA — STATS PLAYER ────────────────────────────────────────────────────────
-df_stats, SEASON = cargar_stats(SEASON)
-to_num(df_stats, ["def_tackles", "def_tackle_assists", "def_tackles_for_loss",
-                  "def_sacks", "def_qb_hits", "def_pass_defended",
-                  "def_interceptions", "games"])
-
-df_stats["def_tackles_total"] = (
-    df_stats.get("def_tackles", pd.Series(0, index=df_stats.index)).fillna(0) +
-    df_stats.get("def_tackle_assists", pd.Series(0, index=df_stats.index)).fillna(0)
-)
+df_stats, SEASON = cargar_pfr("def", SEASON)
+to_num(df_stats, ["rat", "cmp_percent", "yds_tgt", "yac", "cmp",
+                  "m_tkl_percent", "int", "bats", "comb", "tgt", "g"])
 
 s_stats = df_stats[
-    df_stats["position"].isin(S_POSITIONS) &
-    (df_stats["games"] >= MIN_GAMES)
+    df_stats["pos"].isin(S_POSITIONS) &
+    (df_stats["tgt"] >= MIN_TARGETS)
 ].copy()
-print(f"Safeties con ≥{MIN_GAMES} partidos: {len(s_stats)}")
+print(f"Safeties con >={MIN_TARGETS} objetivos: {len(s_stats)}")
 
-_id_cols = [c for c in df_stats.columns if "id" in c.lower() or "gsis" in c.lower()]
-print(f"  [info] Columnas ID en stats_player: {_id_cols}")
 
 # ── FIND PLAYERS ───────────────────────────────────────────────────────────────
-nm_col = pick_col(s_stats, "player_name", "player_display_name")
+nm_col = "player"
 p1_name, p1_stats_row = find_player(p1_input, s_stats, nm_col)
 p2_name, p2_stats_row = find_player(p2_input, s_stats, nm_col)
 print(f"Comparando: {p1_name} vs {p2_name}")
-team1 = str(p1_stats_row.get("recent_team", "") or "")
-team2 = str(p2_stats_row.get("recent_team", "") or "")
+team1 = str(p1_stats_row.get("tm", "") or "")
+team2 = str(p2_stats_row.get("tm", "") or "")
 
 # ── COMPUTE METRICS ────────────────────────────────────────────────────────────
+# El safety no es solo cobertura: 4 metricas son de cobertura (invertidas,
+# menos es mejor) y 2 miden el apoyo en carrera y las jugadas de balón.
 METRIC_KEYS = [
-    "Tackles totales",
-    "Pases defendidos",
-    "Intercepciones",
-    "Blitz (QB hits+sacks)",
-    "TFL",
-    "Impacto/PJ",
+    "Rating permitido",
+    "% completados",
+    "Yardas/objetivo",
+    "% placajes fallados",
+    "Placajes/PJ",
+    "Jugadas de balón/PJ",
 ]
+METRICAS_INVERSAS = {
+    "Rating permitido", "% completados", "Yardas/objetivo", "% placajes fallados",
+}
+
+
+def compute_s_metrics(player_name, row):
+    g = float(row.get("g", 0) or 0)
+    jugadas_balon = float(row.get("int", 0) or 0) + float(row.get("bats", 0) or 0)
+    return {
+        "Rating permitido":    float(row.get("rat", float("nan"))),
+        "% completados":       float(row.get("cmp_percent", float("nan"))) * 100,
+        "Yardas/objetivo":     float(row.get("yds_tgt", float("nan"))),
+        "% placajes fallados": float(row.get("m_tkl_percent", float("nan"))) * 100,
+        "Placajes/PJ":         (float(row.get("comb", 0) or 0) / g) if g > 0 else float("nan"),
+        "Jugadas de balón/PJ": (jugadas_balon / g) if g > 0 else float("nan"),
+    }
 
 qualified_names = s_stats[nm_col].tolist()
 for name in [p1_name, p2_name]:
@@ -154,7 +144,10 @@ norm_df     = pd.DataFrame(all_raw).T
 norm_scaled = pd.DataFrame(index=norm_df.index)
 for col in METRIC_KEYS:
     col_vals = pd.to_numeric(norm_df[col], errors="coerce")
-    norm_scaled[col] = safe_norm_series(col_vals)
+    escala = safe_norm_series(col_vals)
+    # En las inversas (rating permitido, % completados...) menos es mejor:
+    # se voltea para que mas area en el radar siga siendo mejor defensor
+    norm_scaled[col] = (1.0 - escala) if col in METRICAS_INVERSAS else escala
 norm_scaled = norm_scaled.fillna(0.5)
 
 p1_raw  = all_raw[p1_name]
@@ -169,8 +162,8 @@ print(header)
 print("-" * len(header))
 for metric in METRIC_KEYS:
     v1, v2 = p1_raw[metric], p2_raw[metric]
-    s1 = f"{v1:+.3f}" if not pd.isna(v1) else "  N/D "
-    s2 = f"{v2:+.3f}" if not pd.isna(v2) else "  N/D "
+    s1 = f"{v1:.2f}" if not pd.isna(v1) else "  N/D "
+    s2 = f"{v2:.2f}" if not pd.isna(v2) else "  N/D "
     print(f"{metric:<26} {s1:<20} {s2:<20}")
 print()
 
@@ -204,8 +197,8 @@ ax.set_xticks(angles[:-1])
 xticklabels = []
 for metric in METRIC_KEYS:
     v1_actual, v2_actual = p1_raw[metric], p2_raw[metric]
-    s1 = f"{v1_actual:+.2f}" if not pd.isna(v1_actual) else "N/D"
-    s2 = f"{v2_actual:+.2f}" if not pd.isna(v2_actual) else "N/D"
+    s1 = f"{v1_actual:.2f}" if not pd.isna(v1_actual) else "N/D"
+    s2 = f"{v2_actual:.2f}" if not pd.isna(v2_actual) else "N/D"
     label = f"{metric}\n{p1_name.split('.')[-1].strip()}: {s1}\n{p2_name.split('.')[-1].strip()}: {s2}"
     xticklabels.append(label)
 
@@ -233,9 +226,9 @@ safe_p2 = p2_name.split(".")[-1].strip().replace(" ", "_")
 fig.text(0.5, 0.97, f"{p1_name} vs {p2_name}",
          ha="center", va="top", fontsize=14, fontweight="bold", color=FG)
 fig.text(0.5, 0.92,
-         f"Comparación radar — 6 dimensiones | Normalizadas entre Safeties con ≥{MIN_GAMES} partidos",
+         f"Comparación radar — 6 dimensiones | Normalizadas entre Safeties con ≥{MIN_TARGETS} objetivos",
          ha="center", va="top", fontsize=9, color="#888888", fontstyle="italic")
-fig.text(0.01, 0.01, f"Fuente: nflverse-data · stats_player  ·  {sello(SEASON)}",
+fig.text(0.01, 0.01, f"Fuente: nflverse-data · Pro Football Reference  ·  {sello(SEASON)}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig.text(0.99, 0.01, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")

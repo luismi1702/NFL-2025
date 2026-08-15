@@ -1,20 +1,24 @@
 """
 comparador_cbs.py
-Radar chart comparando dos Cornerbacks en 6 dimensiones.
+Radar chart comparando dos Cornerbacks en 6 dimensiones de COBERTURA.
 
-Métricas:
-  1. Pases defendidos
-  2. Intercepciones
-  3. Tackles totales
-  4. TFL
-  5. Fumbles forzados
-  6. (PD+INT) por partido
+Fuente: pfr_advstats (Pro Football Reference), lo que le ocurre al rival
+cuando ataca a este defensor. Sustituye a las estadísticas de conteo
+(intercepciones, pases defendidos), que premiaban al CB al que mas le tiran.
+
+Métricas (5 se invierten: menos es mejor):
+  1. Rating de pasador permitido
+  2. % de pases completados permitido
+  3. Yardas por objetivo
+  4. Yardas tras recepción cedidas por recepcion
+  5. % de placajes fallados
+  6. Intercepciones por partido
 """
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_stats, salida, season_cli, sello
+from pbp_loader import cargar_pfr, salida, season_cli, sello
 from matplotlib.colors import LinearSegmentedColormap
 
 import sys
@@ -31,7 +35,7 @@ DPI  = 170
 RYG  = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
 CB_POSITIONS = {"CB"}
-MIN_GAMES    = 6
+MIN_TARGETS  = 30   # objetivos minimos para entrar en la normalización
 
 P1_COLOR = "#06d6a0"
 P2_COLOR = "#ffd166"
@@ -63,70 +67,67 @@ def find_player(query, cb_stats, nm_col):
     matches = cb_stats[cb_stats[nm_col].str.lower().str.contains(query.lower(), na=False)]
     if matches.empty:
         raise SystemExit(f"CB '{query}' no encontrado. Prueba con otra parte del nombre.")
-    row = matches.sort_values("def_pass_defended", ascending=False).iloc[0]
+    row = matches.sort_values("tgt", ascending=False).iloc[0]
     if len(matches) > 1:
         names = ", ".join(matches[nm_col].tolist())
         print(f"  [!] '{query}' coincide con: {names} >> seleccionado: {row[nm_col]}")
     return row[nm_col], row
 
 
-def compute_cb_metrics(player_name, stats_row):
-    pds     = float(stats_row.get("def_pass_defended", float("nan")))
-    ints    = float(stats_row.get("def_interceptions", float("nan")))
-    tackles = (
-        float(stats_row.get("def_tackles", 0) or 0) +
-        float(stats_row.get("def_tackle_assists", 0) or 0)
-    )
-    tfl     = float(stats_row.get("def_tackles_for_loss", float("nan")))
-    ff = float(stats_row.get("def_fumbles_forced", float("nan")))
-
-    games = float(stats_row.get("games", 0) or 0)
-    pd_int_pj = (pds + ints) / games if games > 0 else float("nan")
-
-    return {
-        "Pases defendidos":  pds,
-        "Intercepciones":    ints,
-        "Tackles":           tackles,
-        "TFL":               tfl,
-        "Fumbles forzados":  ff,
-        "PD+INT / PJ":       pd_int_pj,
-    }
 
 # ── INPUT ──────────────────────────────────────────────────────────────────────
 p1_input = input("CB 1 (apellido o nombre parcial, p.ej. McDuffie): ").strip()
 p2_input = input("CB 2 (apellido o nombre parcial, p.ej. Sauce): ").strip()
 
 # ── DATA — STATS PLAYER ────────────────────────────────────────────────────────
-df_stats, SEASON = cargar_stats(SEASON)
-to_num(df_stats, ["def_pass_defended", "def_interceptions", "def_tackles",
-                  "def_tackle_assists", "def_tackles_for_loss", "games"])
+df_stats, SEASON = cargar_pfr("def", SEASON)
+to_num(df_stats, ["rat", "cmp_percent", "yds_tgt", "yac", "cmp",
+                  "m_tkl_percent", "int", "bats", "comb", "tgt", "g"])
 
 cb_stats = df_stats[
-    df_stats["position"].isin(CB_POSITIONS) &
-    (df_stats["games"] >= MIN_GAMES)
+    df_stats["pos"].isin(CB_POSITIONS) &
+    (df_stats["tgt"] >= MIN_TARGETS)
 ].copy()
-print(f"CBs con ≥{MIN_GAMES} partidos: {len(cb_stats)}")
+print(f"CBs con >={MIN_TARGETS} objetivos: {len(cb_stats)}")
 
-_id_cols = [c for c in df_stats.columns if "id" in c.lower() or "gsis" in c.lower()]
-print(f"  [info] Columnas ID en stats_player: {_id_cols}")
 
 # ── FIND PLAYERS ───────────────────────────────────────────────────────────────
-nm_col = pick_col(cb_stats, "player_name", "player_display_name")
+nm_col = "player"
 p1_name, p1_stats_row = find_player(p1_input, cb_stats, nm_col)
 p2_name, p2_stats_row = find_player(p2_input, cb_stats, nm_col)
 print(f"Comparando: {p1_name} vs {p2_name}")
-team1 = str(p1_stats_row.get("recent_team", "") or "")
-team2 = str(p2_stats_row.get("recent_team", "") or "")
+team1 = str(p1_stats_row.get("tm", "") or "")
+team2 = str(p2_stats_row.get("tm", "") or "")
 
 # ── COMPUTE METRICS ────────────────────────────────────────────────────────────
+# 5 de las 6 son "menos es mejor": se invierten al normalizar para que en el
+# radar un area mayor signifique siempre un defensor mejor.
 METRIC_KEYS = [
-    "Pases defendidos",
-    "Intercepciones",
-    "Tackles",
-    "TFL",
-    "Fumbles forzados",
-    "PD+INT / PJ",
+    "Rating permitido",
+    "% completados",
+    "Yardas/objetivo",
+    "YAC/recepción",
+    "% placajes fallados",
+    "Intercepciones/PJ",
 ]
+METRICAS_INVERSAS = {
+    "Rating permitido", "% completados", "Yardas/objetivo",
+    "YAC/recepción", "% placajes fallados",
+}
+
+
+def compute_cb_metrics(player_name, row):
+    cmp_ = float(row.get("cmp", 0) or 0)
+    g    = float(row.get("g", 0) or 0)
+    yac  = float(row.get("yac", float("nan")))
+    return {
+        "Rating permitido":    float(row.get("rat", float("nan"))),
+        "% completados":       float(row.get("cmp_percent", float("nan"))) * 100,
+        "Yardas/objetivo":     float(row.get("yds_tgt", float("nan"))),
+        "YAC/recepción":       (yac / cmp_) if cmp_ > 0 else float("nan"),
+        "% placajes fallados": float(row.get("m_tkl_percent", float("nan"))) * 100,
+        "Intercepciones/PJ":   (float(row.get("int", 0) or 0) / g) if g > 0 else float("nan"),
+    }
 
 qualified_names = cb_stats[nm_col].tolist()
 for name in [p1_name, p2_name]:
@@ -145,7 +146,10 @@ norm_df     = pd.DataFrame(all_raw).T
 norm_scaled = pd.DataFrame(index=norm_df.index)
 for col in METRIC_KEYS:
     col_vals = pd.to_numeric(norm_df[col], errors="coerce")
-    norm_scaled[col] = safe_norm_series(col_vals)
+    escala = safe_norm_series(col_vals)
+    # En las inversas (rating permitido, % completados...) menos es mejor:
+    # se voltea para que mas area en el radar siga siendo mejor defensor
+    norm_scaled[col] = (1.0 - escala) if col in METRICAS_INVERSAS else escala
 norm_scaled = norm_scaled.fillna(0.5)
 
 p1_raw  = all_raw[p1_name]
@@ -160,8 +164,8 @@ print(header)
 print("-" * len(header))
 for metric in METRIC_KEYS:
     v1, v2 = p1_raw[metric], p2_raw[metric]
-    s1 = f"{v1:+.3f}" if not pd.isna(v1) else "  N/D "
-    s2 = f"{v2:+.3f}" if not pd.isna(v2) else "  N/D "
+    s1 = f"{v1:.2f}" if not pd.isna(v1) else "  N/D "
+    s2 = f"{v2:.2f}" if not pd.isna(v2) else "  N/D "
     print(f"{metric:<22} {s1:<20} {s2:<20}")
 print()
 
@@ -195,8 +199,8 @@ ax.set_xticks(angles[:-1])
 xticklabels = []
 for metric in METRIC_KEYS:
     v1_actual, v2_actual = p1_raw[metric], p2_raw[metric]
-    s1 = f"{v1_actual:+.2f}" if not pd.isna(v1_actual) else "N/D"
-    s2 = f"{v2_actual:+.2f}" if not pd.isna(v2_actual) else "N/D"
+    s1 = f"{v1_actual:.2f}" if not pd.isna(v1_actual) else "N/D"
+    s2 = f"{v2_actual:.2f}" if not pd.isna(v2_actual) else "N/D"
     label = f"{metric}\n{p1_name.split('.')[-1].strip()}: {s1}\n{p2_name.split('.')[-1].strip()}: {s2}"
     xticklabels.append(label)
 
@@ -224,9 +228,9 @@ safe_p2 = p2_name.split(".")[-1].strip().replace(" ", "_")
 fig.text(0.5, 0.97, f"{p1_name} vs {p2_name}",
          ha="center", va="top", fontsize=14, fontweight="bold", color=FG)
 fig.text(0.5, 0.92,
-         f"Comparación radar — 6 dimensiones | Normalizadas entre CBs con ≥{MIN_GAMES} partidos",
+         f"Comparación radar — 6 dimensiones | Normalizadas entre CBs con ≥{MIN_TARGETS} objetivos",
          ha="center", va="top", fontsize=9, color="#888888", fontstyle="italic")
-fig.text(0.01, 0.01, f"Fuente: nflverse-data · stats_player  ·  {sello(SEASON)}",
+fig.text(0.01, 0.01, f"Fuente: nflverse-data · Pro Football Reference  ·  {sello(SEASON)}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig.text(0.99, 0.01, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
