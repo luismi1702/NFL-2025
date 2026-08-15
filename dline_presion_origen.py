@@ -260,89 +260,166 @@ def draw_heatmap():
     print(f"\nGuardado: {out}")
 
 
-# ── PERFIL DE UN EQUIPO ───────────────────────────────────────────────────────
-def draw_equipo(team):
+# ── DIAGRAMA DE CAMPO (un equipo) ─────────────────────────────────────────────
+# Misma geometria que oline_presion_origen: la OL rival en linea, el QB detras y
+# las flechas de presion convergiendo sobre el. Aqui las flechas son NUESTRAS.
+OL_POS = {"LT": (-3.2, 2.5), "LG": (-1.6, 2.5), "C": (0.0, 2.5),
+          "RG": (1.6, 2.5), "RT": (3.2, 2.5)}
+OL_R  = 0.36
+QB_XY = (0.0, 0.55)
+QB_R  = 0.42
+
+# Puntos de origen de las flechas (arco defensivo, por encima de la OL)
+ARR_XY = {
+    "DB":  (-4.0, 5.0),
+    "LB":  (-1.5, 5.4),
+    "INT": ( 1.0, 5.4),
+    "EXT": ( 4.2, 3.6),   # rodea al tackle; representa AMBOS lados
+}
+ANG_LLEGADA = {"DB": 152, "LB": 113, "INT": 72, "EXT": 8}
+
+
+def draw_diagrama(team):
+    import matplotlib.patches as mpatches
+    import matplotlib.patheffects as pe
+    from matplotlib.path import Path as MPath
+
     if team not in tabla.index:
         raise SystemExit(f"\n  Equipo '{team}' sin datos. Prueba con las siglas "
                          f"(DEN, SF, KC...).\n")
     r    = tabla.loc[team]
     rank = list(tabla.index).index(team) + 1
+    dely = pres[pres["tm"] == team]
 
-    fig = plt.figure(figsize=(13.5, 7.6), dpi=DPI, facecolor=BG)
-    gs  = fig.add_gridspec(1, 2, width_ratios=[1.15, 1], wspace=0.16,
-                           left=0.055, right=0.965, top=0.80, bottom=0.09)
-
-    # ── Izquierda: reparto por origen contra la media de la liga ──────────
-    ax = fig.add_subplot(gs[0])
+    fig, ax = plt.subplots(figsize=(11.6, 8.2), facecolor=BG)
     ax.set_facecolor(BG)
-    y = np.arange(len(ORIGENES))[::-1]
-    for i, o in enumerate(ORIGENES):
-        yy = y[i]
-        ax.barh(yy + 0.17, r[f"pct_{o}"], height=0.34,
-                color=ORIGEN_COLOR[o], zorder=3)
-        ax.barh(yy - 0.19, media_liga[o], height=0.26,
-                color="#39404f", zorder=2)
-        ax.text(r[f"pct_{o}"] + 1.2, yy + 0.17, f"{r[f'pct_{o}']:.0f}%",
-                va="center", ha="left", color=FG, fontsize=11, fontweight="bold")
-        ax.text(media_liga[o] + 1.2, yy - 0.19, f"liga {media_liga[o]:.0f}%",
-                va="center", ha="left", color="#8A93A6", fontsize=8.5)
-        ax.text(-2.0, yy, ORIGEN_LABELS[o].replace("\n", "  "), va="center",
-                ha="right", color=FG, fontsize=10.5, linespacing=1.2)
+    ax.axis("off")
+    ax.set_xlim(-5.4, 5.4)
+    ax.set_ylim(-0.9, 7.9)
+    qx, qy = QB_XY
+    halo = [pe.withStroke(linewidth=2.6, foreground=BG)]
 
-    ax.set_yticks([])
-    ax.set_xlim(0, max(max(tabla[[f"pct_{o}" for o in ORIGENES]].max()), 60) * 1.25)
-    ax.set_ylim(-0.7, len(ORIGENES) - 0.3)
-    ax.set_xlabel("% de las presiones del equipo", color="#8A93A6", fontsize=9.5)
-    ax.tick_params(colors="#8A93A6", labelsize=9)
-    for s in ("top", "right", "left"):
-        ax.spines[s].set_visible(False)
-    ax.spines["bottom"].set_color(GRID)
-    ax.grid(axis="x", linestyle="--", alpha=0.18, color=GRID, zorder=0)
-    ax.set_title("Reparto de la presión", color=FG, fontsize=12.5,
-                 fontweight="bold", pad=12, loc="left")
+    # ── Flechas: origen → QB. Grosor ∝ % de la presion del equipo ─────────
+    for o in ORIGENES:
+        px, py = ARR_XY[o]
+        pct    = r[f"pct_{o}"]
+        npres  = r[o]
+        col    = ORIGEN_COLOR[o]
+        # 4% -> fina, 60% -> gruesa. El grosor es la lectura rapida.
+        # La flecha codifica SOLO el reparto: atenuarla ademas por el "vs liga"
+        # hacia que la flecha mas gruesa saliera apagada, que es justo lo
+        # contrario de lo que se quiere leer. La comparacion va en la etiqueta.
+        lw     = 1.8 + 9.0 * min(pct / 60.0, 1.0)
+        fuerte = pct >= media_liga[o]
+        alpha  = 0.95
 
-    # ── Derecha: quien la genera ───────────────────────────────────────────
-    ax2 = fig.add_subplot(gs[1])
-    ax2.set_facecolor(BG)
-    ax2.axis("off")
-    top = pres[pres["tm"] == team].nlargest(9, "prss")
-    ax2.set_title("Quién la genera", color=FG, fontsize=12.5,
-                  fontweight="bold", pad=12, loc="left")
-    ax2.set_xlim(0, 10)
-    ax2.set_ylim(len(top) + 0.2, -1.0)
-    maxp = float(top["prss"].max()) if len(top) else 1.0
+        ang = np.radians(ANG_LLEGADA[o])
+        ux, uy = np.cos(ang), np.sin(ang)
+        tipo = np.array([qx, qy]) + np.array([ux, uy]) * (QB_R + 0.26)
+        verts = [(px, py), (qx + (px - qx) * 0.80, 1.35), tuple(tipo)]
+        ax.add_patch(mpatches.PathPatch(
+            MPath(verts, [MPath.MOVETO, MPath.CURVE3, MPath.CURVE3]),
+            facecolor="none", edgecolor=col, linewidth=lw, zorder=2,
+            capstyle="round", alpha=alpha))
 
-    for i, (_, p) in enumerate(top.iterrows()):
-        o = p["origen"]
-        ax2.barh(i, p["prss"] / maxp * 5.4, left=4.3, height=0.56,
-                 color=ORIGEN_COLOR[o], alpha=0.85, zorder=2)
-        ax2.text(4.15, i, str(p["player"]), va="center", ha="right",
-                 color=FG, fontsize=10)
-        ax2.text(4.3 + p["prss"] / maxp * 5.4 + 0.12, i, f"{p['prss']:.0f}",
-                 va="center", ha="left", color=FG, fontsize=9.5,
-                 fontweight="bold", fontfamily="monospace")
-        ax2.text(0.05, i, ORIGEN_LABELS[o].split("\n")[0], va="center",
-                 ha="left", color=ORIGEN_COLOR[o], fontsize=8.5)
-    ax2.text(4.3, -0.75, "presiones en la temporada", color="#8A93A6",
-             fontsize=8.5, va="center", style="italic")
+        perp = np.array([-uy, ux])
+        tip  = np.array(tipo) - np.array([ux, uy]) * 0.05
+        base = tip + np.array([ux, uy]) * (0.26 + lw * 0.020)
+        ancho = 0.13 + lw * 0.016
+        ax.add_patch(plt.Polygon([tip, base + perp * ancho, base - perp * ancho],
+                                 color=col, zorder=7, alpha=alpha))
 
-    # ── Cabecera ───────────────────────────────────────────────────────────
-    img = load_logo(team, base_zoom=0.10)
-    if img is not None:
-        fig.add_artist(AnnotationBbox(img, (0.075, 0.905), frameon=False,
-                                      xycoords="figure fraction"))
-    fig.text(0.135, 0.925, f"¿Desde dónde presiona {team}?", ha="left", va="center",
-             fontsize=21, fontweight="bold", color=FG)
-    fig.text(0.135, 0.868,
-             f"{r['total']:.0f} presiones en {int(r['dropbacks'])} dropbacks  ·  "
-             f"tasa {r['press_pct']:.1f}%  ·  {rank}º de la liga",
-             ha="left", va="center", fontsize=11.5, color="#8A93A6")
+        # Etiqueta del origen + el que mas presiona desde ahi
+        nombre = ORIGEN_LABELS[o].split("\n")[0]
+        extra  = "  (izq+dcha)" if o == "EXT" else ""
+        dy = 0.62
+        ax.text(px, py + dy, f"{nombre}{extra}", ha="center", va="bottom",
+                color=FG, fontsize=10, fontweight="bold", zorder=10,
+                path_effects=halo)
+        # El % y las presiones en el color del origen; la comparacion con la
+        # liga aparte, en verde o gris segun este por encima o por debajo
+        delta = pct - media_liga[o]
+        base_txt = f"{pct:.0f}%  ·  {npres:.0f} pres.   "
+        ax.text(px, py + dy - 0.34, base_txt, ha="right", va="bottom",
+                color=col, fontsize=8.5, zorder=10, path_effects=halo)
+        ax.text(px, py + dy - 0.34, f"   {delta:+.0f} vs liga",
+                ha="left", va="bottom", fontsize=8.5, zorder=10,
+                color="#06d6a0" if fuerte else "#767E90",
+                fontweight="bold" if fuerte else "normal",
+                path_effects=halo)
 
-    fig.text(0.012, 0.018,
+        # El jugador que mas presiona desde este origen, en su sitio
+        grupo = dely[dely["origen"] == o]
+        if len(grupo):
+            top = grupo.nlargest(1, "prss").iloc[0]
+            ax.add_patch(plt.Circle((px, py), 0.30, facecolor="#1c2535",
+                                    edgecolor=col, linewidth=1.6, zorder=5,
+                                    alpha=0.95))
+            ax.text(px, py, f"{top['prss']:.0f}", ha="center", va="center",
+                    color=FG, fontsize=9.5, fontweight="bold", zorder=6)
+            ax.text(px, py - 0.46, str(top["player"]).split()[-1][:13],
+                    ha="center", va="top", color=FG, fontsize=8.5,
+                    fontweight="bold", zorder=10, path_effects=halo)
+        else:
+            ax.add_patch(plt.Circle((px, py), 0.30, facecolor="#1c2535",
+                                    edgecolor=GRID, linewidth=1.2, zorder=5))
+
+    # ── OL rival: generica, es contra quien se presiona ───────────────────
+    for pos, (cx, cy) in OL_POS.items():
+        ax.add_patch(plt.Circle((cx, cy), OL_R, facecolor="#171d29",
+                                edgecolor=GRID, linewidth=1.3, zorder=4))
+        ax.text(cx, cy, pos, ha="center", va="center", color="#6b7385",
+                fontsize=9, fontweight="bold", zorder=5)
+    # Al margen izquierdo: en el centro la tapaba la flecha del interior
+    ax.text(-4.75, 2.5, "línea\nofensiva\nrival", ha="center", va="center",
+            color="#5A6172", fontsize=8, style="italic", zorder=4,
+            linespacing=1.4)
+
+    # ── QB ────────────────────────────────────────────────────────────────
+    ax.add_patch(plt.Circle(QB_XY, QB_R, color="#E5C070", zorder=8))
+    ax.text(qx, qy, "QB", ha="center", va="center", color=BG, fontsize=12,
+            fontweight="bold", zorder=9)
+
+    logo = load_logo(team, base_zoom=0.075)
+    if logo:
+        ax.add_artist(AnnotationBbox(logo, (-4.1, 0.75), frameon=False, zorder=3))
+
+    # ── Barra de stats ────────────────────────────────────────────────────
+    STATS = [(f"{int(r['dropbacks'])}",     "DROPBACKS FORZADOS"),
+             (f"{r['press_pct']:.1f}%",     "TASA DE PRESIÓN"),
+             (f"{r['total']:.0f}",          "PRESIONES"),
+             (f"{rank}º",                   "DE LA LIGA")]
+    xs = np.linspace(-3.6, 3.6, len(STATS))
+    sy = 7.25
+    for i, (val, lbl) in enumerate(STATS):
+        ax.text(xs[i], sy + 0.18, val, ha="center", va="bottom", color=FG,
+                fontsize=12, fontweight="bold", zorder=5)
+        ax.text(xs[i], sy + 0.02, lbl, ha="center", va="top",
+                color="#888888", fontsize=7.5, zorder=5)
+        if i < len(STATS) - 1:
+            xsep = (xs[i] + xs[i + 1]) / 2
+            ax.plot([xsep, xsep], [sy - 0.12, sy + 0.48], color=GRID,
+                    linewidth=0.8, zorder=3)
+
+    top3 = dely.nlargest(3, "prss")
+    if len(top3):
+        linea = "   ·   ".join(f"{p['player']} {p['prss']:.0f}"
+                               for _, p in top3.iterrows())
+        ax.text(0, -0.62, f"Más presionaron:  {linea}", ha="center", va="center",
+                color="#9aa3b5", fontsize=9, zorder=5)
+
+    fig.text(0.5, 0.972, f"¿Desde dónde presiona {team}? | NFL {SEASON}",
+             ha="center", va="top", fontsize=15, fontweight="bold", color=FG)
+    fig.text(0.5, 0.944,
+             "Grosor de la flecha = % de las presiones del equipo desde ese puesto  ·  "
+             "en el círculo, el que más presiona desde ahí  ·  "
+             "en verde, los orígenes por encima de la media NFL",
+             ha="center", va="top", fontsize=8.5, color="#888888", fontstyle="italic")
+    fig.text(0.01, 0.012,
              f"Fuente: nflverse-data · Pro Football Reference (presiones reales, con hurries)  ·  "
              f"puesto según depth chart (DE ≥{PESO_INTERIOR} lb = interior)  ·  {sello(SEASON)}",
              ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-    fig.text(0.988, 0.018, "@CuartayDato", ha="right", va="bottom", fontsize=9,
+    fig.text(0.99, 0.012, "@CuartayDato", ha="right", va="bottom", fontsize=9,
              color="#888888", alpha=0.85, fontstyle="italic")
 
     out = salida(f"dline_presion_origen_{team}_{SEASON}.png", SEASON)
@@ -353,6 +430,6 @@ def draw_equipo(team):
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 if team_input:
-    draw_equipo(team_input)
+    draw_diagrama(team_input)
 else:
     draw_heatmap()
