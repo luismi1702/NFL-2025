@@ -80,6 +80,7 @@ TEAM_URL       = _REL + "stats_team/stats_team_week_{season}.parquet"
 NGS_URL       = _REL + "nextgen_stats/ngs_{tipo}.parquet"
 QBR_URL       = _REL + "espn_data/qbr_{nivel}_level.parquet"
 CONTRATOS_URL = _REL + "contracts/historical_contracts.parquet"
+EQUIPOS_URL   = _REL + "teams/teams_colors_logos.parquet"
 
 _sched_info = None   # (temporada, última semana REG jugada) — 1 descarga por ejecución
 _aviso_dado = False  # el aviso de frescura se imprime una sola vez por ejecución
@@ -459,6 +460,37 @@ def cargar_qbr(nivel="week", season=None, refrescar=False):
                         f"QBR {nivel}")
     if season is None:
         season = temporada_actual()
+    return df[df["season"] == season].copy(), season
+
+
+def cargar_equipos(refrescar=False):
+    """Metadatos de los 32 equipos: conferencia, division, colores y nombres.
+    Evita hardcodear las divisiones en los scripts."""
+    return _cargar_global(refrescar, "teams", EQUIPOS_URL, "equipos")
+
+
+def cargar_calendario(season=None, refrescar=False):
+    """Calendario completo (schedules) de una temporada: resultados, lineas,
+    div_game, descanso, entrenadores. Incluye los partidos aun no jugados."""
+    if season is None:
+        season = temporada_actual()
+    os.makedirs(CACHE, exist_ok=True)
+    cache = os.path.join(CACHE, "schedules.parquet")
+    # Los resultados cambian cada jornada: se refresca a diario, no cada 3 dias
+    necesita = refrescar or not os.path.exists(cache)
+    if not necesita:
+        if _info_schedules() is None:
+            _aviso_sin_verificar()
+        else:
+            necesita = (time.time() - os.path.getmtime(cache)) > 86400
+    if necesita:
+        try:
+            pd.read_csv(SCHED_URL, low_memory=False).to_parquet(cache, index=False)
+        except Exception as e:
+            if not os.path.exists(cache):
+                raise DatosNoDisponibles(f"No se pudo descargar el calendario ({e}).")
+            print(f"  Aviso: no se pudo refrescar el calendario ({e}) — usando cache")
+    df = pd.read_parquet(cache)
     return df[df["season"] == season].copy(), season
 
 
