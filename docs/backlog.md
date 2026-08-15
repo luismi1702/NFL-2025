@@ -135,6 +135,13 @@ en vivo antes de montar contenido fijo encima.
 
 ## Descartado
 
+- **Quién para la carrera en cada hueco (placadores) en el informe** (ago-2026)
+  — el PBP trae el autor del placaje, así que se podría atribuir el hueco al
+  edge más el apoyo de LB/safety. Descartado por densidad: la tarjeta de equipo
+  ya lleva 3 KPIs, 4 secciones de ranking, la franja de huecos, identidad y el
+  bloque de presión. Si algún día interesa, encaja en `run_gap_defensa`, no en
+  el informe.
+
 - **Clasificación / cuadro de playoffs** — construido y borrado el mismo día
   (ago-2026, commit `6e461c9`, revertido). Funcionaba: dos paneles AFC/NFC con
   los desempates oficiales de la NFL implementados y verificados a mano.
