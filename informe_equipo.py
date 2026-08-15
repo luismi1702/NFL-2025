@@ -384,11 +384,21 @@ def origen_presion(side):
             mi = team
 
         tot = tot.reindex(columns=ORIGENES, fill_value=0)
-        pct = tot.div(tot.sum(axis=1).replace(0, np.nan), axis=0) * 100
-        if mi not in pct.index:
+
+        # TASA (por 100 dropbacks), no reparto. El reparto compara la
+        # composición contra la de la liga y eso engaña: SF sacaba "60%
+        # exterior vs 49% de la liga" (parece que presiona mucho por fuera)
+        # cuando su tasa exterior es 10.1 contra 11.4 de la liga, o sea MENOS.
+        # El 60% solo decía que su poca presión se concentra ahí.
+        # Ventaja añadida: las cuatro tasas suman el KPI del bloque.
+        col_eq = "posteam" if side == "off" else "defteam"
+        drop = pbp[pd.to_numeric(pbp["qb_dropback"], errors="coerce") == 1] \
+            .groupby(col_eq).size()
+        tasa = tot.div(drop, axis=0).dropna(how="all") * 100
+        if mi not in tasa.index:
             return None
-        return {"equipo": {o: float(pct.loc[mi, o]) for o in ORIGENES},
-                "liga":   {o: float(pct[o].mean()) for o in ORIGENES},
+        return {"equipo": {o: float(tasa.loc[mi, o]) for o in ORIGENES},
+                "liga":   {o: float(tasa[o].mean()) for o in ORIGENES},
                 "n":      int(tot.loc[mi].sum())}
     except Exception as e:
         print(f"  Aviso: sin origen de presión ({type(e).__name__}: {str(e)[:60]})")
@@ -464,14 +474,14 @@ def presion_por_equipo(es_off):
                                                    errors="coerce").fillna(0)
             tot = pfr.groupby("team")["times_pressured"].sum()
             den = drop.groupby("posteam").size()
-            etiqueta = "presiones sufridas por dropback"
+            etiqueta = "presiones sufridas por 100 dropbacks"
         else:
             pfr, _ = cargar_pfr("def", SEASON)
             pfr = pfr[pfr["tm"] != "3TM"].copy()
             pfr["prss"] = pd.to_numeric(pfr["prss"], errors="coerce").fillna(0)
             tot = pfr.groupby("tm")["prss"].sum()
             den = drop.groupby("defteam").size()
-            etiqueta = "presiones por dropback"
+            etiqueta = "presiones por 100 dropbacks"
         return (tot / den * 100).dropna(), etiqueta
     except Exception as e:
         print(f"  Aviso: KPI de presión desde PBP ({type(e).__name__})")
@@ -500,7 +510,7 @@ def dibujar_presion(ax, side, y0, y1, card):
     # fuera" — dos jugadores pueden acreditarse presión en la misma jugada.
     serie, etiqueta = presion_por_equipo(es_off)
     rank, nt, val = team_rank(serie, team, ascending=es_off)
-    ax.text(64.6, y1 - 5.6, f"{val:.1f}%" if pd.notna(val) else "N/D",
+    ax.text(64.6, y1 - 5.6, f"{val:.1f}" if pd.notna(val) else "N/D",
             ha="left", va="center", fontsize=15, fontweight="bold",
             color=FG, zorder=3)
     ax.text(70.6, y1 - 5.6, etiqueta, ha="left", va="center",
@@ -546,7 +556,10 @@ def dibujar_presion(ax, side, y0, y1, card):
         pct  = datos["equipo"][o]
         lg   = datos["liga"][o]
         col  = ORIGEN_COLOR[o]
-        lw   = 1.0 + 5.0 * min(pct / 60.0, 1.0)
+        # El grosor es la TASA, no el reparto: así la tinta total del abanico
+        # es proporcional a la presión real y una defensa floja tiene las
+        # cuatro flechas finas, en vez de una gorda por concentración
+        lw   = 0.8 + 5.2 * min(pct / 14.0, 1.0)
         ang  = np.radians(ang_deg)
         ux, uy = np.cos(ang), np.sin(ang)
         destino = np.array([qx, qy]) + np.array([ux, uy]) * 2.1
@@ -569,16 +582,17 @@ def dibujar_presion(ax, side, y0, y1, card):
         # media, así que la resta no aporta nada.
         ax.text(px, py + 3.4, ORIGEN_LABEL[o], ha="center", va="center",
                 fontsize=6.8, fontweight="bold", color=FG, zorder=9)
-        ax.text(px, py + 1.9, f"{pct:.0f}%", ha="center", va="center",
+        ax.text(px, py + 1.9, f"{pct:.1f}", ha="center", va="center",
                 fontsize=9.5, fontweight="bold", color=col, zorder=9)
-        ax.text(px, py + 0.6, f"liga {lg:.0f}%", ha="center", va="center",
+        ax.text(px, py + 0.6, f"liga {lg:.1f}", ha="center", va="center",
                 fontsize=6, zorder=9,
                 color="#06d6a0" if pct >= lg else "#767E90")
 
-    nota = ("origen: atribución de sacks y QB hits"
-            if es_off else "origen: presiones reales (PFR)")
+    nota = ("atribución de sacks y QB hits"
+            if es_off else "presiones reales (PFR)")
     ax.text(64.6, y0 + 0.9,
-            f"grosor = % del reparto  ·  {nota}  ·  n={datos['n']}",
+            f"presiones por 100 dropbacks — las cuatro suman el total  ·  "
+            f"{nota}  ·  n={datos['n']}",
             ha="left", va="center", fontsize=6.3, color="#666666",
             fontstyle="italic", zorder=3)
 

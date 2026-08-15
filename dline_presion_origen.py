@@ -170,17 +170,22 @@ tabla["total"]     = tabla[ORIGENES].sum(axis=1)
 tabla["dropbacks"] = dropbacks
 tabla = tabla.dropna(subset=["dropbacks"])
 tabla["press_pct"] = tabla["total"] / tabla["dropbacks"] * 100
+# TASA por 100 dropbacks, no reparto: comparar la composicion contra la de la
+# liga engaña. SF salia "60% exterior vs 49% de la liga" (parece que presiona
+# mucho por fuera) cuando su tasa exterior es 10.1 contra 11.4, o sea MENOS —
+# ese 60% solo decia que su poca presion se concentra ahi. Con tasas, las
+# cuatro columnas suman la de presion total.
 for o in ORIGENES:
-    tabla[f"pct_{o}"] = tabla[o] / tabla["total"] * 100
+    tabla[f"pct_{o}"] = tabla[o] / tabla["dropbacks"] * 100
 tabla = tabla.sort_values("press_pct", ascending=False)   # mas presion arriba
 
 media_liga = {o: tabla[f"pct_{o}"].mean() for o in ORIGENES}
 
 print()
-print(f"{'Def':<5}{'Press%':>8}" + "".join(f"{o:>9}" for o in ORIGENES))
+print(f"{'Def':<5}{'TOTAL':>8}" + "".join(f"{o:>9}" for o in ORIGENES))
 for tm, r in tabla.iterrows():
-    print(f"{tm:<5}{r['press_pct']:>7.1f}%" +
-          "".join(f"{r[f'pct_{o}']:>8.0f}%" for o in ORIGENES))
+    print(f"{tm:<5}{r['press_pct']:>8.1f}" +
+          "".join(f"{r[f'pct_{o}']:>9.1f}" for o in ORIGENES))
 
 
 # ── HEATMAP 32 EQUIPOS ────────────────────────────────────────────────────────
@@ -188,7 +193,7 @@ def draw_heatmap():
     teams  = tabla.index.tolist()
     n      = len(teams)
     cols   = ["PRESS"] + ORIGENES
-    labels = {"PRESS": "Tasa de presión\n(presiones/dropback)"} | ORIGEN_LABELS
+    labels = {"PRESS": "Presiones\npor 100 dropbacks"} | ORIGEN_LABELS
     logo_w = 1.2
     fig_w  = logo_w + len(cols) * 1.5 + 1.4
     fig_h  = max(8, n * 0.52 + 2.5)
@@ -220,10 +225,10 @@ def draw_heatmap():
             lum = 0.299 * bgc[0] + 0.587 * bgc[1] + 0.114 * bgc[2]
             txt = "#0a0e13" if lum > 0.45 else FG
             if c == "PRESS":
-                ax.text(j + 0.5, y + 0.5, f"{val:.1f}%", ha="center", va="center",
+                ax.text(j + 0.5, y + 0.5, f"{val:.1f}", ha="center", va="center",
                         color=txt, fontsize=8.5, fontweight="bold", zorder=2)
             else:
-                ax.text(j + 0.5, y + 0.60, f"{val:.0f}%", ha="center", va="center",
+                ax.text(j + 0.5, y + 0.60, f"{val:.1f}", ha="center", va="center",
                         color=txt, fontsize=8, fontweight="bold", zorder=2)
                 ax.text(j + 0.5, y + 0.25, f"{tabla.loc[tm, c]:.0f}", ha="center",
                         va="center", color=txt, fontsize=6.5, zorder=2)
@@ -245,7 +250,7 @@ def draw_heatmap():
              ha="center", va="top", fontsize=14, fontweight="bold", color=FG)
     fig.text(0.5, 0.975,
              "Ordenado por tasa de presión (mejor defensa arriba)  ·  "
-             "Origen = % de las presiones del equipo según el puesto del rusher  ·  "
+             "Cada columna de origen es una tasa por 100 dropbacks: las cuatro suman la primera  ·  "
              "el número pequeño son presiones",
              ha="center", va="top", fontsize=8.5, color="#888888", fontstyle="italic")
     fig.text(0.01, 0.005,
@@ -309,7 +314,7 @@ def draw_diagrama(team):
         # La flecha codifica SOLO el reparto: atenuarla ademas por el "vs liga"
         # hacia que la flecha mas gruesa saliera apagada, que es justo lo
         # contrario de lo que se quiere leer. La comparacion va en la etiqueta.
-        lw     = 1.8 + 9.0 * min(pct / 60.0, 1.0)
+        lw     = 1.4 + 9.0 * min(pct / 14.0, 1.0)
         fuerte = pct >= media_liga[o]
         alpha  = 0.95
 
@@ -340,10 +345,10 @@ def draw_diagrama(team):
         # aparte, en verde o gris segun se supere o no. Se muestra el valor de
         # la liga y no la diferencia: un "+27 vs liga" obliga a una resta mental
         # y no dice que son puntos porcentuales.
-        base_txt = f"{pct:.0f}%  ·  {npres:.0f} pres.   "
+        base_txt = f"{pct:.1f}  ·  {npres:.0f} pres.   "
         ax.text(px, py + dy - 0.34, base_txt, ha="right", va="bottom",
                 color=col, fontsize=8.5, zorder=10, path_effects=halo)
-        ax.text(px, py + dy - 0.34, f"   liga {media_liga[o]:.0f}%",
+        ax.text(px, py + dy - 0.34, f"   liga {media_liga[o]:.1f}",
                 ha="left", va="bottom", fontsize=8.5, zorder=10,
                 color="#06d6a0" if fuerte else "#767E90",
                 fontweight="bold" if fuerte else "normal",
@@ -412,9 +417,9 @@ def draw_diagrama(team):
     fig.text(0.5, 0.972, f"¿Desde dónde presiona {team}? | NFL {SEASON}",
              ha="center", va="top", fontsize=15, fontweight="bold", color=FG)
     fig.text(0.5, 0.944,
-             "Grosor de la flecha = % de las presiones del equipo desde ese puesto  ·  "
-             "en el círculo, el que más presiona desde ahí  ·  "
-             "en verde, los orígenes por encima de la media NFL",
+             "Presiones por 100 dropbacks desde cada puesto (las cuatro suman el total)  ·  "
+             "grosor = tasa  ·  en el círculo, el que más presiona desde ahí  ·  "
+             "en verde, por encima de la media NFL",
              ha="center", va="top", fontsize=8.5, color="#888888", fontstyle="italic")
     fig.text(0.01, 0.012,
              f"Fuente: nflverse-data · Pro Football Reference (presiones reales, con hurries)  ·  "
