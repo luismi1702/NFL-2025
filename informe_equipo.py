@@ -740,9 +740,23 @@ def presion_por_equipo(es_off):
             den = drop.groupby("posteam").size()
             etiqueta = "presiones sufridas por 100 dropbacks"
         else:
+            # Solo las presiones CLASIFICADAS por origen, no todas: si el KPI
+            # suma también las de jugadores que no cruzan con el roster, las
+            # cuatro flechas del mini-campo no suman el número de arriba
+            # (pasaba en BAL, DAL y SEA) y además no cuadraba con
+            # dline_presion_origen, que suma igualmente solo lo clasificado.
             pfr, _ = cargar_pfr("def", SEASON)
             pfr = pfr[pfr["tm"] != "3TM"].copy()
             pfr["prss"] = pd.to_numeric(pfr["prss"], errors="coerce").fillna(0)
+            from pbp_loader import cargar_rosters
+            ros, _ = cargar_rosters(SEASON)
+            por_nombre = {}
+            for _, r in ros.iterrows():
+                cl = _clasificar_rusher(r.get("depth_chart_position"),
+                                        r.get("position"), r.get("weight"))
+                if cl:
+                    por_nombre.setdefault(_clave_nombre(r.get("full_name")), cl)
+            pfr = pfr[pfr["player"].map(_clave_nombre).map(por_nombre).notna()]
             tot = pfr.groupby("tm")["prss"].sum()
             den = drop.groupby("defteam").size()
             etiqueta = "presiones por 100 dropbacks"
