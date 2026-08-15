@@ -58,6 +58,10 @@ plt.savefig("output.png", dpi=200, bbox_inches="tight", facecolor=BG)
 - Scripts independientes � no crear m�dulos compartidos salvo que se pida (�nica excepci�n: pbp_loader.py)
 - Experimentos temporales van en lab/ (crearla si hace falta); solo lo definitivo vive en la ra�z
 - VERIFICACIÓN OBLIGATORIA antes de proponer un post: (1) cada número, contra el script que genera el visual, no contra el doc ni contra el PNG a ojo; (2) cada atribución ataque/defensa, contra la clasificación real de la métrica (sacks permitidos = ATAQUE); (3) cada nombre, récord, traspaso o resultado, con búsqueda web. Un post no se propone hasta que las tres pasen
+- Antes de proponer una pieza nueva: la pregunta no es "¿falta esto en el
+  catálogo?" sino "¿lo tiene alguien más?". Si el lector lo encuentra a un clic
+  en cualquier web generalista, no aporta (así se descartó la clasificación, el
+  parte de lesiones y el QBR). Ver docs/backlog.md
 - SIEMPRE buscar web antes de escribir cualquier post � nunca asumir datos del modelo actualizados
 
 ## Posts X (@CuartayDato) � 280 chars m�ximo

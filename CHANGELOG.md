@@ -2,6 +2,29 @@
 
 ---
 
+## [2026-08-16] — Espejo defensivo de la presión y rediseño del informe de equipo
+
+**Qué se hizo:**
+- **`dline_presion_origen.py` nuevo**: desde dónde genera presión cada defensa, con heatmap de los 32 y diagrama de campo con flechas convergiendo sobre el QB. Se destrabó porque `pfr_advstats` da presiones reales (con hurries), que era lo que faltaba en julio
+- **Clasificación edge/interior corregida**: ni PFR ni nflverse valen (Parsons es "DL" y "LB" respectivamente). Se usa `depth_chart_position` + regla de peso (DE ≥280 lb = interior). Sin ella, GB salía como defensa de interior cuando es lo contrario
+- **Cambio de medida en los tres scripts de presión**: de reparto porcentual a **tasa por 100 dropbacks**. El reparto engañaba — SF salía "60% exterior vs 49% de liga" cuando su tasa exterior está por debajo de la media
+- **`informe_equipo.py` rediseñado**: cabecera comprimida, 3 KPIs, DOMINA y SUFRE simétricos en banda, franja de carrera por hueco al pie y bloque PRESIÓN unificado con mini-campo
+- **DOMINA/SUFRE con 19 candidatos ocultos** (zona roja, downs, explosivas, turnovers, play-action, clutch, tendencia últimas 4, success rate, sacks, penalizaciones, two-minute, blitz, presión y huecos): solo salen si el equipo es extremo, para que el resumen aporte algo que no está dibujado
+- **Cuatro radares con la métrica más redundante sustituida**, elegida midiendo correlación: QBs (pocket limpio r=0.905 con EPA global → % EPA de aire), WRs (tasa recepción r=-0.747 con aDOT → separación NGS), edges y DTs (disrupción/PJ r=0.933 con sacks → presiones/PJ reales)
+- **`clasificacion.py` construido y borrado el mismo día** por decisión editorial: el dato está en cualquier web
+- Verificado: 32 equipos generan sin fallos y sin problemas de contenido
+
+**Archivos modificados:** dline_presion_origen.py (nuevo), oline_presion_origen.py, informe_equipo.py, comparador_qbs/wrs/edges/dts/cbs/safeties.py, pbp_loader.py, estado_datos.py (nuevo), docs/backlog.md (nuevo), docs/pff-wishlist.md, docs/decisiones.md, docs/scripts-catalog.md
+
+**Pendiente:**
+- **Reentrenar Manning Bot** antes de la jornada 1 (el `.pkl` es de 2015-2024; el script ya avisa)
+- **Comprobar `pbp_participation_2026` en la semana 2** con `python estado_datos.py` — no tiene cron y de él dependen 13 scripts
+- Confirmar en vivo que `injuries` se actualiza (el workflow localizado no corre desde ago-2025)
+- Lanzar `python generar_caches.py 2026` tras la semana 4
+- El `n=` del bloque de presión del informe significa cosas distintas en cada cara con la misma etiqueta
+
+---
+
 ## [2026-08-15] — Auditoría de datos: 7 fuentes nuevas y un aviso serio
 
 La auditoría del día anterior fue centrada en el código y no revisó qué datos

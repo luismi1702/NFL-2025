@@ -2,6 +2,93 @@
 
 ---
 
+## [2026-08-16] — El criterio para proponer contenido: «¿lo tiene alguien más?»
+
+**Decisión:** Antes de construir una pieza nueva se comprueba que el dato no
+esté ya a un clic en cualquier web generalista. La pregunta no es «¿falta esto
+en el catálogo?» sino «¿lo tiene alguien más?».
+
+**Motivo:** Se construyó `clasificacion.py` (cuadro de playoffs con los
+desempates oficiales de la NFL implementados y verificados) y Luis lo mandó
+borrar el mismo día: *"eso no me parece relevante, quien quiera verlo entra a
+cualquier página y lo ve"*. Tenía razón — la clasificación es el dato más
+disponible que existe. El error al proponerla fue valorarla por tamaño del
+hueco y facilidad de construcción, no por si aportaba algo exclusivo.
+
+**Alcance:** El filtro se llevó por delante también el parte de lesiones y el
+QBR de ESPN. Corolario útil: a veces no descarta la idea sino que la reencuadra
+— los datos de snaps en bruto son consulta, pero filtrados a posiciones de
+balón y contados como «quién se ganó un puesto» son análisis.
+
+**Alternativas descartadas:** Mantener `clasificacion.py` «porque ya está
+hecho» → el coste hundido no cambia si aporta o no. Está en el historial
+(`git show 6e461c9`) por si algún día se recupera.
+
+---
+
+## [2026-08-16] — Reparto porcentual vs tasa: el reparto engaña
+
+**Decisión:** El origen de la presión y la carrera por hueco se miden en **tasa
+por 100 dropbacks**, no como porcentaje del total del equipo.
+
+**Motivo:** Luis lo detectó: *"si la media de la liga es 54% por el exterior y
+el de SF 100%, ¿eso quiere decir que presionan mejor por el exterior? No,
+quiere decir que está peor repartido, porque igual ese 100% son 2 presiones"*.
+Comprobado sobre 2025 y las dos lecturas salen **opuestas**: por reparto SF es
+«60% exterior contra 49% de la liga» (+11, parece bueno); por tasa es «10,1
+contra 11,4» (−1,3, presiona MENOS por fuera). Por tasa, SF está por debajo de
+la liga en los cuatro orígenes, coherente con ser 31º de 32 en volumen; el
+reparto le pintaba dos en verde.
+
+**Ventaja añadida:** las cuatro tasas SUMAN el KPI del bloque, así que «de esa
+presión, el 60% viene por fuera» pasa a ser literalmente cierto.
+
+**Alternativas descartadas:** Mantener el reparto añadiendo el volumen al lado
+→ obliga al lector a hacer la corrección mental que el gráfico debería hacer.
+
+---
+
+## [2026-08-16] — Qué puede entrar en DONDE DOMINA / DONDE SUFRE
+
+**Decisión:** Solo entran métricas donde **un ranking signifique mejor o peor**.
+Quedan excluidas las de identidad (PROE, pass rate, uso de personal), que van a
+la sección IDENTIDAD.
+
+**Motivo:** Ser 1º en PROE no es bueno ni malo, es una forma de jugar. Si se
+cuelan, la tarjeta acaba diciendo «domina en: pasar mucho», que no significa
+nada. Todo lo que hay en el pool va contra EPA o contra una tasa de conversión,
+que sí tienen dirección.
+
+**Alcance:** El pool pasó de 4 secciones visibles a 19 candidatos, la mayoría
+**ocultos** — no se dibujan en ninguna sección y solo aparecen si el equipo es
+extremo. Antes el resumen era un resumen de lo que ya estaba a la vista y por
+tanto no aportaba información nueva; peor, al mover la presión al bloque de la
+derecha y meter los huecos como franja, la tarjeta mostraba dos cosas que su
+propio resumen no veía.
+
+---
+
+## [2026-08-16] — Edge vs interior: depth chart y un corte de peso
+
+**Decisión:** La clasificación de un rusher como interior o exterior sale de
+`depth_chart_position` del roster, afinada con el peso: un DE de **280 libras o
+más** cuenta como interior.
+
+**Motivo:** Ni PFR ni nflverse sirven — Micah Parsons es `DL` para PFR y `LB`
+para nflverse, y con esas etiquetas Green Bay salía como una defensa que
+presiona por dentro cuando genera el 77% por fuera. El depth chart sí acierta
+(le da OLB), pero no distingue el DE de un 4-3 (edge) del de un 3-4 (juega por
+dentro): Zach Allen salía como exterior. El corte de 280 lb no es arbitrario —
+sobre los 60 DE con ≥8 presiones en 2025, por debajo son edges sin discusión
+(Will Anderson 243, Leonard Floyd 240) y por encima interiores puros (Leonard
+Williams 302, Derrick Brown 318). Reclasifica 14 de 60.
+
+**Alcance:** La misma regla en `dline_presion_origen` y `oline_presion_origen`,
+que clasifican a los mismos defensores y tienen que coincidir o el «exterior»
+de uno no es el del otro.
+
+---
+
 ## [2026-08-15] — `pbp_participation` no se actualiza en temporada: hay que vigilarlo
 
 **Decisión:** Se añade `estado_datos.py`, un semáforo que reporta qué fuentes
