@@ -14,7 +14,7 @@ Métricas:
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp, cargar_stats, salida, season_cli, sello
+from pbp_loader import cargar_pbp, cargar_stats, cargar_pfr, salida, season_cli, sello
 from matplotlib.colors import LinearSegmentedColormap
 
 import sys
@@ -92,7 +92,7 @@ def compute_dt_metrics(player_name, stats_row, sack_df, sack_col):
         "TFL":              tfl,
         "Fumbles forzados": ff,
         "EPA en sacks":     epa_sacks,
-        "Disrupción/PJ":    disrupcion_pj,
+        "Presiones/PJ":     PRESIONES.get(_clave(player_name), float("nan")),
     }
 
 # ── INPUT ──────────────────────────────────────────────────────────────────────
@@ -132,13 +132,44 @@ team1 = str(p1_stats_row.get("recent_team", "") or "")
 team2 = str(p2_stats_row.get("recent_team", "") or "")
 
 # ── COMPUTE METRICS ────────────────────────────────────────────────────────────
+
+# Presiones reales por jugador (Pro Football Reference). Sustituyen a
+# "Disrupción/PJ", que era un compuesto de sacks+hits+TFL y correlacionaba 0.933
+# con los sacks que ya estaban en el radar: ocupaba un eje sin aportar nada.
+def _clave(n):
+    """Clave para cruzar fuentes con formatos de nombre distintos.
+
+    stats_player abrevia ("M.Garrett") y PFR no ("Myles Garrett"), asi que la
+    clave es inicial del nombre + apellido: ambos caen en ("m", "garrett").
+    """
+    n = str(n).lower().replace(".", " ").replace("'", "").replace("-", " ")
+    partes = [p for p in n.split() if p not in
+              ("jr", "sr", "ii", "iii", "iv", "v")]
+    if not partes:
+        return ""
+    if len(partes) == 1:
+        return partes[0]
+    return partes[0][0] + " " + partes[-1]
+
+
+PRESIONES = {}
+try:
+    _pfr, _ = cargar_pfr("def", SEASON)
+    for _, _r in _pfr.iterrows():
+        _g = float(_r.get("g", 0) or 0)
+        if _g > 0:
+            PRESIONES[_clave(_r["player"])] = float(_r.get("prss", 0) or 0) / _g
+    print(f"PFR: presiones de {len(PRESIONES)} defensores")
+except Exception as e:
+    print(f"  Aviso: sin datos de presiones PFR ({e}) — ese eje saldra N/D")
+
 METRIC_KEYS = [
     "Sacks",
     "QB hits",
     "TFL",
     "Fumbles forzados",
     "EPA en sacks",
-    "Disrupción/PJ",
+    "Presiones/PJ",
 ]
 
 qualified_names = dt_stats[nm_col].tolist()

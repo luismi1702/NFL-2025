@@ -7,7 +7,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp, salida, season_cli, sello
+from pbp_loader import cargar_pbp, cargar_ngs, salida, season_cli, sello
 import matplotlib.patches as mpatches
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
@@ -130,7 +130,7 @@ def compute_wr_metrics(wr_df):
 
     return {
         "EPA/objetivo":       epa_overall,
-        "Tasa recepción":     catch_rate,
+        "Separación":     SEPARACION.get(name, float("nan")),
         "YAC/recepción":      yac,
         "aDOT":               adot,
         "EPA zona roja":      epa_rz,
@@ -143,6 +143,18 @@ wr2_input = input("WR 2 (apellido o nombre parcial, p.ej. Hill): ").strip()
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
 df, SEASON = cargar_pbp(SEASON)
+
+# Separacion media al recibir (Next Gen Stats). Sustituye a "Tasa recepción",
+# que correlaciona -0.747 con el aDOT (medido sobre 2025): medía la profundidad
+# del objetivo, no la capacidad del receptor para desmarcarse.
+SEPARACION = {}
+try:
+    _ngs, _ = cargar_ngs("receiving", SEASON)
+    _ngs = _ngs[_ngs["week"] == 0]          # week 0 = agregado de temporada
+    SEPARACION = dict(zip(_ngs["player_short_name"], _ngs["avg_separation"]))
+    print(f"NGS: separacion de {len(SEPARACION)} receptores")
+except Exception as e:
+    print(f"  Aviso: sin datos de separacion NGS ({e}) — ese eje saldra N/D")
 print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 
 to_num(df, ["epa", "week", "down", "yardline_100", "air_yards",
@@ -178,7 +190,7 @@ team2 = _equipo(wr2_name)
 # ── COMPUTE METRICS FOR ALL WRs (for normalization) ────────────────────────────
 METRIC_KEYS = [
     "EPA/objetivo",
-    "Tasa recepción",
+    "Separación",
     "YAC/recepción",
     "aDOT",
     "EPA zona roja",

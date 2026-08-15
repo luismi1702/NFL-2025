@@ -56,7 +56,6 @@ nueva.
 
 | Columnas | Idea |
 |---|---|
-| `air_epa` · `yac_epa` · `comp_air_epa` · `comp_yac_epa` | Cuánto del EPA de un QB es su brazo y cuánto sus receptores. Es el debate recurrente sobre cualquier QB de sistema |
 | `xyac_epa` · `xyac_mean_yardage` · `xyac_success` | YAC sobre esperado por receptor, sin depender de NGS |
 | `cp` | Dificultad jugada a jugada (ya se usa `cpoe`, que es el agregado) |
 | `fixed_drive_result` · `drive_time_of_possession` · `drive_play_count` · `drive_start/end_transition` | Análisis de drive real. `series_success` lo aproxima con cadenas de downs |
@@ -94,7 +93,8 @@ Los cargadores existen (ago-2026); faltan los gráficos.
 - **`cargar_contratos`** — 51.952 contratos de OverTheCap con `apy`,
   `apy_cap_pct` y `guaranteed`, enlazados por `gsis_id` y con datos de draft.
   Rendimiento por dólar; cruza con los scripts de draft
-- **`cargar_ngs`** — separación y cushion de receptor, RYOE, YAC sobre esperado
+- **`cargar_ngs`** — quedan RYOE (rushing) y YAC sobre esperado. La separación
+  de receptor ya está en comparador_wrs
 - **`cargar_snaps`** — quién ganó y quién perdió sitio a lo largo de la
   temporada. **Condición obligatoria: filtrar a QB/RB/WR/TE.** Sin filtrar, los
   diez que más suben son linieros que entraron por lesión del titular, o sea el

@@ -15,7 +15,7 @@
 ## QBs
 | Script | Descripción |
 |--------|-------------|
-| comparador_qbs.py | Radar chart dos QBs: 6 métricas EPA + índice EPA+CPOE |
+| comparador_qbs.py | Radar dos QBs: EPA global/RZ/3er down, EPA bajo presión, **% EPA de aire** (cuánto genera el brazo y cuánto los receptores) y CPOE, + índice EPA+CPOE |
 | QBsTotalEPA.py | Scatter EPA/play Red Zone vs 3er down |
 | qb_presion.py | EPA bajo presión vs pocket limpio |
 | qb_overview.py | Scatter todos los QBs: EPA/play vs CPOE, tamaño = intentos, color = EPA bajo presión |
@@ -24,7 +24,7 @@
 ## Ataque
 | Script | Descripción |
 |--------|-------------|
-| comparador_wrs.py | Radar comparativo WRs |
+| comparador_wrs.py | Radar WRs: EPA/objetivo, **separación (NGS)**, YAC/recepción, aDOT, EPA en RZ y 3er down |
 | comparador_rbs.py | Radar comparativo RBs |
 | comparador_tes.py | Radar comparativo TEs |
 | ranking_wrs.py | Scatter EPA/objetivo Red Zone vs 3er down — WRs |
@@ -44,10 +44,10 @@
 ## Defensa
 | Script | Descripción |
 |--------|-------------|
-| comparador_edges.py | Radar Edge Rushers: sacks, QB hits, TFL, fumbles, EPA |
+| comparador_edges.py | Radar Edge Rushers: sacks, QB hits, TFL, fumbles, EPA en sacks y **presiones/PJ reales (PFR)** |
 | comparador_cbs.py | Radar de COBERTURA de dos CBs: rating permitido, % completados, yardas/objetivo, YAC/recepcion, % placajes fallados, INT/PJ. Fuente pfr_advstats; 5 de 6 metricas invertidas (menos es mejor) |
 | comparador_lbs.py | Radar comparativo LBs |
-| comparador_dts.py | Radar comparativo DTs |
+| comparador_dts.py | Radar DTs: mismas 6 dimensiones que edges, con **presiones/PJ reales (PFR)** |
 | comparador_safeties.py | Radar de Safeties: 4 metricas de cobertura (invertidas) + placajes/PJ y jugadas de balon/PJ. Fuente pfr_advstats |
 | oline_presion.py | Tasa de presión permitida por línea ofensiva |
 | oline_presion_origen.py | Por dónde cede presión cada OL. Enter = heatmap 32 (presión FTN + origen: interior DT/NT, exterior DE/OLB, blitz LB/DB, vía atribución de sacks+QB hits). Sigla = diagrama de campo con flechas de origen y los titulares de cada puesto. Nota: la presión cedida POR liniero concreto (LT vs RT) no existe en datos públicos — es charting de pago (PFF Premium Stats / SIS / FTN StatsHub) |

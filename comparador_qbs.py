@@ -131,6 +131,18 @@ def compute_qb_metrics(qb_df, cols):
     epa_pressure = press_plays.mean() if len(press_plays) >= 5 else float("nan")
     epa_clean    = clean_plays.mean()  if len(clean_plays) >= 5 else float("nan")
 
+    # 5. % del EPA de los completados que genera el BRAZO (resto: receptores)
+    # Sustituye a "EPA pocket limpio", que correlacionaba 0.905 con EPA global
+    # (medido sobre 2025): dos ejes del radar contando casi lo mismo.
+    if {"comp_air_epa", "comp_yac_epa", "complete_pass"} <= set(qb_df.columns):
+        comp = qb_df[pd.to_numeric(qb_df["complete_pass"], errors="coerce") == 1]
+        aire = pd.to_numeric(comp["comp_air_epa"], errors="coerce").sum()
+        yac  = pd.to_numeric(comp["comp_yac_epa"], errors="coerce").sum()
+        total = aire + yac
+        pct_aire = (aire / total * 100) if len(comp) >= 30 and abs(total) > 1e-6 else float("nan")
+    else:
+        pct_aire = float("nan")
+
     # 6. CPOE
     if has_cpoe:
         cpoe_val = qb_df["cpoe"].dropna().mean()
@@ -150,7 +162,7 @@ def compute_qb_metrics(qb_df, cols):
         "EPA Red Zone":       epa_rz,
         "EPA 3er down":      epa_3rd,
         "EPA bajo presion":   epa_pressure,
-        "EPA pocket limpio":  epa_clean,
+        "% EPA de aire":     pct_aire,
         "CPOE":               cpoe_val,
         "EPA+CPOE":           epa_cpoe,
     }
@@ -211,7 +223,7 @@ METRIC_KEYS = [
     "EPA Red Zone",
     "EPA 3er down",
     "EPA bajo presion",
-    "EPA pocket limpio",
+    "% EPA de aire",
     "CPOE",
 ]
 
