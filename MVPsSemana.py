@@ -6,7 +6,7 @@
 
 import pandas as pd
 import numpy as np
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, week_cli
 
 # === Config ===
 SEASON = None   # None = auto-detectar última temporada
@@ -93,7 +93,7 @@ def calc_defensa(d, interception, sack_p, defteam):
     return credits
 
 
-def calc_st(d, play_type, kr_ret, pr_ret, kicker, punter, posteam):
+def calc_st(d, play_type, kr_ret, pr_ret, kicker, punter, posteam, defteam):
     credits = {}
 
     def _add(plays, name_col, team_col, multiplier=1.0):
@@ -107,11 +107,14 @@ def calc_st(d, play_type, kr_ret, pr_ret, kicker, punter, posteam):
 
     if play_type:
         base = d[d["epa"].notna()]
-        _add(base[base[play_type] == "kickoff_return"],  kr_ret,  posteam)
-        _add(base[base[play_type] == "punt_return"],     pr_ret,  posteam)
-        _add(base[base[play_type] == "field_goal"],      kicker,  posteam)
-        _add(base[base[play_type] == "extra_point"],     kicker,  posteam)
-        _add(base[base[play_type] == "punt"],            punter,  posteam)
+        # Los retornos no son play_type propio en nflverse: van dentro de
+        # "kickoff" (posteam = equipo que recibe) y "punt" (posteam = equipo
+        # que patea → el retornador es del defteam y su EPA bueno es negativo).
+        _add(base[base[play_type] == "kickoff"],     kr_ret,  posteam)
+        _add(base[base[play_type] == "punt"],        pr_ret,  defteam, multiplier=-1.0)
+        _add(base[base[play_type] == "field_goal"],  kicker,  posteam)
+        _add(base[base[play_type] == "extra_point"], kicker,  posteam)
+        _add(base[base[play_type] == "punt"],        punter,  posteam)
 
     return credits
 
@@ -128,7 +131,7 @@ def print_top(label, credits, n=3):
 
 
 def main():
-    semana_str = input("Semana (numero): ").strip()
+    semana_str = str(week_cli() or "") or input("Semana (numero): ").strip()
     try:
         week = int(semana_str)
     except ValueError:
@@ -158,7 +161,7 @@ def main():
 
     of_credit  = calc_ataque(d, play_type, passer, receiver, rusher, posteam)
     def_credit = calc_defensa(d, interception, sack_p, defteam)
-    st_credit  = calc_st(d, play_type, kr_ret, pr_ret, kicker, punter, posteam)
+    st_credit  = calc_st(d, play_type, kr_ret, pr_ret, kicker, punter, posteam, defteam)
 
     print(f"\n========== LIDERES EPA — Semana {week} NFL {SEASON} ==========")
     of_series  = print_top("ATAQUE",             of_credit)

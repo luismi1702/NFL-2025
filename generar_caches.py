@@ -1,7 +1,6 @@
 """
-lab/generar_caches.py
-Regenera los caches de pbp_cache que consumen discriminacion_total.py,
-contenders.py y contenders_tracker.py:
+generar_caches.py
+Regenera los caches de pbp_cache que consume contenders_tracker.py:
 
   fullmetrics_{yr}  — yds/jugada DEF + Red Zone TD% ofensivo
   epa_type_{yr}     — EPA defensivo vs pase y vs carrera
@@ -16,8 +15,8 @@ y formula_campeon.py (load_or_cache_full_pbp). Descarga el PBP completo del
 año una sola vez y calcula todo de una pasada.
 
 Uso (desde la raíz del proyecto):
-  python lab/generar_caches.py 2026            # genera los caches que falten
-  python lab/generar_caches.py 2026 --force    # regenera aunque existan
+  python generar_caches.py 2026            # genera los caches que falten
+  python generar_caches.py 2026 --force    # regenera aunque existan
 """
 import os, sys, argparse, warnings
 import numpy as np
@@ -31,8 +30,9 @@ CACHE = "pbp_cache"
 # Columnas del PBP necesarias para todos los caches
 PBP_COLS = [
     "game_id", "drive", "season_type", "posteam", "defteam", "play_type",
-    "epa", "yards_gained", "touchdown", "yardline_100",
+    "epa", "yards_gained", "touchdown", "td_team", "yardline_100",
     "score_differential", "down", "ydstogo", "first_down",
+    "third_down_converted", "third_down_failed",
     "half_seconds_remaining", "qtr",
     "penalty", "penalty_team", "penalty_yards",
     "success", "fixed_drive", "drive_ended_with_score",
@@ -40,15 +40,18 @@ PBP_COLS = [
     "fourth_down_converted", "fourth_down_failed",
     "yards_after_catch", "air_yards", "cpoe", "tackled_for_loss",
     "passer_player_id", "passer_player_name", "pass_touchdown", "interception",
+    "complete_pass", "incomplete_pass",
 ]
 
 NUM_COLS = [
     "epa", "yards_gained", "touchdown", "yardline_100", "score_differential",
     "down", "ydstogo", "first_down", "half_seconds_remaining", "qtr",
+    "third_down_converted", "third_down_failed",
     "penalty", "penalty_yards", "success", "drive_ended_with_score",
     "qb_hit", "sack", "fumble_lost", "fourth_down_converted",
     "fourth_down_failed", "yards_after_catch", "air_yards", "cpoe",
     "tackled_for_loss", "pass_touchdown", "interception",
+    "complete_pass", "incomplete_pass",
 ]
 
 
@@ -79,7 +82,8 @@ def gen_fullmetrics(reg: pd.DataFrame, yr: int) -> pd.DataFrame:
         reg["game_id"].notna() & reg["drive"].notna() & (reg["yardline_100"] <= 20)
     ].copy()
     rz_drives = rz_plays.groupby(["posteam", "game_id", "drive"]).size().reset_index(name="n")
-    drive_tds = (reg[reg["touchdown"] == 1]
+    # td_team == posteam: solo TDs del ataque (touchdown a secas incluiria pick-six)
+    drive_tds = (reg[(reg["touchdown"] == 1) & (reg["td_team"] == reg["posteam"])]
                  .groupby(["posteam", "game_id", "drive"])["touchdown"]
                  .sum().reset_index(name="drive_tds"))
     rz_drives = rz_drives.merge(drive_tds, on=["posteam", "game_id", "drive"], how="left")
@@ -114,7 +118,10 @@ def gen_situational(reg: pd.DataFrame, yr: int) -> pd.DataFrame:
     for team in reg["posteam"].dropna().unique():
         td = reg[reg["posteam"] == team]
         d3 = td[td["down"] == 3]
-        third_conv = d3["first_down"].sum() / len(d3) if len(d3) > 0 else np.nan
+        # Definicion oficial: conversiones / (conversiones + fallos), no
+        # first_down sobre todas las jugadas de 3er down (incluia no_play etc.)
+        d3_att = d3["third_down_converted"].sum() + d3["third_down_failed"].sum()
+        third_conv = d3["third_down_converted"].sum() / d3_att if d3_att > 0 else np.nan
         trailing = td[(td["score_differential"] < 0) &
                       td["play_type"].isin(["pass", "run"]) & td["epa"].notna()]
         trailing_success = (trailing["epa"] > 0).mean() if len(trailing) > 0 else np.nan
@@ -165,7 +172,8 @@ def gen_rz_def(reg: pd.DataFrame, yr: int) -> pd.DataFrame:
     rz_p = reg[reg["play_type"].isin(["pass", "run"]) &
                reg["defteam"].notna() & (reg["yardline_100"] <= 20)]
     rz_d = rz_p.groupby(["defteam", "game_id", "drive"]).size().reset_index(name="n")
-    dtds = (reg[reg["touchdown"] == 1]
+    # td_team == posteam: solo TDs del ataque rival (excluye pick-six propios)
+    dtds = (reg[(reg["touchdown"] == 1) & (reg["td_team"] == reg["posteam"])]
             .groupby(["posteam", "game_id", "drive"])["touchdown"]
             .sum().reset_index(name="drive_tds"))
     rz_d = rz_d.merge(dtds.rename(columns={"posteam": "off_team"}),
@@ -182,9 +190,11 @@ def gen_rz_def(reg: pd.DataFrame, yr: int) -> pd.DataFrame:
 # ── 6. newmetrics: penalidades, success rate, QB hits, YAC, 4th down... ───────
 def gen_newmetrics(reg: pd.DataFrame, yr: int) -> pd.DataFrame:
     reg = reg[reg["posteam"].notna()].copy()
+    # OJO: cpoe, air_yards y yards_after_catch NO se rellenan con 0 — son NaN
+    # en sacks/jugadas sin dato y rellenarlos sesgaba las medias hacia 0.
+    # El .mean() de pandas ya ignora NaN.
     for c in ["penalty_yards", "success", "qb_hit", "sack", "fumble_lost",
               "fourth_down_converted", "fourth_down_failed",
-              "yards_after_catch", "air_yards", "cpoe",
               "tackled_for_loss", "drive_ended_with_score"]:
         if c in reg.columns:
             reg[c] = reg[c].fillna(0)
@@ -217,7 +227,9 @@ def gen_newmetrics(reg: pd.DataFrame, yr: int) -> pd.DataFrame:
         cpoe_avg = passes_off["cpoe"].mean()              if len(passes_off) else np.nan
 
         if "fixed_drive" in off.columns:
-            drives = off.groupby("fixed_drive").first()
+            # fixed_drive se reinicia cada partido: agrupar tambien por game_id
+            # (agrupar solo por fixed_drive colapsaba ~180 drives en ~25)
+            drives = off.groupby(["game_id", "fixed_drive"]).first()
             drive_score_rate = drives["drive_ended_with_score"].mean()
         else:
             drive_score_rate = np.nan
@@ -254,12 +266,20 @@ def append_qb_stats(reg: pd.DataFrame, yr: int):
         print(f"  player_stats ya tiene datos {yr} — sin cambios")
         return
     pp = reg[(reg["play_type"] == "pass") & reg["passer_player_id"].notna()].copy()
-    pp["passing_yards"] = pp["yards_gained"].fillna(0)
+    # Estilo oficial: yardas solo en pases completos (play_type=="pass" incluye
+    # sacks, cuyas yardas negativas NO son passing yards) e intentos =
+    # completos + incompletos + intercepciones (los sacks no son intentos).
+    pp["passing_yards"] = np.where(pp["complete_pass"] == 1,
+                                   pp["yards_gained"].fillna(0), 0.0)
+    pp["is_attempt"] = ((pp["complete_pass"] == 1) |
+                        (pp["incomplete_pass"] == 1) |
+                        (pp["interception"] == 1)).astype(int)
     qb_agg = pp.groupby(["posteam", "passer_player_id"]).agg(
         passing_yards=("passing_yards", "sum"),
-        attempts=("passer_player_id", "count"),
+        attempts=("is_attempt", "sum"),
         passing_tds=("pass_touchdown", "sum"),
         interceptions=("interception", "sum"),
+        sacks_taken=("sack", "sum"),
     ).reset_index()
     qb_agg.rename(columns={"posteam": "recent_team", "passer_player_id": "player_id"}, inplace=True)
     name_map = pp.groupby("passer_player_id")["passer_player_name"].agg(
@@ -268,7 +288,7 @@ def append_qb_stats(reg: pd.DataFrame, yr: int):
     qb_agg["season"]       = yr
     qb_agg["season_type"]  = "REG"
     qb_agg["position"]     = "QB"
-    qb_agg["sacks"]        = 0.0  # aproximacion
+    qb_agg["sacks"]        = qb_agg.pop("sacks_taken").astype(float)
     ps_new = pd.concat([ps_old, qb_agg], ignore_index=True)
     ps_new.to_parquet(ps_path, index=False)
     print(f"  player_stats actualizado con {len(qb_agg)} filas QB {yr}")

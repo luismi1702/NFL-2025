@@ -14,16 +14,15 @@ from matplotlib.path import Path as MPath
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli, sello
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON   = None   # None = auto-detectar última temporada
+SEASON   = season_cli()   # None = auto-detectar última temporada
 BG       = "#0f1115"
 FG       = "#EDEDED"
 GRID     = "#2a2f3a"
 DPI      = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 MIN_CARRIES  = 15
 
 GAP_ORDER  = ["LE", "LT", "LG", "C", "RG", "RT", "RE"]
@@ -77,13 +76,18 @@ def load_logo(team, base_zoom=0.038):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -161,6 +165,12 @@ def draw_fan_chart(plays_team, team):
     ax.set_ylim(-0.6, 5.0)
 
     rx, ry = RB_XY
+
+    # Etiquetas de los huecos exteriores (las flechas LE/RE no tienen circulo OL)
+    for _gap in ("LE", "RE"):
+        _gx, _gy = GAP_XY[_gap]
+        ax.text(_gx, _gy - 0.55, _gap, ha="center", va="top",
+                color="#8a93a6", fontsize=9, fontweight="bold", zorder=6)
 
     ol_numbers = get_ol_starters(team)
 
@@ -291,13 +301,13 @@ def draw_fan_chart(plays_team, team):
     fig.text(0.5, 0.945,
              "EPA/acarreo por hueco  |  Verde = EPA positivo (buena carrera)  |  n = acarreos por hueco  |  Excluye scrambles QB",
              ha="center", va="top", fontsize=8, color="#888888", fontstyle="italic")
-    fig.text(0.01, 0.01, f"Fuente: nflverse-data  |  NFL {SEASON}",
+    fig.text(0.01, 0.01, f"Fuente: nflverse-data  |  {sello(SEASON)}",
              ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
     fig.text(0.99, 0.01, "@CuartayDato",
              ha="right", va="bottom", fontsize=9, color="#888888",
              alpha=0.85, fontstyle="italic")
 
-    outfile = f"run_gap_off_{team}_{SEASON}.png"
+    outfile = salida(f"run_gap_off_{team}_{SEASON}.png", SEASON)
     fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
     plt.close(fig)
     print(f"Guardado: {outfile}")
@@ -337,7 +347,8 @@ def draw_heatmap(epa_piv, n_piv):
             ax.add_patch(rect)
             if not np.isnan(val):
                 sign      = "+" if val >= 0 else ""
-                txt_color = "#0a0e13" if 0.3 < norm(val) < 0.7 else FG
+                _r, _g, _b = bg_color[0], bg_color[1], bg_color[2]
+                txt_color = "#0a0e13" if (0.299*_r + 0.587*_g + 0.114*_b) > 0.45 else FG
                 ax.text(x + 0.5, y + 0.60, f"{sign}{val:.3f}",
                         ha="center", va="center",
                         color=txt_color, fontsize=8, fontweight="bold", zorder=2)
@@ -384,13 +395,13 @@ def draw_heatmap(epa_piv, n_piv):
     fig.text(0.5, 0.975,
              "EPA/acarreo por direccion de hueco  |  Ordenado por EPA global (mejor arriba)  |  Excluye scrambles QB  |  — = menos de 15 acarreos",
              ha="center", va="top", fontsize=8.5, color="#888888", fontstyle="italic")
-    fig.text(0.01, 0.005, f"Fuente: nflverse-data  |  NFL {SEASON}",
+    fig.text(0.01, 0.005, f"Fuente: nflverse-data  |  {sello(SEASON)}",
              ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
     fig.text(0.90, 0.005, "@CuartayDato",
              ha="right", va="bottom", fontsize=9, color="#888888",
              alpha=0.85, fontstyle="italic")
 
-    outfile = f"run_gap_{SEASON}.png"
+    outfile = salida(f"run_gap_{SEASON}.png", SEASON)
     fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
     plt.close(fig)
     print(f"Guardado: {outfile}")

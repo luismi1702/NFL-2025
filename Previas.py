@@ -3,23 +3,24 @@
 # Fuente: nflverse play_by_play_2025 (lectura online).
 
 import os
+import sys
+sys.stdout.reconfigure(encoding="utf-8")   # consola cp1252: los caracteres > y >= la rompen
 import certifi
 os.environ["SSL_CERT_FILE"] = certifi.where()
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli, week_cli
 from matplotlib.patches import FancyBboxPatch
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # === Config ===
-SEASON       = None   # None = auto-detectar última temporada
+SEASON       = season_cli()   # None = auto-detectar última temporada
 EXP_PASS_YDS = 15   # jugada explosiva pase
 EXP_RUN_YDS  = 10   # jugada explosiva carrera
 FIGSIZE      = (8.7, 13.5)
 DPI          = 170
-HARD_PENALTY = {"NYJ": 4.5}
 
 # ---------------- Helpers base ----------------
 def success_rate(s: pd.Series) -> float:
@@ -168,16 +169,39 @@ def load_logo(team: str, base_zoom=0.12):
         return None, None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return img, zoom
     except Exception:
         return None, None
+
+def record_equipo(team):
+    """W-L de temporada regular desde el cache de schedules (opcional)."""
+    try:
+        sch = pd.read_parquet("pbp_cache/schedules.parquet")
+        for c in ("result", "season"):
+            sch[c] = pd.to_numeric(sch[c], errors="coerce")
+        reg = sch[(sch["season"] == SEASON) & (sch["game_type"] == "REG") &
+                  sch["result"].notna()]
+        h = reg[reg["home_team"] == team]
+        a = reg[reg["away_team"] == team]
+        w = int((h["result"] > 0).sum() + (a["result"] < 0).sum())
+        l = int((h["result"] < 0).sum() + (a["result"] > 0).sum())
+        e = int((h["result"] == 0).sum() + (a["result"] == 0).sum())
+        return f"{w}-{l}" + (f"-{e}" if e else "")
+    except Exception:
+        return ""
+
 
 def cell(ax, x, y, w, h, color, radius=0.02):
     ax.add_patch(FancyBboxPatch((x, y), w, h,
@@ -209,7 +233,7 @@ def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path):
     x_metric = 0.10
     xA, xB = 0.50, 0.78
 
-    # --- SOLO LOGOS arriba (sin siglas ni "píldoras") ---
+    # --- SOLO LOGOS arriba (sin siglas ni "píldoras") + récord W-L ---
     logo_y = 0.927
     for x_center, abbr in [(xA, team_a), (xB, team_b)]:
         img, z = load_logo(abbr, 0.10)
@@ -217,6 +241,11 @@ def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path):
             ab = AnnotationBbox(OffsetImage(img, zoom=z, resample=True), (x_center, logo_y),
                                 frameon=False, xycoords=ax.transAxes)
             ax.add_artist(ab)
+        rec = record_equipo(abbr)
+        if rec:
+            ax.text(x_center + 0.072, logo_y, rec, transform=ax.transAxes,
+                    ha="left", va="center", fontsize=9.5,
+                    fontweight="bold", color=SUBINK)
 
     # Layout de filas
     n_off, n_def, n_st = len(off_rows), len(deff_rows), len(st_rows)
@@ -303,12 +332,17 @@ if __name__ == "__main__":
     modo     = input("¿Partido o Jornada? (p/j): ").strip().lower()
     team_a   = input("Equipo A: ").strip().upper()
     team_b   = input("Equipo B: ").strip().upper()
-    week_raw = input("Semana: ").strip()
+    week_raw = str(week_cli() or "") or input("Semana: ").strip()
 
     if modo.startswith("p"):
         week_raw = ""
     else:
         team_a = team_b = ""
+
+    # Semana para archivar el PNG. En modo partido no se pide, asi que se usa
+    # hasta donde llegan los datos: basta para que la 2ª previa de un duelo de
+    # division no pise a la 1ª, que era lo que pasaba antes.
+    week = int(week_raw) if week_raw.isdigit() else None
 
     # ── Cargar PBP ───────────────────────────────────────────────────────────
     # solo_reg=False: las previas pueden ser de partidos de playoffs
@@ -402,7 +436,7 @@ if __name__ == "__main__":
     if modo_semana:
         with PdfPages(pdf_path) as pdf:
             for away, home in matchups:
-                out_png = f"preview_{away}_vs_{home}_{SEASON}.png"
+                out_png = salida(f"preview_{away}_vs_{home}_{SEASON}.png", SEASON, week)
                 fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png)
                 pdf.savefig(fig, bbox_inches="tight", facecolor="#0f1115")
                 plt.close(fig)
@@ -410,7 +444,7 @@ if __name__ == "__main__":
         print(f"\nPDF combinado: {pdf_path}  ({len(matchups)} partidos)")
     else:
         away, home = matchups[0]
-        out_png = f"preview_{away}_vs_{home}_{SEASON}.png"
+        out_png = salida(f"preview_{away}_vs_{home}_{SEASON}.png", SEASON, week)
         fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png)
         plt.close(fig)
         print(f"\nPNG generado: {out_png}")

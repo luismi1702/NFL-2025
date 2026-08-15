@@ -7,12 +7,29 @@ from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, unquote
 
-BASE = Path(__file__).parent
+BASE    = Path(__file__).parent
+PREVIEW = BASE / "_preview"    # vistas previas del modo "Ver analisis" (temporales)
 jobs = {}
 lock = threading.Lock()
 
+# Los scripts archivan sus PNG en salidas/{año}/w{semana}/ para no pisarse entre
+# semanas, asi que la galeria tiene que mirar tambien ahi, no solo en la raiz.
+SALIDAS = BASE / "salidas"
 
-def run_job(jid, script_file, stdin_data):
+
+def _pngs():
+    """{ruta relativa a BASE (con /): mtime} de todos los PNG publicables."""
+    out = {}
+    for carpeta in (BASE.glob("*.png"), SALIDAS.rglob("*.png")):
+        for p in carpeta:
+            try:
+                out[p.relative_to(BASE).as_posix()] = p.stat().st_mtime
+            except OSError:
+                pass
+    return out
+
+
+def run_job(jid, script_file, stdin_data, make_png=True):
     path = (BASE / script_file).resolve()
     # Solo scripts .py que vivan directamente en la carpeta del proyecto
     if path.suffix != ".py" or path.parent != BASE.resolve():
@@ -23,13 +40,26 @@ def run_job(jid, script_file, stdin_data):
         with lock:
             jobs[jid] = {"s": "err", "log": f"No encontrado: {script_file}", "imgs": []}
         return
-    # Snapshot antes: nombre → mtime
-    before = {p.name: p.stat().st_mtime for p in BASE.glob("*.png")}
+    # Snapshot antes: ruta relativa → mtime
+    before = {k: v for k, v in _pngs().items()}
+    # make_png=False → modo vista: vista_runner redirige los savefig a _preview/
+    # (el grafico se genera igual pero no toca la carpeta del proyecto)
+    if make_png:
+        cmd = [sys.executable, str(path)]
+    else:
+        cmd = [sys.executable, str(BASE / "vista_runner.py"), str(path)]
+        PREVIEW.mkdir(exist_ok=True)
+        for f in PREVIEW.glob("*.png"):     # limpiar vistas previas anteriores
+            try:
+                f.unlink()
+            except OSError:
+                pass
     try:
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
+        env["VISTA_DIR"] = str(PREVIEW)
         r = subprocess.run(
-            [sys.executable, str(path)],
+            cmd,
             input=stdin_data, capture_output=True, text=True, encoding="utf-8",
             cwd=str(BASE), timeout=600, env=env,
         )
@@ -40,12 +70,19 @@ def run_job(jid, script_file, stdin_data):
     except Exception as e:
         log, st = str(e), "err"
     # PNG incluido si es NUEVO o si su mtime cambió (sobreescrito)
-    after = {p.name: p.stat().st_mtime for p in BASE.glob("*.png")}
-    imgs = sorted(
-        [name for name, mtime in after.items()
-         if name not in before or mtime != before[name]],
-        key=lambda f: after[f], reverse=True,
-    )
+    if make_png:
+        after = _pngs()
+        imgs = sorted(
+            [name for name, mtime in after.items()
+             if name not in before or mtime != before[name]],
+            key=lambda f: after[f], reverse=True,
+        )
+    else:
+        # Modo vista: las imagenes viven en _preview/ y no aparecen en la galeria
+        imgs = sorted(
+            [f"_preview/{p.name}" for p in PREVIEW.glob("*.png")],
+            key=lambda f: (PREVIEW / f.split("/", 1)[1]).stat().st_mtime, reverse=True,
+        )
     with lock:
         jobs[jid] = {"s": st, "log": log, "imgs": imgs}
 
@@ -73,8 +110,8 @@ class H(BaseHTTPRequestHandler):
         p = urlparse(self.path).path
 
         if p == "/api/outputs":
-            pngs = sorted(BASE.glob("*.png"), key=lambda x: x.stat().st_mtime, reverse=True)
-            self._send([x.name for x in pngs])
+            pngs = _pngs()
+            self._send(sorted(pngs, key=lambda n: pngs[n], reverse=True))
 
         elif p.startswith("/api/job/"):
             jid = p.split("/api/job/")[-1]
@@ -83,8 +120,10 @@ class H(BaseHTTPRequestHandler):
 
         elif p.startswith("/img/"):
             name = unquote(p[5:])
-            fp   = BASE / name
-            if fp.exists() and fp.suffix.lower() == ".png":
+            fp   = (BASE / name).resolve()
+            # Solo PNGs dentro del proyecto (incluye _preview/); sin path traversal
+            dentro = str(fp).startswith(str(BASE.resolve()) + os.sep)
+            if dentro and fp.exists() and fp.suffix.lower() == ".png":
                 data = fp.read_bytes()
                 self._send(data, "image/png")
             else:
@@ -106,13 +145,16 @@ class H(BaseHTTPRequestHandler):
         if p == "/api/run":
             length = int(self.headers.get("Content-Length", 0))
             body   = json.loads(self.rfile.read(length))
-            script = body.get("file", "")
-            inputs = body.get("inputs", [])
+            script   = body.get("file", "")
+            inputs   = body.get("inputs", [])
+            # Por defecto NO genera PNG: solo lo hace si el cliente lo pide
+            # explicitamente (evita que un galeria.html viejo/cacheado llene la raiz)
+            make_png = bool(body.get("png", False))
             stdin  = "\n".join(str(v) for v in inputs) + ("\n" if inputs else "")
             jid    = f"j{int(time.time()*1000)}"
             with lock:
                 jobs[jid] = {"s": "run", "log": "", "imgs": []}
-            threading.Thread(target=run_job, args=(jid, script, stdin), daemon=True).start()
+            threading.Thread(target=run_job, args=(jid, script, stdin, make_png), daemon=True).start()
             self._send({"jid": jid})
         else:
             self._send(b"Not found", "text/plain", 404)

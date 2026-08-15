@@ -11,20 +11,19 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp, cargar_participation
+from pbp_loader import cargar_pbp, cargar_participation, DatosNoDisponibles, salida, season_cli, sello
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON   = None   # None = auto-detectar última temporada
+SEASON   = season_cli()   # None = auto-detectar última temporada
 BG       = "#0f1115"
 FG       = "#EDEDED"
 GRID     = "#2a2f3a"
 DPI      = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 
 # Invertido: verde = menos EPA permitido = mejor defensa
 RYG_INV = plt.cm.RdYlGn   # usaremos norm invertida
@@ -49,13 +48,18 @@ def load_logo(team, base_zoom=0.038):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -87,7 +91,14 @@ pbp["epa"]     = pd.to_numeric(pbp["epa"],     errors="coerce")
 pbp["play_id"] = pd.to_numeric(pbp["play_id"], errors="coerce")
 print(f"PBP {SEASON}: {len(pbp):,} jugadas REG")
 
-part, _ = cargar_participation(SEASON)
+try:
+    part, _ = cargar_participation(SEASON)
+except DatosNoDisponibles as e:
+    raise SystemExit(
+        "\n  No se puede generar este grafico todavia.\n"
+        f"  {e}\n"
+        "  Este visual necesita datos de participacion (el personal ofensivo del rival),\n"
+        "  que nflverse publica mas tarde que el play-by-play.\n")
 part = part[["nflverse_game_id", "play_id", "offense_personnel"]]
 part = part.rename(columns={"nflverse_game_id": "game_id"})
 part["play_id"] = pd.to_numeric(part["play_id"], errors="coerce")
@@ -194,7 +205,8 @@ for row_i, team in enumerate(teams):
 
         if not np.isnan(val):
             sign      = "+" if val >= 0 else ""
-            txt_color = "#0a0e13" if 0.3 < norm(val) < 0.7 else FG
+            _r, _g, _b = bg_color[0], bg_color[1], bg_color[2]
+            txt_color = "#0a0e13" if (0.299*_r + 0.587*_g + 0.114*_b) > 0.45 else FG
             ax.text(x + 0.5, y + 0.58, f"{sign}{val:.3f}",
                     ha="center", va="center",
                     color=txt_color, fontsize=8, fontweight="bold", zorder=2)
@@ -247,12 +259,12 @@ fig.text(0.5, 0.99,
 fig.text(0.5, 0.975,
          "EPA permitido por paquete ofensivo  |  Ordenado por EPA global (mejor defensa arriba)  |  — = menos de 20 snaps",
          ha="center", va="top", fontsize=8.5, color="#888888", fontstyle="italic")
-fig.text(0.01, 0.005, f"Fuente: nflverse-data + NGS participation  |  NFL {SEASON}",
+fig.text(0.01, 0.005, f"Fuente: nflverse-data + NGS participation  |  {sello(SEASON)}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig.text(0.90, 0.005, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
 
-outfile = f"defensa_vs_personal_ofensivo_{SEASON}.png"
+outfile = salida(f"defensa_vs_personal_ofensivo_{SEASON}.png", SEASON)
 fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {outfile}")

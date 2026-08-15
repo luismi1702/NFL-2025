@@ -8,23 +8,23 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp, cargar_stats
+import matplotlib.patheffects as pe
+from pbp_loader import cargar_pbp, cargar_stats, salida, season_cli
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SEASON       = None   # None = auto-detectar última temporada
+SEASON       = season_cli()   # None = auto-detectar última temporada
 LOGOS_DIR    = "logos"
 BG           = "#0f1115"
 FG           = "#EDEDED"
 GRID         = "#2a2f3a"
 DPI          = 170
-HARD_PENALTY = {"NYJ": 4.5}
 
 MIN_RZ  = 10   # mínimo objetivos en zona roja
 MIN_3RD = 15   # mínimo objetivos en 3er down
 
-ZOOM_MIN = 0.018
-ZOOM_MAX = 0.050
+ZOOM_MIN = 0.021   # legible incluso con poco volumen
+ZOOM_MAX = 0.042   # (escala pensada para la normalizacion por tinta real)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def to_num(df, cols):
@@ -42,7 +42,9 @@ def pick_col(df, *cands):
 def short_name(name: str) -> str:
     if not isinstance(name, str) or not name.strip():
         return ""
-    parts = name.replace("-", " ").split()
+    sufijos = {"jr", "jr.", "sr", "sr.", "ii", "iii", "iv", "v"}
+    parts = [p for p in name.replace("-", " ").split()
+             if p.lower() not in sufijos] or name.split()
     if len(parts) == 1:
         return parts[0][:14]
     return (parts[0][:1] + ". " + parts[-1])[:16]
@@ -53,16 +55,32 @@ def load_logo(team, zoom=0.030):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            z = zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            z = zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados pueden
+        # ensancharse hasta 1.8x para compensar su poca altura
+        z = zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * z > 900.0 * zoom:
+            z = 900.0 * zoom / w
         return OffsetImage(img, zoom=z, resample=True)
     except Exception:
         return None
+
+def separar_etiquetas(xs, lys, x_tol, y_tol):
+    """Separa verticalmente etiquetas que caerian casi encima (los puntos
+    no se mueven; solo el texto baja). lys = y iniciales de las etiquetas."""
+    idx = sorted(range(len(xs)), key=lambda i: -lys[i])
+    out = list(lys)
+    for pos, i in enumerate(idx):
+        for j in idx[:pos]:
+            if abs(xs[i] - xs[j]) < x_tol and abs(out[i] - out[j]) < y_tol:
+                out[i] = min(out[i], out[j] - y_tol)
+    return out
 
 def volume_zoom(n, n_min, n_max):
     if n_max == n_min:
@@ -76,8 +94,7 @@ to_num(df, ["epa", "pass_attempt", "yardline_100", "down"])
 print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 
 df_stats, _ = cargar_stats(SEASON)
-OUT = f"scatter_WR_RZ_vs_3rd_{SEASON}.png"
-
+OUT = salida(f"scatter_WR_RZ_vs_3rd_{SEASON}.png", SEASON)
 name_col_s = pick_col(df_stats, "player_name", "player_display_name")
 disp_col_s = pick_col(df_stats, "player_display_name", "player_name")
 pos_col_s  = pick_col(df_stats, "position", "pos")
@@ -162,15 +179,22 @@ ax.text(x_lo + xm, y_hi - ym, "Bueno en 3ro / Malo RZ",    ha="left",  va="top",
 ax.text(x_hi - xm, y_lo + ym, "Bueno en RZ / Malo 3ro",    ha="right", va="bottom", **q_kw)
 ax.text(x_lo + xm, y_lo + ym, "Peor en ambas",             ha="left",  va="bottom", **q_kw)
 
-y_range      = y_hi - y_lo
-label_offset = y_range * 0.038
+y_range = y_hi - y_lo
 
-for wr_key, row in stats.iterrows():
+# Offset bajo el punto proporcional al tamaño real del logo (los grandes
+# necesitan más hueco) y anti-solape con tolerancias ajustadas al texto
+zooms = [volume_zoom(n, n_min, n_max) for n in stats["total_n"]]
+offs  = [y_range * (0.022 + 0.40 * z) for z in zooms]
+lys = separar_etiquetas(
+    stats["rz_epa"].tolist(),
+    [y - off for y, off in zip(stats["d3_epa"], offs)],
+    (x_hi - x_lo) * 0.060, y_range * 0.030)
+
+for (wr_key, row), ly, off, zoom in zip(stats.iterrows(), lys, offs, zooms):
     x    = row["rz_epa"]
     y    = row["d3_epa"]
     team = row["team"]
     name = row["label"]
-    zoom = volume_zoom(row["total_n"], n_min, n_max)
 
     logo = load_logo(str(team) if not pd.isna(team) else "", zoom=zoom)
     if logo:
@@ -181,28 +205,26 @@ for wr_key, row in stats.iterrows():
         ax.scatter(x, y, s=60 + 120 * (zoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN),
                    color="#888888", zorder=3, alpha=0.8)
 
-    ax.text(x, y - label_offset, name,
-            ha="center", va="top", fontsize=7.5, color=FG, alpha=0.88, zorder=4)
+    # Si el anti-solape desplazó la etiqueta, línea guía logo → nombre
+    if (y - off) - ly > y_range * 0.012:
+        ax.plot([x, x], [y - off * 0.72, ly + y_range * 0.006],
+                color=GRID, linewidth=0.7, alpha=0.9, zorder=2)
+
+    ax.text(x, ly, name,
+            ha="center", va="top", fontsize=7.5, color=FG, alpha=0.88, zorder=4,
+            path_effects=[pe.withStroke(linewidth=2.2, foreground=BG)])
 
 ax.set_xlabel("EPA/objetivo en Red Zone", fontsize=11, color=FG, labelpad=7)
 ax.set_ylabel("EPA/objetivo en 3er down", fontsize=11, color=FG, labelpad=7)
 ax.set_title(f"WRs NFL {SEASON} — Red Zone vs 3er down",
              fontsize=15, pad=12, color=FG, fontweight="bold")
 
-# Leyenda de tamaño
-for label, frac in [("Poco volumen", 0.0), ("Volumen medio", 0.5), ("Alto volumen", 1.0)]:
-    z = ZOOM_MIN + frac * (ZOOM_MAX - ZOOM_MIN)
-    s = 30 + 120 * frac
-    ax.scatter([], [], s=s, color="#555555", label=label, alpha=0.7)
-ax.legend(loc="lower right", fontsize=7.5, framealpha=0.2,
-          facecolor="#151924", edgecolor=GRID, labelcolor=FG,
-          title="Tamaño = nº objetivos", title_fontsize=7)
 
 fig.text(0.5, 0.01,
-         f"Fuente: nflverse-data  ·  mín. {MIN_RZ} obj. en RZ y {MIN_3RD} en 3er down  ·  Líneas = media de la muestra",
+         f"Fuente: nflverse-data  ·  mín. {MIN_RZ} obj. en RZ y {MIN_3RD} en 3er down  ·  Líneas = media de la muestra  ·  Tamaño del logo = nº de objetivos",
          ha="center", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-ax.text(0.99, 0.02, "@CuartayDato", fontsize=9, color="#888888",
-        ha="right", va="bottom", transform=ax.transAxes, alpha=0.85, fontstyle="italic")
+fig.text(0.99, 0.01, "@CuartayDato", fontsize=9, color="#888888",
+         ha="right", va="bottom", alpha=0.85, fontstyle="italic")
 
 plt.tight_layout(rect=[0, 0.03, 1, 1])
 plt.savefig(OUT, dpi=DPI, bbox_inches="tight", facecolor=BG)

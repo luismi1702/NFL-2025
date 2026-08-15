@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from pbp_loader import cargar_participation
+from pbp_loader import cargar_participation, DatosNoDisponibles, salida, season_cli
 
 # === Config ===
 LOGO_DIR  = "logos"
@@ -16,7 +16,7 @@ FIGSIZE   = (16, 18)
 DPI       = 170
 BG        = "#0f1115"
 FG        = "#EDEDED"
-SEASON    = None   # None = auto-detectar última temporada
+SEASON    = season_cli()   # None = auto-detectar última temporada
 
 # Orden visual y colores de coberturas
 ORDER = ["COVER 0", "COVER 1", "2-MAN", "COVER 2", "COVER 3", "COVER 4", "COVER 6", "COVER 9", "COMBO"]
@@ -49,7 +49,14 @@ COV_MAP = {
 # 1. Carga y limpieza de datos
 # ─────────────────────────────────────────────
 def load_coverage(season):
-    part, season = cargar_participation(season)
+    try:
+        part, season = cargar_participation(season)
+    except DatosNoDisponibles as e:
+        raise SystemExit(
+            "\n  No se puede generar este grafico todavia.\n"
+            f"  {e}\n"
+            "  Este visual necesita datos de participacion (coberturas charteadas),\n"
+            "  que nflverse publica mas tarde que el play-by-play.\n")
 
     # Filtrar jugadas con cobertura registrada y valida
     part = part[
@@ -138,9 +145,8 @@ def plot_coberturas(pct_df: pd.DataFrame, season: int):
                         color="#0f1115", fontweight="bold", zorder=3)
             x += pct
 
-    # Ejes
-    ax.set_yticks(range(n))
-    ax.set_yticklabels([""] * n)
+    # Ejes (sin ticks: los logos hacen de etiqueta)
+    ax.set_yticks([])
     ax.set_xlabel("% de snaps defensivos con cobertura registrada", fontsize=11,
                   labelpad=8, color=FG)
     ax.set_title(
@@ -163,9 +169,9 @@ def plot_coberturas(pct_df: pd.DataFrame, season: int):
               bbox_to_anchor=(0.55, 1.045), ncol=4,
               frameon=False, fontsize=10, labelcolor=FG)
 
-    # Fuente debajo del titulo
-    ax.text(0.55, 1.014, "Fuente: FTN Data via nflverse pbp_participation",
-            transform=ax.transAxes, ha="center", va="bottom",
+    # Fuente abajo a la izquierda (arriba pisaba la leyenda)
+    ax.text(0.01, 0.01, "Fuente: FTN Data via nflverse pbp_participation",
+            transform=ax.transAxes, ha="left", va="bottom",
             fontsize=8, color="#666666", fontstyle="italic")
 
     # Firma @CuartayDato
@@ -173,7 +179,7 @@ def plot_coberturas(pct_df: pd.DataFrame, season: int):
             transform=ax.transAxes, ha="right", va="bottom",
             color="#888888", fontsize=9, alpha=0.85, fontstyle="italic")
 
-    out = f"coberturas_defensivas_{season}.png"
+    out = salida(f"coberturas_defensivas_{season}.png", SEASON)
     plt.tight_layout(rect=[0, 0.02, 1, 0.87])
     plt.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
     plt.close()

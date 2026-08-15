@@ -1,6 +1,9 @@
 # draft_success.py
-# Tasa de éxito por posición y ronda del draft NFL (2000-2019)
-# Éxito = jugó 5+ temporadas (segundo contrato tras el rookie deal)
+# Tasa de éxito por posición y ronda del draft NFL (2011-2022)
+# Éxito = segundo contrato (≥2 años) con el mismo equipo que lo drafteó,
+# firmado 3+ años después del draft. Es un proxy de retención: una estrella
+# que firma su 2º contrato en OTRO equipo cuenta como fracaso, y las clases
+# recientes (2021-2022) aún tienen ventana incompleta.
 
 import numpy as np
 import pandas as pd
@@ -187,7 +190,9 @@ def plot_heatmap(rate: pd.DataFrame, count: pd.DataFrame):
             val = rate.loc[pos, rnd]  if not pd.isna(rate.loc[pos, rnd])  else np.nan
             n   = count.loc[pos, rnd] if not pd.isna(count.loc[pos, rnd]) else 0
 
-            cell_color = RYG(val / 100) if not np.isnan(val) else "#1e2330"
+            # Escala 0-50%: el maximo real ronda el 44%, con /100 todo caia
+            # en el tercio rojo y el verde no se usaba nunca
+            cell_color = RYG(min(val / 50.0, 1.0)) if not np.isnan(val) else "#1e2330"
             cx = LEFT_MARGIN + c * SX
             cy = row_y
 
@@ -212,8 +217,8 @@ def plot_heatmap(rate: pd.DataFrame, count: pd.DataFrame):
                 ax.add_patch(border)
 
             if not np.isnan(val):
-                ink = "#0f1115" if val > 50 else FG
-                ink_sub = "#1a2a1a" if val > 50 else "#666666"
+                ink = "#0f1115" if val > 25 else FG
+                ink_sub = "#1a2a1a" if val > 25 else "#666666"
                 # Porcentaje
                 ax.text(cx + CW / 2, cy + CH * 0.60,
                         f"{val:.0f}%",
@@ -237,7 +242,7 @@ def plot_heatmap(rate: pd.DataFrame, count: pd.DataFrame):
             (seg_x, leg_y), leg_w / n_seg + 0.01, leg_h,
             linewidth=0, facecolor=RYG(i / n_seg), zorder=2
         ))
-    for pct, label in [(0, "0%"), (25, "25%"), (50, "50%"), (75, "75%"), (100, "100%")]:
+    for pct, label in [(0, "0%"), (25, "12.5%"), (50, "25%"), (75, "37.5%"), (100, "≥50%")]:
         ax.text(leg_x0 + (pct / 100) * leg_w, leg_y - 0.12,
                 label, ha="center", va="top", fontsize=8, color="#888888")
     ax.text(leg_x0 - 0.1, leg_y + leg_h / 2,

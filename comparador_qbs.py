@@ -7,19 +7,18 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, cargar_participation, salida, season_cli, sello
 import matplotlib.patches as mpatches
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON = None   # None = auto-detectar última temporada
+SEASON = season_cli()   # None = auto-detectar última temporada
 BG     = "#0f1115"
 FG     = "#EDEDED"
 GRID   = "#2a2f3a"
 DPI    = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 RYG = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
 MIN_PASS_PLAYS = 100   # minimum pass plays for a QB to be included in normalization
@@ -48,13 +47,18 @@ def load_logo(team, base_zoom=0.055):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -110,12 +114,17 @@ def compute_qb_metrics(qb_df, cols):
     else:
         epa_3rd = float("nan")
 
-    # 4. & 5. Pressure proxy
-    pressured_mask = pd.Series(False, index=qb_df.index)
-    if "qb_hit" in qb_df.columns:
-        pressured_mask = pressured_mask | (pd.to_numeric(qb_df["qb_hit"], errors="coerce").fillna(0) == 1)
-    if "sack" in qb_df.columns:
-        pressured_mask = pressured_mask | (pd.to_numeric(qb_df["sack"], errors="coerce").fillna(0) == 1)
+    # 4. & 5. Presion: was_pressure (FTN) si esta mergeado; proxy si no
+    if "was_pressure" in qb_df.columns and qb_df["was_pressure"].notna().any():
+        pressured_mask = pd.to_numeric(qb_df["was_pressure"], errors="coerce").fillna(0) == 1
+        if "sack" in qb_df.columns:   # un sack siempre es presion
+            pressured_mask = pressured_mask | (pd.to_numeric(qb_df["sack"], errors="coerce").fillna(0) == 1)
+    else:
+        pressured_mask = pd.Series(False, index=qb_df.index)
+        if "qb_hit" in qb_df.columns:
+            pressured_mask = pressured_mask | (pd.to_numeric(qb_df["qb_hit"], errors="coerce").fillna(0) == 1)
+        if "sack" in qb_df.columns:
+            pressured_mask = pressured_mask | (pd.to_numeric(qb_df["sack"], errors="coerce").fillna(0) == 1)
 
     press_plays = qb_df[pressured_mask]["epa"]
     clean_plays = qb_df[~pressured_mask]["epa"]
@@ -128,11 +137,13 @@ def compute_qb_metrics(qb_df, cols):
     else:
         cpoe_val = float("nan")
 
-    # DAKOTA: composite QB score = EPA/play + CPOE (misma escala decimal en nflfastR)
+    # Indice EPA+CPOE: composite simple con CPOE pasado a escala decimal
+    # (cpoe viene en puntos porcentuales; sin dividir entre 100 dominaria la suma).
+    # No es el DAKOTA de nflfastR (que es un modelo), es una aproximacion honesta.
     if not pd.isna(epa_overall) and not pd.isna(cpoe_val):
-        dakota = epa_overall + cpoe_val
+        epa_cpoe = epa_overall + cpoe_val / 100.0
     else:
-        dakota = float("nan")
+        epa_cpoe = float("nan")
 
     return {
         "EPA global":         epa_overall,
@@ -141,7 +152,7 @@ def compute_qb_metrics(qb_df, cols):
         "EPA bajo presion":   epa_pressure,
         "EPA pocket limpio":  epa_clean,
         "CPOE":               cpoe_val,
-        "DAKOTA":             dakota,
+        "EPA+CPOE":           epa_cpoe,
     }
 
 # ── INPUT ──────────────────────────────────────────────────────────────────────
@@ -169,11 +180,30 @@ pass_df = df[
 
 print(f"Pases con EPA y passer: {len(pass_df):,}")
 
+# Presion real FTN (was_pressure) via participation; fallback qb_hit+sack
+try:
+    part, _ = cargar_participation(SEASON)
+    part = part[["nflverse_game_id", "play_id", "was_pressure"]].rename(
+        columns={"nflverse_game_id": "game_id"})
+    part["play_id"]    = pd.to_numeric(part["play_id"],    errors="coerce")
+    pass_df["play_id"] = pd.to_numeric(pass_df["play_id"], errors="coerce")
+    pass_df = pass_df.merge(part, on=["game_id", "play_id"], how="left")
+    print("Presion: was_pressure (FTN)")
+except Exception as e:
+    print(f"  Aviso: participacion FTN no disponible ({e}) — proxy qb_hit+sack")
+
 # ── FIND QBs ───────────────────────────────────────────────────────────────────
 all_qbs   = pass_df[passer_nm_col].dropna().unique()
 qb1_name  = find_qb(all_qbs, qb1_input, pass_df, passer_nm_col)
 qb2_name  = find_qb(all_qbs, qb2_input, pass_df, passer_nm_col)
 print(f"Comparando: {qb1_name} vs {qb2_name}")
+
+def _equipo(nombre):
+    m = pass_df.loc[pass_df[passer_nm_col] == nombre, "posteam"].mode()
+    return m.iloc[0] if len(m) else ""
+
+team1 = _equipo(qb1_name)
+team2 = _equipo(qb2_name)
 
 # ── COMPUTE METRICS FOR ALL QBS (for normalization) ────────────────────────────
 METRIC_KEYS = [
@@ -228,12 +258,12 @@ for metric in METRIC_KEYS:
     s1 = f"{v1:+.3f}" if not pd.isna(v1) else "  N/D "
     s2 = f"{v2:+.3f}" if not pd.isna(v2) else "  N/D "
     print(f"{metric:<22} {s1:<18} {s2:<18}")
-# DAKOTA (fuera del radar, solo consola + anotación)
-d1 = qb1_raw.get("DAKOTA", float("nan"))
-d2 = qb2_raw.get("DAKOTA", float("nan"))
+# Indice EPA+CPOE (fuera del radar, solo consola + anotación)
+d1 = qb1_raw.get("EPA+CPOE", float("nan"))
+d2 = qb2_raw.get("EPA+CPOE", float("nan"))
 ds1 = f"{d1:+.3f}" if not pd.isna(d1) else "  N/D "
 ds2 = f"{d2:+.3f}" if not pd.isna(d2) else "  N/D "
-print(f"{'DAKOTA':<22} {ds1:<18} {ds2:<18}  (EPA/play + CPOE)")
+print(f"{'EPA+CPOE':<22} {ds1:<18} {ds2:<18}  (EPA/play + CPOE/100)")
 print()
 
 # ── RADAR CHART ───────────────────────────────────────────────────────────────
@@ -280,10 +310,10 @@ for i, metric in enumerate(METRIC_KEYS):
 ax.set_xticklabels(xticklabels, color=FG, fontsize=7.5, ha="center")
 
 # Draw radar lines
-ax.plot(angles, v1_radar, color=QB1_COLOR, linewidth=2.2, zorder=4, label=qb1_name)
+ax.plot(angles, v1_radar, color=QB1_COLOR, linewidth=2.2, zorder=4, label=f"{qb1_name} ({team1})")
 ax.fill(angles, v1_radar, color=QB1_COLOR, alpha=0.20, zorder=3)
 
-ax.plot(angles, v2_radar, color=QB2_COLOR, linewidth=2.2, zorder=4, label=qb2_name)
+ax.plot(angles, v2_radar, color=QB2_COLOR, linewidth=2.2, zorder=4, label=f"{qb2_name} ({team2})")
 ax.fill(angles, v2_radar, color=QB2_COLOR, alpha=0.20, zorder=3)
 
 # Draw reference ring at 0.5
@@ -318,20 +348,20 @@ fig.text(0.5, 0.97, f"{qb1_name} vs {qb2_name}",
 fig.text(0.5, 0.92,
          f"Comparacion radar \u2014 6 dimensiones | Normalizadas entre QBs con \u2265{MIN_PASS_PLAYS} pases",
          ha="center", va="top", fontsize=9, color="#888888", fontstyle="italic")
-# DAKOTA como anotación bajo el subtítulo
+# Indice EPA+CPOE como anotación bajo el subtítulo
 _ds1 = f"{d1:+.3f}" if not pd.isna(d1) else "N/D"
 _ds2 = f"{d2:+.3f}" if not pd.isna(d2) else "N/D"
 fig.text(0.5, 0.895,
-         f"DAKOTA  {qb1_name.split('.')[-1].strip()}: {_ds1}   |   {qb2_name.split('.')[-1].strip()}: {_ds2}",
+         f"EPA+CPOE  {qb1_name.split('.')[-1].strip()}: {_ds1}   |   {qb2_name.split('.')[-1].strip()}: {_ds2}",
          ha="center", va="top", fontsize=8.5, color="#C9A84C", fontweight="bold")
-fig.text(0.01, 0.01, f"Fuente: nflverse-data  \u00b7  NFL {SEASON}",
+fig.text(0.01, 0.01, f"Fuente: nflverse-data  \u00b7  {sello(SEASON)}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig.text(0.99, 0.01, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.91])
 
-outfile = f"comparador_{safe_qb1}_{safe_qb2}_{SEASON}.png"
+outfile = salida(f"comparador_{safe_qb1}_{safe_qb2}_{SEASON}.png", SEASON)
 fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {outfile}")

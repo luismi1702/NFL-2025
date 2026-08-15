@@ -9,12 +9,12 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli, sello
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-SEASON   = None   # None = auto-detectar última temporada
+SEASON   = season_cli()   # None = auto-detectar última temporada
 
 BG    = "#0f1115"
 CARD  = "#151924"
@@ -23,9 +23,8 @@ FG    = "#EDEDED"
 GRID  = "#2a2f3a"
 DPI   = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 
-MIN_PLAYS = 10
+MIN_PLAYS = 25   # con menos, la celda sale "n/d" (n=10-16 destacaba igual que n=456)
 
 RYG   = LinearSegmentedColormap.from_list("ryg",  ["#c0392b", "#e8b84b", "#27ae60"])
 RYG_r = RYG.reversed()
@@ -44,10 +43,18 @@ def load_logo(team, base_zoom=0.10):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        zoom = base_zoom / HARD_PENALTY[team] if team in HARD_PENALTY else \
-               base_zoom / np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -115,102 +122,96 @@ pass_dev = pass_grid - lg_pass_grid
 
 
 # ── FIGURA ────────────────────────────────────────────────────────────────────
-fig = plt.figure(figsize=(14, 10), facecolor=BG)
-gs  = gridspec.GridSpec(2, 2,
+# 2 paneles: valor del equipo + Δ vs liga en la MISMA celda (el color es el Δ).
+# Antes había 4 paneles y los de "Delta" repetían visualmente los de arriba.
+fig = plt.figure(figsize=(14, 6.6), facecolor=BG)
+gs  = gridspec.GridSpec(1, 2,
                          figure=fig,
-                         hspace=0.45, wspace=0.35,
+                         wspace=0.32,
                          left=0.07, right=0.97,
-                         top=0.87, bottom=0.06,
-                         height_ratios=[1, 1],
-                         width_ratios=[1, 1])
+                         top=0.78, bottom=0.10)
 
-ax_epa  = fig.add_subplot(gs[0, 0])   # EPA / jugada por celda
-ax_pct  = fig.add_subplot(gs[0, 1])   # Pass% por celda
-ax_depa = fig.add_subplot(gs[1, 0])   # Delta EPA vs liga
-ax_dpass= fig.add_subplot(gs[1, 1])   # Delta pass% vs liga
+ax_epa = fig.add_subplot(gs[0, 0])   # EPA por celda (color = Δ vs liga)
+ax_pct = fig.add_subplot(gs[0, 1])   # Pass% por celda (color = Δ vs liga)
 
 
-def draw_heatmap(ax, data, cnt, cmap, title, fmt_fn,
-                 vmin=None, vmax=None, xlabel="Distancia", ylabel="Down"):
-    valid = data[~np.isnan(data)]
+def draw_heatmap(ax, data, dev, cnt, cmap, title, fmt_fn, dev_fmt_fn,
+                 xlabel="Distancia", ylabel="Down"):
+    """Celda: valor del equipo (grande) + Δ vs liga y n (pequeño).
+    El color de la celda representa el Δ vs liga (simétrico en 0)."""
+    valid = dev[~np.isnan(dev)]
     if len(valid) == 0:
         ax.axis("off")
         return
-    vmin = vmin if vmin is not None else np.nanmin(data)
-    vmax = vmax if vmax is not None else np.nanmax(data)
-    v_abs = max(abs(vmin), abs(vmax), 0.01)
+    v_abs = max(abs(np.nanmin(dev)), abs(np.nanmax(dev)), 0.01)
     norm  = Normalize(vmin=-v_abs, vmax=v_abs)
 
-    im = ax.imshow(data, cmap=cmap, norm=norm, aspect="auto",
-                   interpolation="nearest")
+    ax.imshow(dev, cmap=cmap, norm=norm, aspect="auto",
+              interpolation="nearest")
 
     for d_idx in range(3):
         for dist_i in range(3):
             val = data[d_idx, dist_i]
+            dv  = dev[d_idx, dist_i]
             n   = cnt[d_idx, dist_i] if cnt is not None else 0
-            if np.isnan(val):
+            if np.isnan(val) or np.isnan(dv):
                 ax.text(dist_i, d_idx, "n/d", ha="center", va="center",
                         color="#555", fontsize=8)
                 continue
-            txt = fmt_fn(val)
-            n_txt = f"\n(n={n})" if n > 0 else ""
-            ax.text(dist_i, d_idx, txt + n_txt,
+            bg = cmap(norm(dv))
+            lum = 0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2]
+            tcol = "#0a0e13" if lum > 0.45 else FG
+            ax.text(dist_i, d_idx,
+                    f"{fmt_fn(val)}\n{dev_fmt_fn(dv)} · n={n}",
                     ha="center", va="center",
-                    color="#0a0e13", fontsize=9, fontweight="bold",
-                    linespacing=1.3)
+                    color=tcol, fontsize=9.5, fontweight="bold",
+                    linespacing=1.45)
 
     ax.set_xticks(range(3))
     ax.set_xticklabels(DIST_LABELS, color=FG, fontsize=8)
     ax.set_yticks(range(3))
     ax.set_yticklabels(DOWN_LABELS, color=FG, fontsize=8)
-    ax.set_title(title, color=FG, fontsize=9.5, pad=6, fontweight="bold", loc="left")
+    ax.set_title(title, color=FG, fontsize=10, pad=6, fontweight="bold", loc="left")
     ax.set_facecolor(CARD)
     for sp in ax.spines.values(): sp.set_edgecolor(GRID)
     ax.tick_params(length=0)
 
 
 # ── Panel EPA ────────────────────────────────────────────────────────────────
-draw_heatmap(ax_epa, epa_grid, cnt_grid, RYG,
+draw_heatmap(ax_epa, epa_grid, epa_dev, cnt_grid, RYG,
              f"EPA / jugada  —  {team}",
-             lambda v: f"{'+'if v>=0 else ''}{v:.3f}")
+             lambda v: f"{'+'if v>=0 else ''}{v:.3f}",
+             lambda d: f"Δ liga {'+'if d>=0 else ''}{d:.3f}")
 
 # ── Panel Pass% ─────────────────────────────────────────────────────────────
-draw_heatmap(ax_pct, pass_grid, cnt_grid, BR,
+draw_heatmap(ax_pct, pass_grid, pass_dev, cnt_grid, BR,
              f"Pass%  —  {team}",
-             lambda v: f"{v*100:.0f}%",
-             vmin=-0.5, vmax=0.5)
-
-# ── Panel Delta EPA vs liga ───────────────────────────────────────────────────
-draw_heatmap(ax_depa, epa_dev, cnt_grid, RYG,
-             f"Delta EPA vs liga  —  {team}",
-             lambda v: f"{'+'if v>=0 else ''}{v:.3f}")
-
-# ── Panel Delta pass% vs liga ─────────────────────────────────────────────────
-draw_heatmap(ax_dpass, pass_dev, cnt_grid, BR,
-             f"Delta pass% vs liga  —  {team}",
-             lambda v: f"{'+'if v>=0 else ''}{v*100:.0f}pp")
+             lambda v: f"{v*100:.0f}% pase",
+             lambda d: f"Δ liga {'+'if d>=0 else ''}{d*100:.0f}pp")
 
 # ── Escala de colores de referencia ──────────────────────────────────────────
-fig.text(0.5, 0.895,
-         "Heatmap EPA: verde = EPA más alto  |  Heatmap Pass%: rojo = más pase que la liga, azul = más carrera",
-         ha="center", fontsize=7, color="#888", fontstyle="italic")
+fig.text(0.5, 0.855,
+         "Distancia = yardas POR AVANZAR para el 1er down (no profundidad del pase)  |  "
+         "Color = diferencia vs media de liga  |  EPA: verde = mejor que la liga  |  "
+         "Pass%: rojo = más pase de lo normal, azul = más carrera",
+         ha="center", fontsize=7.5, color="#888", fontstyle="italic")
 
 # ── Logo + título ─────────────────────────────────────────────────────────────
 logo = load_logo(team, base_zoom=0.095)
 if logo:
-    lax = fig.add_axes([0.03, 0.912, 0.055, 0.075])
+    lax = fig.add_axes([0.03, 0.87, 0.075, 0.11])
     lax.imshow(logo.get_data())
     lax.axis("off")
 
-fig.text(0.5, 0.975,
+fig.text(0.5, 0.965,
          f"{team}  |  Tendencias de Playcalling por Down × Distancia  |  NFL {SEASON}",
          ha="center", va="top", fontsize=14, fontweight="bold", color=FG)
-fig.text(0.01, 0.008, f"Fuente: nflverse PBP  |  NFL {SEASON}  |  Mín {MIN_PLAYS} jugadas/celda",
+fig.text(0.01, 0.008, f"Fuente: nflverse PBP  |  {sello(SEASON)}  |  Mín {MIN_PLAYS} jugadas/celda",
          ha="left", va="bottom", fontsize=7, color="#555", fontstyle="italic")
 fig.text(0.99, 0.008, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888", alpha=0.8, fontstyle="italic")
 
-outfile = f"tendencias_playcalling_{team}_{SEASON}.png"
+outfile = salida(f"tendencias_playcalling_{team}_{SEASON}.png", SEASON)
 fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {outfile}")

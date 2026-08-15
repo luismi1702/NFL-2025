@@ -6,9 +6,19 @@ __pycache__/
 # Outputs generados en lote
 draft_calendar/
 kw_frames/
+salidas/
+
+# PNGs generados en la raiz (modo --raiz). Los definitivos van a salidas/,
+# que tambien esta ignorado: son regenerables desde el script.
+/*.png
+!logos/*.png
+
+# Metadatos del modelo (temporada con la que se entreno)
+*.meta
 
 # Capturas de referencia (nombres GUID de Windows)
 {*.png
 
 # Personal - nunca commitear
 docs/superpowers/
+_preview/

@@ -104,20 +104,25 @@ def load_data():
 # 2. Helper: logo
 # ─────────────────────────────────────────────
 BASE_ZOOM    = 0.042
-HARD_PENALTY = {"NYJ": 4.5}
 
 def add_logo(ax, team, x, y):
     path = os.path.join(LOGOS_DIR, f"{team}.png")
     if not os.path.exists(path): return
     try:
         img    = plt.imread(path)
-        h, w   = img.shape[:2]
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        h, w = img.shape[:2]
         aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = BASE_ZOOM / HARD_PENALTY[team]
-        else:
-            divisor = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = BASE_ZOOM / divisor
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = BASE_ZOOM * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (BASE_ZOOM):
+            zoom = 900.0 * (BASE_ZOOM) / w
         ab = AnnotationBbox(
             OffsetImage(img, zoom=zoom, resample=True),
             (x, y), frameon=False, xycoords="data",
@@ -177,7 +182,7 @@ def plot_ranking(df):
             fontsize=7.5, color='white', alpha=0.55, va='top', zorder=4)
 
     # Ejes
-    ax.set_xlim(-7, 80)
+    ax.set_xlim(-7, max(team_rate.max() * 1.2, 30))   # ajustado al rango real (antes 80%)
     ax.set_ylim(-0.7, n - 0.3)
     ax.set_yticks(range(n))
     ax.set_yticklabels(teams, fontsize=8.5, color=FG)
@@ -268,7 +273,7 @@ def plot_ranking_spotlight(df, team):
             fontsize=22, fontweight='bold',
             color=RYG((team_rate[team] - v_min) / v_range), alpha=0.9, zorder=5)
 
-    ax.set_xlim(-7, 80)
+    ax.set_xlim(-7, max(team_rate.max() * 1.2, 30))   # ajustado al rango real (antes 80%)
     ax.set_ylim(-0.7, n - 0.3)
     ax.set_yticks(range(n))
     ax.set_yticklabels(teams, fontsize=8.5, color=FG)
@@ -362,11 +367,19 @@ def plot_equipo(df, team):
     if os.path.exists(path):
         try:
             img    = plt.imread(path)
-            h, w   = img.shape[:2]
+            # Recorta margenes transparentes: algunos archivos traen mucho aire
+            # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+            if img.ndim == 3 and img.shape[2] == 4:
+                ys, xs = np.where(img[:, :, 3] > 0.02)
+                if len(ys):
+                    img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+            h, w = img.shape[:2]
             aspect = w / float(h) if h else 1.0
-            zoom   = 0.10 if team != "NYJ" else 0.10 / 4.5
-            divisor = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = zoom / divisor
+            # Normaliza por el area de tinta real; los wordmarks apaisados
+            # pueden ensancharse hasta 1.8x para compensar su poca altura
+            zoom = 0.10 * 500.0 / max((h * w) ** 0.5, 1.0)
+            if w * zoom > 900.0 * (0.10):
+                zoom = 900.0 * (0.10) / w
             ab = AnnotationBbox(
                 OffsetImage(img, zoom=zoom, resample=True),
                 (LEFT_MARGIN - 1.0, total_h - 0.85),

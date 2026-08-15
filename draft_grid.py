@@ -105,7 +105,6 @@ def load_data():
 # 2. Logo helper
 # ─────────────────────────────────────────────
 BASE_ZOOM    = 0.030
-HARD_PENALTY = {"NYJ": 4.5}
 
 def add_logo(ax, team, x, y):
     path = os.path.join(LOGOS_DIR, f"{team}.png")
@@ -113,13 +112,19 @@ def add_logo(ax, team, x, y):
         return
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
         aspect = (w / float(h)) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = BASE_ZOOM / HARD_PENALTY[team]
-        else:
-            divisor = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = BASE_ZOOM / divisor
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = BASE_ZOOM * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (BASE_ZOOM):
+            zoom = 900.0 * (BASE_ZOOM) / w
         ab = AnnotationBbox(
             OffsetImage(img, zoom=zoom, resample=True),
             (x, y), frameon=False, xycoords="data",
@@ -319,11 +324,19 @@ def plot_equipo(df: pd.DataFrame, team: str):
     if os.path.exists(path):
         try:
             img = plt.imread(path)
+            # Recorta margenes transparentes: algunos archivos traen mucho aire
+            # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+            if img.ndim == 3 and img.shape[2] == 4:
+                ys, xs = np.where(img[:, :, 3] > 0.02)
+                if len(ys):
+                    img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
             h, w = img.shape[:2]
             aspect = w / float(h) if h else 1.0
-            zoom = 0.14 if team != "NYJ" else 0.14 / 4.5
-            divisor = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom /= divisor
+            # Normaliza por el area de tinta real; los wordmarks apaisados
+            # pueden ensancharse hasta 1.8x para compensar su poca altura
+            zoom = 0.14 * 500.0 / max((h * w) ** 0.5, 1.0)
+            if w * zoom > 900.0 * (0.14):
+                zoom = 900.0 * (0.14) / w
             ab = AnnotationBbox(
                 OffsetImage(img, zoom=zoom, resample=True),
                 (LM * 0.42, total_h - TM * 0.45),

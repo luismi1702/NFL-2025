@@ -9,13 +9,13 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp, cargar_participation
+from pbp_loader import cargar_pbp, cargar_participation, DatosNoDisponibles, salida, season_cli, sello
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-SEASON   = None   # None = auto-detectar última temporada
+SEASON   = season_cli()   # None = auto-detectar última temporada
 
 BG    = "#0f1115"
 CARD  = "#151924"
@@ -24,7 +24,6 @@ FG    = "#EDEDED"
 GRID  = "#2a2f3a"
 DPI   = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 
 COL_EXPLOIT  = "#06d6a0"
 COL_RISK     = "#d84a4a"
@@ -65,10 +64,18 @@ def load_logo(team, base_zoom=0.07):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        zoom = base_zoom / HARD_PENALTY[team] if team in HARD_PENALTY else \
-               base_zoom / np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -268,7 +275,14 @@ pbp["epa"]     = pd.to_numeric(pbp["epa"],     errors="coerce")
 pbp["play_id"] = pd.to_numeric(pbp["play_id"], errors="coerce")
 print(f"PBP {SEASON}: {len(pbp):,} jugadas REG")
 
-part, _ = cargar_participation(SEASON)
+try:
+    part, _ = cargar_participation(SEASON)
+except DatosNoDisponibles as e:
+    raise SystemExit(
+        "\n  No se puede generar este grafico todavia.\n"
+        f"  {e}\n"
+        "  Este visual necesita datos de participacion (personal, coberturas y presion),\n"
+        "  que nflverse publica mas tarde que el play-by-play.\n")
 part = part[[
     "nflverse_game_id", "play_id",
     "offense_personnel", "defense_personnel",
@@ -358,12 +372,32 @@ rows_sit = [
     _sit_row(off_atk, def_def, "third_down", "third_down", "3er Down",  lg_3d),
 ]
 
+
+def league_ranks_situacion(mask_col, team_col, ascending):
+    """Ranking liguero de EPA en una situación booleana (red_zone/third_down).
+    ascending=False → #1 = mejor ataque; ascending=True → #1 = mejor defensa."""
+    grp = (all_plays[all_plays[mask_col]]
+           .groupby(team_col)["epa"].agg(epa="mean", n="count").reset_index())
+    grp = grp[grp["n"] >= MIN_SNAPS]
+    grp = grp.sort_values("epa", ascending=ascending).reset_index(drop=True)
+    return {row[team_col]: i + 1 for i, row in grp.iterrows()}
+
+
+rk_atk_sit = {
+    "red_zone":   league_ranks_situacion("red_zone",   "posteam", False).get(team_atk),
+    "third_down": league_ranks_situacion("third_down", "posteam", False).get(team_atk),
+}
+rk_def_sit = {
+    "red_zone":   league_ranks_situacion("red_zone",   "defteam", True).get(team_def),
+    "third_down": league_ranks_situacion("third_down", "defteam", True).get(team_def),
+}
+
 SECTIONS = [
     (rows_pkg, rk_atk_pkg, rk_def_pkg, "PERSONAL OFENSIVO"),
     (rows_cov, rk_atk_cov, rk_def_cov, "COBERTURA DEFENSIVA"),
     (rows_mz,  rk_atk_mz,  rk_def_mz,  "MAN / ZONA"),
     (rows_pr,  rk_atk_pr,  rk_def_pr,  "PRESIÓN"),
-    (rows_sit, {},          {},          "SITUACIONES CLAVE"),
+    (rows_sit, rk_atk_sit, rk_def_sit, "SITUACIONES CLAVE"),
 ]
 SECTIONS = [(r, ra, rd, t) for r, ra, rd, t in SECTIONS if r]
 
@@ -439,7 +473,7 @@ for s_idx, (rows, rk_a, rk_d, title) in enumerate(SECTIONS):
 
 # ── PIE ───────────────────────────────────────────────────────────────────────
 fig.text(0.5, 0.012,
-         f"Fuente: nflverse PBP + NGS participation  |  NFL {SEASON}  |  "
+         f"Fuente: nflverse PBP + NGS participation  |  {sello(SEASON)}  |  "
          f"#N = ranking en la liga  |  Mín {MIN_SNAPS} snaps  |  "
          f"EXPLOIT: atacante y defensor ambos fuera de media en la misma dirección",
          ha="center", va="bottom", fontsize=6.5, color="#555", fontstyle="italic")
@@ -454,7 +488,7 @@ fig.text(0.99, 0.008, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888",
          alpha=0.8, fontstyle="italic")
 
-outfile = f"matchup_intel_{team_atk}_vs_{team_def}_{SEASON}.png"
+outfile = salida(f"matchup_intel_{team_atk}_vs_{team_def}_{SEASON}.png", SEASON)
 fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {outfile}")
@@ -578,14 +612,14 @@ fig2.text(0.5, 0.975,
           f"Resumen Intel  ·  {team_atk} atacando vs {team_def}  ·  NFL {SEASON}",
           ha="center", va="top", fontsize=14, fontweight="bold", color=FG)
 fig2.text(0.5, 0.018,
-          f"Fuente: nflverse PBP + NGS  |  NFL {SEASON}  |  "
+          f"Fuente: nflverse PBP + NGS  |  {sello(SEASON)}  |  "
           f"Mismatch = suma de desviaciones vs media de liga",
           ha="center", va="bottom", fontsize=6.5, color="#555", fontstyle="italic")
 fig2.text(0.99, 0.01, "@CuartayDato",
           ha="right", va="bottom", fontsize=9, color="#888888",
           alpha=0.8, fontstyle="italic")
 
-outfile2 = f"matchup_resumen_{team_atk}_vs_{team_def}_{SEASON}.png"
+outfile2 = salida(f"matchup_resumen_{team_atk}_vs_{team_def}_{SEASON}.png", SEASON)
 fig2.savefig(outfile2, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig2)
 print(f"Guardado: {outfile2}")

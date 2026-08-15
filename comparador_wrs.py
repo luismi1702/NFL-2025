@@ -7,19 +7,18 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli, sello
 import matplotlib.patches as mpatches
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON = None   # None = auto-detectar última temporada
+SEASON = season_cli()   # None = auto-detectar última temporada
 BG     = "#0f1115"
 FG     = "#EDEDED"
 GRID   = "#2a2f3a"
 DPI    = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 RYG = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
 MIN_TARGETS = 50   # minimum targets for a WR to be included in normalization
@@ -48,13 +47,18 @@ def load_logo(team, base_zoom=0.055):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -164,6 +168,13 @@ wr1_name = find_wr(all_wrs, wr1_input, target_df, receiver_col)
 wr2_name = find_wr(all_wrs, wr2_input, target_df, receiver_col)
 print(f"Comparando: {wr1_name} vs {wr2_name}")
 
+def _equipo(nombre):
+    m = target_df.loc[target_df[receiver_col] == nombre, "posteam"].mode()
+    return m.iloc[0] if len(m) else ""
+
+team1 = _equipo(wr1_name)
+team2 = _equipo(wr2_name)
+
 # ── COMPUTE METRICS FOR ALL WRs (for normalization) ────────────────────────────
 METRIC_KEYS = [
     "EPA/objetivo",
@@ -263,10 +274,10 @@ for i, metric in enumerate(METRIC_KEYS):
 ax.set_xticklabels(xticklabels, color=FG, fontsize=7.5, ha="center")
 
 # Draw radar lines
-ax.plot(angles, v1_radar, color=WR1_COLOR, linewidth=2.2, zorder=4, label=wr1_name)
+ax.plot(angles, v1_radar, color=WR1_COLOR, linewidth=2.2, zorder=4, label=f"{wr1_name} ({team1})")
 ax.fill(angles, v1_radar, color=WR1_COLOR, alpha=0.20, zorder=3)
 
-ax.plot(angles, v2_radar, color=WR2_COLOR, linewidth=2.2, zorder=4, label=wr2_name)
+ax.plot(angles, v2_radar, color=WR2_COLOR, linewidth=2.2, zorder=4, label=f"{wr2_name} ({team2})")
 ax.fill(angles, v2_radar, color=WR2_COLOR, alpha=0.20, zorder=3)
 
 # Draw reference ring at 0.5
@@ -301,14 +312,14 @@ fig.text(0.5, 0.97, f"{wr1_name} vs {wr2_name}",
 fig.text(0.5, 0.92,
          f"Comparación radar — 6 dimensiones | Normalizadas entre WRs con ≥{MIN_TARGETS} objetivos",
          ha="center", va="top", fontsize=9, color="#888888", fontstyle="italic")
-fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  NFL {SEASON}",
+fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  {sello(SEASON)}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig.text(0.99, 0.01, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.91])
 
-outfile = f"comparador_{safe_wr1}_{safe_wr2}_{SEASON}.png"
+outfile = salida(f"comparador_{safe_wr1}_{safe_wr2}_{SEASON}.png", SEASON)
 fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {outfile}")

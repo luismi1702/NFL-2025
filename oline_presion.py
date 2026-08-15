@@ -9,18 +9,17 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, cargar_participation, salida, season_cli, sello
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── Style constants ─────────────────────────────────────────────────────────
-SEASON       = None   # None = auto-detectar última temporada
+SEASON       = season_cli()   # None = auto-detectar última temporada
 BG           = "#0f1115"
 FG           = "#EDEDED"
 GRID         = "#2a2f3a"
 DPI          = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 RYG          = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
 MIN_PLAYS = 100
@@ -46,13 +45,18 @@ def load_logo(team, base_zoom=0.055):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -66,15 +70,33 @@ to_num(df, ["epa", "qb_hit", "sack"])
 # ── Filter ───────────────────────────────────────────────────────────────────
 df = df[(df["play_type"] == "pass") & df["posteam"].notna()].copy()
 
-# ── Build pressured column ────────────────────────────────────────────────────
-qb_hit_col = pick_col(df, "qb_hit")
-sack_col   = pick_col(df, "sack")
+# ── Presion real FTN (was_pressure); fallback qb_hit+sack ────────────────────
+try:
+    part, _ = cargar_participation(SEASON)
+    part = part[["nflverse_game_id", "play_id", "was_pressure"]].rename(
+        columns={"nflverse_game_id": "game_id"})
+    part["play_id"] = pd.to_numeric(part["play_id"], errors="coerce")
+    df["play_id"]   = pd.to_numeric(df["play_id"],   errors="coerce")
+    df = df.merge(part, on=["game_id", "play_id"], how="left")
+except Exception as e:
+    print(f"  Aviso: participacion FTN no disponible ({e})")
 
-pressured = pd.Series(False, index=df.index)
-if qb_hit_col:
-    pressured |= df[qb_hit_col].fillna(0) == 1
-if sack_col:
-    pressured |= df[sack_col].fillna(0) == 1
+sack_col = pick_col(df, "sack")
+
+if "was_pressure" in df.columns and df["was_pressure"].notna().any():
+    pressured = pd.to_numeric(df["was_pressure"], errors="coerce").fillna(0) == 1
+    if sack_col:   # un sack siempre es presion
+        pressured |= df[sack_col].fillna(0) == 1
+    pressure_source = "was_pressure (FTN) + sacks"
+else:
+    qb_hit_col = pick_col(df, "qb_hit")
+    pressured = pd.Series(False, index=df.index)
+    if qb_hit_col:
+        pressured |= df[qb_hit_col].fillna(0) == 1
+    if sack_col:
+        pressured |= df[sack_col].fillna(0) == 1
+    pressure_source = "proxy qb_hit + sack"
+print(f"Fuente de presion: {pressure_source}")
 df["pressured"] = pressured
 
 # ── Aggregate ─────────────────────────────────────────────────────────────────
@@ -116,12 +138,11 @@ for spine in ax.spines.values():
 y_pos = np.arange(n_teams)
 bars  = ax.barh(y_pos, grp["pressure_rate"], color=bar_colors, height=0.65, zorder=3)
 
-ax.set_yticks(y_pos)
-ax.set_yticklabels([""] * n_teams)
+ax.set_yticks([])   # sin ticks: los logos hacen de etiqueta
 ax.invert_yaxis()   # best (lowest pressure) at top
 ax.tick_params(colors=FG)
 ax.grid(axis="x", color=GRID, linewidth=0.5, alpha=0.6, zorder=0)
-ax.set_xlabel("% de jugadas con presión al QB (proxy: qb_hit + sack)", color=FG, fontsize=11)
+ax.set_xlabel(f"% de jugadas con presión al QB ({pressure_source})", color=FG, fontsize=11)
 
 # League avg line
 ax.axvline(league_avg, color=FG, linewidth=1.2, linestyle="--", alpha=0.7, zorder=4)
@@ -175,15 +196,15 @@ ax.set_xlim(x_lo - 2, x_hi + 8)
 fig.text(0.5,  0.97, f"Tasa de presión permitida — Líneas ofensivas — NFL {SEASON}",
          ha="center", va="top", fontsize=16, fontweight="bold", color=FG)
 fig.text(0.5,  0.92,
-         "Menor % = mejor línea ofensiva | Presión = qb_hit=1 o sack=1",
+         f"Menor % = mejor línea ofensiva | Presión = {pressure_source}",
          ha="center", va="top", fontsize=10, color="#888888", fontstyle="italic")
-fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  NFL {SEASON}",
+fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  {sello(SEASON)}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig.text(0.99, 0.01, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
 
 fig.tight_layout(rect=[0, 0.03, 1, 0.91])
-out = f"oline_presion_{SEASON}.png"
+out = salida(f"oline_presion_{SEASON}.png", SEASON)
 fig.savefig(out, dpi=DPI, bbox_inches="tight", facecolor=BG)
 plt.close(fig)
 print(f"Guardado: {out}")

@@ -11,12 +11,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, cargar_participation, salida, season_cli, sello
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-SEASON       = None  # None = auto-detectar última temporada
+SEASON       = season_cli()  # None = auto-detectar última temporada
 MIN_ATTEMPTS = 150   # intentos mínimos para aparecer
 MIN_CPOE     =  50   # pases con CPOE válido mínimos
 
@@ -25,7 +25,6 @@ FG    = "#EDEDED"
 GRID  = "#2a2f3a"
 DPI   = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 
 RYG = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
@@ -36,13 +35,18 @@ def load_logo(team, base_zoom=0.033):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -51,10 +55,24 @@ def load_logo(team, base_zoom=0.033):
 def short_name(name):
     if not isinstance(name, str) or not name.strip():
         return ""
-    parts = name.strip().split()
+    sufijos = {"jr", "jr.", "sr", "sr.", "ii", "iii", "iv", "v"}
+    parts = [p for p in name.strip().split()
+             if p.lower() not in sufijos] or name.split()
     if len(parts) == 1:
         return parts[0]
     return f"{parts[0][0]}. {parts[-1]}"
+
+
+def separar_etiquetas(xs, lys, x_tol, y_tol):
+    """Separa verticalmente etiquetas que caerian casi encima (los puntos
+    no se mueven; solo el texto baja). lys = y iniciales de las etiquetas."""
+    idx = sorted(range(len(xs)), key=lambda i: -lys[i])
+    out = list(lys)
+    for pos, i in enumerate(idx):
+        for j in idx[:pos]:
+            if abs(xs[i] - xs[j]) < x_tol and abs(out[i] - out[j]) < y_tol:
+                out[i] = min(out[i], out[j] - y_tol)
+    return out
 
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
@@ -79,11 +97,24 @@ pass_df = df[
 
 print(f"Pases con EPA: {len(pass_df):,}")
 
+# Presion real FTN (was_pressure) via participation; fallback qb_hit+sack
+try:
+    part, _ = cargar_participation(SEASON)
+    part = part[["nflverse_game_id", "play_id", "was_pressure"]].rename(
+        columns={"nflverse_game_id": "game_id"})
+    part["play_id"]    = pd.to_numeric(part["play_id"],    errors="coerce")
+    pass_df["play_id"] = pd.to_numeric(pass_df["play_id"], errors="coerce")
+    pass_df = pass_df.merge(part, on=["game_id", "play_id"], how="left")
+except Exception as e:
+    print(f"  Aviso: participacion FTN no disponible ({e})")
+
 # ── AGGREGATE ─────────────────────────────────────────────────────────────────
 # Detección de presión
 press_col = "was_pressure" if "was_pressure" in pass_df.columns else None
 if press_col:
     pass_df["pressured"] = pd.to_numeric(pass_df[press_col], errors="coerce").fillna(0).astype(bool)
+    if "sack" in pass_df.columns:   # un sack siempre es presion
+        pass_df["pressured"] |= pd.to_numeric(pass_df["sack"], errors="coerce").fillna(0).eq(1)
 else:
     pass_df["pressured"] = False
     for c in ["qb_hit", "sack"]:
@@ -193,16 +224,23 @@ ax.scatter(
 y_range   = y_hi - y_lo
 label_off = y_range * 0.036
 
-for _, row in grp.iterrows():
+# Etiquetas sin solaparse entre QBs cercanos
+lys = separar_etiquetas(
+    grp["epa_mean"].tolist(),
+    [v - label_off for v in grp["cpoe_mean"]],
+    (x_hi - x_lo) * 0.055, y_range * 0.032)
+
+for (_, row), ly in zip(grp.iterrows(), lys):
     x, y = row["epa_mean"], row["cpoe_mean"]
     logo = load_logo(row["team"])
     if logo:
         ab = AnnotationBbox(logo, (x, y), frameon=False, zorder=4, box_alignment=(0.5, 0.5))
         ax.add_artist(ab)
     else:
-        ax.scatter(x, y, s=80, color=RYG(norm_d(row["dakota"])), zorder=4)
+        press_v = row["epa_press"] if not pd.isna(row["epa_press"]) else row["epa_mean"]
+        ax.scatter(x, y, s=80, color=RYG(norm_d(press_v)), zorder=4)
 
-    ax.text(x, y - label_off, row["label"],
+    ax.text(x, ly, row["label"],
             ha="center", va="top", fontsize=7.5, color=FG, alpha=0.90, zorder=5,
             path_effects=[pe.Stroke(linewidth=1.8, foreground=BG), pe.Normal()])
 
@@ -226,14 +264,14 @@ fig.text(0.5, 0.925,
          f"Halo = volumen de intentos  ·  Color = EPA bajo presión  ·  "
          f"Líneas punteadas = media de liga  ·  Mín. {MIN_ATTEMPTS} intentos",
          ha="center", va="top", fontsize=8.5, color="#888888", fontstyle="italic")
-fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  NFL {SEASON}",
+fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  {sello(SEASON)}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig.text(0.99, 0.01, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.91])
 
-out = f"qb_overview_{SEASON}.png"
+out = salida(f"qb_overview_{SEASON}.png", SEASON)
 fig.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {out}")

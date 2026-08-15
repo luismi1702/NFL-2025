@@ -3,8 +3,11 @@
 # Mejoras v5: SOS (Strength of Schedule via Elo opponent quality), MIN_GAMES=2
 
 import os
+import socket
 import warnings
 import pandas as pd
+
+socket.setdefaulttimeout(30)   # una descarga colgada no debe congelar el script
 import numpy as np
 import xgboost as xgb
 from pathlib import Path
@@ -17,8 +20,12 @@ from sklearn.preprocessing import StandardScaler
 warnings.filterwarnings("ignore")
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASONS_TRAIN  = list(range(2015, 2025))
-SEASON_PRED    = 2025
+# La temporada NO se fija a mano: se deriva de schedules en tiempo de ejecucion
+# (ver resolver_temporadas). Un predictor con el año escrito a fuego predice
+# partidos ya jugados en cuanto pasa un verano.
+PRIMERA_TEMPORADA = 2015
+SEASONS_TRAIN  = []          # se rellenan en resolver_temporadas()
+SEASON_PRED    = None
 ROLLING_N      = 5
 ROLLING_SHORT  = 2
 MIN_GAMES      = 2
@@ -92,17 +99,69 @@ def load_pbp(season: int) -> pd.DataFrame:
 
 
 def load_schedules() -> pd.DataFrame:
+    """Schedules siempre frescos (resultados y lineas nuevas cada semana);
+    el cache solo es fallback sin internet."""
     CACHE_DIR.mkdir(exist_ok=True)
     cache = CACHE_DIR / "schedules.parquet"
-    if cache.exists():
-        df = pd.read_parquet(cache)
-    else:
+    try:
         print("Descargando schedules...")
         df = pd.read_csv(SCHEDULE_URL, low_memory=False)
         df.to_parquet(cache, index=False)
+    except Exception as e:
+        if not cache.exists():
+            raise
+        print(f"  Aviso: sin conexion ({e}) — usando schedules cacheados")
+        df = pd.read_parquet(cache)
     df["home_team"] = df["home_team"].replace(TEAM_MAP)
     df["away_team"] = df["away_team"].replace(TEAM_MAP)
     return df
+
+
+def resolver_temporadas(schedules):
+    """Decide que temporada se predice y con cuales se entrena, mirando el calendario.
+
+    La temporada a predecir es la ultima que aparece en schedules: nflverse
+    publica el calendario completo meses antes del arranque, asi que en agosto
+    ya devuelve la que viene, que es justo la que interesa pronosticar.
+    Se entrena con todas las anteriores que tengan resultados.
+    """
+    global SEASONS_TRAIN, SEASON_PRED
+    SEASON_PRED = int(pd.to_numeric(schedules["season"], errors="coerce").max())
+
+    jugadas = schedules[(schedules["game_type"] == "REG") &
+                        schedules["home_score"].notna()]
+    ult_completa = int(pd.to_numeric(jugadas["season"], errors="coerce").max())
+    # Si la temporada a predecir aun no ha empezado, se entrena hasta la anterior
+    tope = min(SEASON_PRED - 1, ult_completa)
+    SEASONS_TRAIN = list(range(PRIMERA_TEMPORADA, tope + 1))
+
+    print(f"Temporada a predecir: {SEASON_PRED}")
+    print(f"Entrenamiento: {SEASONS_TRAIN[0]}-{SEASONS_TRAIN[-1]}")
+    return SEASONS_TRAIN, SEASON_PRED
+
+
+MODEL_META = "manning_bot_model.meta"   # ultima temporada usada al entrenar
+
+
+def _guardar_meta():
+    with open(MODEL_META, "w", encoding="utf-8") as f:
+        f.write(str(SEASONS_TRAIN[-1]))
+
+
+def _modelo_caducado():
+    """Ultima temporada del modelo guardado si se ha quedado atras, si no None."""
+    try:
+        with open(MODEL_META, encoding="utf-8") as f:
+            entrenado_hasta = int(f.read().strip())
+    except (OSError, ValueError):
+        return None                      # modelo antiguo sin meta: no molestar
+    return entrenado_hasta if entrenado_hasta < SEASONS_TRAIN[-1] else None
+
+
+def folds_walk_forward(seasons_train, n=4):
+    """Ultimas n temporadas como validacion, entrenando siempre con las previas."""
+    validaciones = seasons_train[-n:]
+    return [(yr, list(range(PRIMERA_TEMPORADA, yr))) for yr in validaciones]
 
 
 def coerce(df, cols):
@@ -188,14 +247,18 @@ def compute_elo(schedules: pd.DataFrame) -> pd.DataFrame:
     Usa datos desde 1999 (16 años de warmup antes de 2015).
     Guarda valores PRE-partido (sin leakage).
     """
-    cache = CACHE_DIR / "elo.parquet"
-    if cache.exists():
-        return pd.read_parquet(cache)
-
-    print("Calculando Elo ratings...")
     reg = schedules[schedules["game_type"] == "REG"].copy()
     reg = coerce(reg, ["result"])
     reg = reg.dropna(subset=["result"]).sort_values(["season", "week"])
+
+    cache = CACHE_DIR / "elo.parquet"
+    if cache.exists():
+        cached = pd.read_parquet(cache)
+        if len(cached) >= len(reg):     # sin partidos nuevos → cache valido
+            return cached
+        print(f"Elo cache con {len(cached):,} partidos, jugados {len(reg):,} — recalculando...")
+
+    print("Calculando Elo ratings...")
 
     teams = sorted(set(reg["home_team"]) | set(reg["away_team"]))
     elo = {t: 1500.0 for t in teams}
@@ -275,16 +338,26 @@ def load_qb_rolling() -> pd.DataFrame:
     Descarga player_stats.csv.gz y calcula rolling EWMA de passing_epa y dakota
     por QB (player_id), cruzando temporadas para reflejar historial real.
     """
+    import time
     cache = CACHE_DIR / "qb_stats.parquet"
     if cache.exists():
-        return pd.read_parquet(cache)
+        edad_dias = (time.time() - os.path.getmtime(cache)) / 86400
+        if edad_dias < 3:
+            return pd.read_parquet(cache)
+        print(f"qb_stats con {edad_dias:.0f} dias — refrescando...")
 
     print("Descargando player_stats (QB rolling)...")
     needed = ["player_id", "player_name", "position", "recent_team",
               "season", "week", "season_type", "attempts",
               "passing_epa", "dakota"]
-    df = pd.read_csv(PLAYER_STATS_URL, low_memory=False, compression="infer",
-                     usecols=needed)
+    try:
+        df = pd.read_csv(PLAYER_STATS_URL, low_memory=False, compression="infer",
+                         usecols=needed)
+    except Exception as e:
+        if cache.exists():
+            print(f"  Aviso: no se pudo refrescar player_stats ({e}) — usando cache")
+            return pd.read_parquet(cache)
+        raise
 
     qbs = df[
         (df["position"] == "QB") &
@@ -598,6 +671,7 @@ if __name__ == "__main__":
     # 1. Schedules
     schedules = load_schedules()
     print(f"Schedules cargados: {len(schedules):,} partidos")
+    resolver_temporadas(schedules)
 
     # 2. PBP game logs (con cache)
     all_logs_cache = CACHE_DIR / "game_logs_all.parquet"
@@ -614,6 +688,27 @@ if __name__ == "__main__":
             print(f"  {season}: {len(logs)} team-weeks")
         game_logs = pd.concat(dfs, ignore_index=True)
         game_logs.to_parquet(all_logs_cache, index=False)
+
+    # 2b. Refrescar la temporada en curso si el cache va por detras de schedules
+    sched_pred = schedules[(schedules["game_type"] == "REG") &
+                           (schedules["season"] == SEASON_PRED)].copy()
+    sched_pred = coerce(sched_pred, ["home_score", "week"])
+    jugadas = sched_pred.dropna(subset=["home_score"])["week"]
+    last_played = int(jugadas.max()) if len(jugadas) else 0
+    en_logs = game_logs.loc[game_logs["season"] == SEASON_PRED, "week"]
+    last_logs = int(en_logs.max()) if len(en_logs) else 0
+    if last_played > last_logs:
+        print(f"Game logs {SEASON_PRED} llegan a semana {last_logs}, "
+              f"jugada la {last_played} — actualizando PBP...")
+        pbp_cache = CACHE_DIR / f"pbp_{SEASON_PRED}.parquet"
+        if pbp_cache.exists():
+            pbp_cache.unlink()
+        logs_new  = build_game_logs(load_pbp(SEASON_PRED))
+        game_logs = pd.concat(
+            [game_logs[game_logs["season"] != SEASON_PRED], logs_new],
+            ignore_index=True)
+        game_logs.to_parquet(all_logs_cache, index=False)
+        print(f"  {SEASON_PRED}: {len(logs_new)} team-weeks actualizados")
 
     # 3. Todas las features de soporte
     rolling       = add_season_carryover(compute_rolling(game_logs))
@@ -635,20 +730,23 @@ if __name__ == "__main__":
 
     # 5. Entrenamiento
     if os.path.exists(MODEL_FILE):
-        resp = input(f"\nYa existe '{MODEL_FILE}'. Reentrenar? (s/N): ").strip().lower()
-        retrain = resp == "s"
+        # Un modelo guardado el año pasado sigue cargando sin quejarse pero le
+        # falta la ultima temporada entera: hay que avisar, no dejarlo pasar.
+        caduco = _modelo_caducado()
+        if caduco:
+            print(f"\n  AVISO: '{MODEL_FILE}' se entreno hasta {caduco}, pero ya hay "
+                  f"datos hasta {SEASONS_TRAIN[-1]}.")
+            print( "  Conviene reentrenar antes de publicar pronosticos.")
+        sugerencia = "S/n" if caduco else "s/N"
+        resp = input(f"\nYa existe '{MODEL_FILE}'. Reentrenar? ({sugerencia}): ").strip().lower()
+        retrain = (resp == "s") or (caduco and resp == "")
     else:
         retrain = True
 
     if retrain:
         # Walk-forward CV para evaluación honesta
         print("\nWalk-forward cross-validation...")
-        folds = [
-            (2021, list(range(2015, 2021))),
-            (2022, list(range(2015, 2022))),
-            (2023, list(range(2015, 2023))),
-            (2024, list(range(2015, 2024))),
-        ]
+        folds = folds_walk_forward(SEASONS_TRAIN)
         wf_accs = []
         for val_yr, train_yrs in folds:
             mask_tr = seas_all.isin(train_yrs)
@@ -658,19 +756,23 @@ if __name__ == "__main__":
             wf_accs.append(acc)
         print(f"  Walk-forward mean Acc: {np.mean(wf_accs):.3f}")
 
-        # Modelo final: entrenado con TODOS los datos 2015-2024
-        print("\nEntrenando Manning Bot v4 final (todos los datos 2015-2024)...")
+        # Modelo final: entrenado con TODAS las temporadas de entrenamiento
+        print(f"\nEntrenando Manning Bot v4 final "
+              f"(todos los datos {SEASONS_TRAIN[0]}-{SEASONS_TRAIN[-1]})...")
         model = train_model(X_all, y_all)
         with open(MODEL_FILE, "wb") as f:
             pickle.dump(model, f)
-        print(f"  Modelo guardado: {MODEL_FILE}")
+        _guardar_meta()
+        print(f"  Modelo guardado: {MODEL_FILE} (hasta {SEASONS_TRAIN[-1]})")
     else:
         with open(MODEL_FILE, "rb") as f:
             model = pickle.load(f)
         print(f"Modelo cargado desde {MODEL_FILE}")
-        # Evaluar en 2022-2024 para referencia
-        mask_val = seas_all >= 2022
-        evaluate(model, X_all[mask_val], y_all[mask_val], label="2022-2024 (ref)")
+        # Evaluar en las 3 ultimas temporadas de entrenamiento, para referencia
+        ref_desde = SEASONS_TRAIN[-3]
+        mask_val  = seas_all >= ref_desde
+        evaluate(model, X_all[mask_val], y_all[mask_val],
+                 label=f"{ref_desde}-{SEASONS_TRAIN[-1]} (ref)")
 
     # 6. Feature importance (XGBoost del ensemble)
     fi = pd.Series(model.named_estimators_["xgb"].feature_importances_,
@@ -680,25 +782,38 @@ if __name__ == "__main__":
         bar = "#" * int(imp * 200)
         print(f"  {feat:<22}  {imp:.4f}  {bar}")
 
-    # 7. Prediccion 2025
+    # 7. Prediccion de la temporada en curso
     print(f"\nConstruyendo features para {SEASON_PRED}...")
     pred_df = build_features(schedules, rolling, sched_rolling,
                              elo_df, qb_rolling, sos_df,
                              seasons=[SEASON_PRED], include_target=False)
 
-    sched_reg_2025 = schedules[
+    sched_reg = schedules[
         (schedules["season"] == SEASON_PRED) & (schedules["game_type"] == "REG")
     ].copy()
-    sched_reg_2025 = coerce(sched_reg_2025, ["home_score"])
-    completed_reg  = set(sched_reg_2025.dropna(subset=["home_score"])["week"].astype(int).unique())
+    sched_reg      = coerce(sched_reg, ["home_score"])
+    completed_reg  = set(sched_reg.dropna(subset=["home_score"])["week"].astype(int).unique())
     last_reg       = max(completed_reg) if completed_reg else 0
     available      = sorted(pred_df["week"].astype(int).unique())
 
-    print(f"Semanas disponibles: {available}")
-    print(f"Ultima semana completada: {last_reg}")
+    # Por defecto se pronostica la PROXIMA jornada, no la ultima jugada: esto es
+    # un predictor, no un backtest. Las jugadas siguen disponibles a mano para
+    # revisar aciertos.
+    pendientes = [w for w in available if w not in completed_reg]
+    por_defecto = min(pendientes) if pendientes else last_reg
 
-    semana_str = input(f"\nQue semana consultar? (1-{last_reg}): ").strip()
-    semana     = int(semana_str) if semana_str.isdigit() else last_reg
+    print(f"Semanas disponibles: {available}")
+    print(f"Ultima semana completada: {last_reg}"
+          + (f"  |  proxima jornada: {por_defecto}" if pendientes else "  |  temporada cerrada"))
+
+    if not available:
+        raise SystemExit(
+            f"\n  Todavia no hay features para {SEASON_PRED}: la temporada no ha "
+            f"empezado.\n  Vuelve cuando se haya jugado la primera jornada.\n")
+
+    rango = f"{min(available)}-{max(available)}"
+    semana_str = input(f"\nQue semana? ({rango}, Enter = {por_defecto}): ").strip()
+    semana     = int(semana_str) if semana_str.isdigit() else por_defecto
 
     games_semana = pred_df[pred_df["week"].astype(int) == semana].copy()
     if games_semana.empty:

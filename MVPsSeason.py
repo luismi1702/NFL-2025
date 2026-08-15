@@ -327,27 +327,30 @@ def calc_defensa(d, int_nm, sack_nm, tfl1_nm, tfl2_nm, ff1_nm, ff2_nm, pd1_nm, p
 
 
 # ---------------- Equipos Especiales (vectorizado) ----------------
-def calc_st(d, play_type, kr_nm, pr_nm, kicker_nm, punter_nm, posteam):
+def calc_st(d, play_type, kr_nm, pr_nm, kicker_nm, punter_nm, posteam, defteam):
     credits = {}
 
-    def _add(plays, name_col, team_col):
+    def _add(plays, name_col, team_col, multiplier=1.0):
         if not name_col or plays.empty:
             return
         sub = plays[plays[name_col].notna()].copy()
         if sub.empty:
             return
         sub["_key"] = make_key(sub[name_col], sub[team_col] if team_col else pd.Series("?", index=sub.index))
-        totals = sub.groupby("_key")["epa"].sum()
+        totals = sub.groupby("_key")["epa"].sum() * multiplier
         for k, v in totals.items():
             credits[k] = credits.get(k, 0.0) + v
 
     if play_type:
         base = d[d["epa"].notna()]
-        _add(base[base[play_type] == "kickoff_return"],  kr_nm,     posteam)
-        _add(base[base[play_type] == "punt_return"],     pr_nm,     posteam)
-        _add(base[base[play_type] == "field_goal"],      kicker_nm, posteam)
-        _add(base[base[play_type] == "extra_point"],     kicker_nm, posteam)
-        _add(base[base[play_type] == "punt"],            punter_nm, posteam)
+        # Los retornos no son play_type propio en nflverse: van dentro de
+        # "kickoff" (posteam = equipo que recibe) y "punt" (posteam = equipo
+        # que patea → el retornador es del defteam y su EPA bueno es negativo).
+        _add(base[base[play_type] == "kickoff"],     kr_nm,     posteam)
+        _add(base[base[play_type] == "punt"],        pr_nm,     defteam, multiplier=-1.0)
+        _add(base[base[play_type] == "field_goal"],  kicker_nm, posteam)
+        _add(base[base[play_type] == "extra_point"], kicker_nm, posteam)
+        _add(base[base[play_type] == "punt"],        punter_nm, posteam)
 
     return credits
 
@@ -414,7 +417,7 @@ def main():
         df, int_nm, sack_nm, tfl1_nm, tfl2_nm, ff1_nm, ff2_nm, pd1_nm, pd2_nm, defteam, rookie_ids,
         int_id=int_id_nm, sack_id=sack_id_nm, tfl1_id=tfl1_id_nm, tfl2_id=tfl2_id_nm,
         ff1_id=ff1_id_nm, ff2_id=ff2_id_nm, pd1_id=pd1_id_nm, pd2_id=pd2_id_nm)
-    st_credit = calc_st(df, play_type, kr_nm, pr_nm, kicker_nm, punter_nm, posteam)
+    st_credit = calc_st(df, play_type, kr_nm, pr_nm, kicker_nm, punter_nm, posteam, defteam)
 
     def top1(dct):
         if not dct:

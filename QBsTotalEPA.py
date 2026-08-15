@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli
 
 # === Config ===
-SEASON           = None  # None = auto-detectar última temporada
+SEASON           = season_cli()  # None = auto-detectar última temporada
 MIN_WEEK         = 1
 MAX_WEEK         = 18
 MIN_QB_PLAYS_RZ  = 50   # mínimo jugadas en red zone
@@ -22,7 +22,6 @@ BG           = "#0f1115"
 FG           = "#EDEDED"
 GRID         = "#2a2f3a"
 DPI          = 170
-HARD_PENALTY = {"NYJ": 4.5}
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 def to_num(df, cols):
@@ -40,7 +39,9 @@ def pick_col(df, *candidates):
 def short_name(name: str) -> str:
     if not isinstance(name, str) or not name.strip():
         return ""
-    parts = name.replace("-", " ").split()
+    sufijos = {"jr", "jr.", "sr", "sr.", "ii", "iii", "iv", "v"}
+    parts = [p for p in name.replace("-", " ").split()
+             if p.lower() not in sufijos] or name.split()
     if len(parts) == 1:
         return parts[0][:14]
     return (parts[0][:1] + ". " + parts[-1])[:16]
@@ -51,16 +52,32 @@ def load_logo(team, base_zoom=0.030):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
+
+def separar_etiquetas(xs, lys, x_tol, y_tol):
+    """Separa verticalmente etiquetas que caerian casi encima (los puntos
+    no se mueven; solo el texto baja). lys = y iniciales de las etiquetas."""
+    idx = sorted(range(len(xs)), key=lambda i: -lys[i])
+    out = list(lys)
+    for pos, i in enumerate(idx):
+        for j in idx[:pos]:
+            if abs(xs[i] - xs[j]) < x_tol and abs(out[i] - out[j]) < y_tol:
+                out[i] = min(out[i], out[j] - y_tol)
+    return out
 
 # ── PLOT ──────────────────────────────────────────────────────────────────────
 def plot_qb_scatter(qbs_df, team_map, title, xlabel, ylabel, outfile):
@@ -81,9 +98,11 @@ def plot_qb_scatter(qbs_df, team_map, title, xlabel, ylabel, outfile):
     ax.set_xlim(x_vals.min() - x_pad, x_vals.max() + x_pad)
     ax.set_ylim(y_vals.min() - y_pad, y_vals.max() + y_pad)
 
-    # Líneas de referencia
-    ax.axhline(0, color=GRID, linewidth=1.0, linestyle="--", alpha=0.7, zorder=1)
-    ax.axvline(0, color=GRID, linewidth=1.0, linestyle="--", alpha=0.7, zorder=1)
+    # Líneas de referencia en la media de la muestra (como ranking_wrs/rbs/tes)
+    avg_rz = qbs_df["rz_epa"].mean()
+    avg_d3 = qbs_df["d3_epa"].mean()
+    ax.axhline(avg_d3, color=GRID, linewidth=1.0, linestyle="--", alpha=0.7, zorder=1)
+    ax.axvline(avg_rz, color=GRID, linewidth=1.0, linestyle="--", alpha=0.7, zorder=1)
     ax.grid(True, linestyle="--", alpha=0.12, color=GRID, zorder=0)
     for sp in ["top", "right"]:
         ax.spines[sp].set_visible(False)
@@ -103,14 +122,30 @@ def plot_qb_scatter(qbs_df, team_map, title, xlabel, ylabel, outfile):
     y_range      = y_hi - y_lo
     label_offset = y_range * 0.038
 
+    # Etiquetas sin solaparse entre QBs cercanos
+    lys = separar_etiquetas(
+        qbs_df["rz_epa"].tolist(),
+        [v - label_offset for v in qbs_df["d3_epa"]],
+        (x_hi - x_lo) * 0.055, y_range * 0.034)
+
+    # Tamaño del logo por volumen de jugadas (como ranking_wrs/rbs/tes)
+    ZOOM_MIN, ZOOM_MAX = 0.030, 0.055
+    n_min = qbs_df["total_n"].min() if "total_n" in qbs_df.columns else 0
+    n_max = qbs_df["total_n"].max() if "total_n" in qbs_df.columns else 1
+
     # Logos + nombres
-    for qb_key, row in qbs_df.iterrows():
+    for (qb_key, row), ly in zip(qbs_df.iterrows(), lys):
         x    = row["rz_epa"]
         y    = row["d3_epa"]
         name = row["label"]
         team = team_map.get(qb_key, "")
 
-        logo = load_logo(team, base_zoom=0.030)
+        if "total_n" in qbs_df.columns and n_max > n_min:
+            t = (row["total_n"] - n_min) / (n_max - n_min)
+            zoom = ZOOM_MIN + t * (ZOOM_MAX - ZOOM_MIN)
+        else:
+            zoom = 0.042
+        logo = load_logo(team, base_zoom=zoom)
         if logo:
             ab = AnnotationBbox(logo, (x, y),
                                 frameon=False, zorder=3,
@@ -119,7 +154,7 @@ def plot_qb_scatter(qbs_df, team_map, title, xlabel, ylabel, outfile):
         else:
             ax.scatter(x, y, s=90, color="#888888", zorder=3, alpha=0.8)
 
-        ax.text(x, y - label_offset, name,
+        ax.text(x, ly, name,
                 ha="center", va="top",
                 fontsize=7.5, color=FG, alpha=0.88, zorder=4)
 
@@ -130,10 +165,12 @@ def plot_qb_scatter(qbs_df, team_map, title, xlabel, ylabel, outfile):
 
     week_range = f"S{MIN_WEEK}-S{MAX_WEEK}" if MAX_WEEK < 18 else "Temporada completa"
     fig.text(0.5, 0.01,
-             f"Fuente: nflverse-data  ·  mín. {MIN_QB_PLAYS_RZ} jugadas en RZ y {MIN_QB_PLAYS_3RD} en 3er down  ·  {week_range}",
+             f"Fuente: nflverse-data  ·  mín. {MIN_QB_PLAYS_RZ} jugadas en RZ y {MIN_QB_PLAYS_3RD} en 3er down  ·  "
+             f"Líneas = media de la muestra  ·  Tamaño del logo = nº de jugadas  ·  {week_range}",
              ha="center", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-    ax.text(0.99, 0.02, "@CuartayDato", fontsize=9, color="#888888",
-            ha="right", va="bottom", transform=ax.transAxes, alpha=0.85, fontstyle="italic")
+    # Marca de agua fuera del área de datos (no pisa la etiqueta del cuadrante)
+    fig.text(0.99, 0.01, "@CuartayDato", fontsize=9, color="#888888",
+             ha="right", va="bottom", alpha=0.85, fontstyle="italic")
 
     plt.tight_layout(rect=[0, 0.03, 1, 1])
     plt.savefig(outfile, dpi=DPI, bbox_inches="tight", facecolor=BG)
@@ -145,7 +182,7 @@ def plot_qb_scatter(qbs_df, team_map, title, xlabel, ylabel, outfile):
 def main():
     global SEASON, OUT
     df, SEASON = cargar_pbp(SEASON)
-    OUT = f"scatter_QB_totalEPA_RZ_vs_3rd_{SEASON}.png"
+    OUT = salida(f"scatter_QB_totalEPA_RZ_vs_3rd_{SEASON}.png", SEASON)
     print(f"PBP {SEASON} semanas {MIN_WEEK}-{MAX_WEEK}: {len(df):,} jugadas REG")
     to_num(df, ["epa", "down", "yardline_100", "week"])
 
@@ -191,7 +228,8 @@ def main():
 
     rz  = qb_plays[qb_plays["is_rz"]].groupby("qb_key").agg(rz_epa=("epa","mean"), rz_plays=("epa","size"))
     d3  = qb_plays[qb_plays["is_3rd"]].groupby("qb_key").agg(d3_epa=("epa","mean"), d3_plays=("epa","size"))
-    qbs = rz.join(d3, how="inner")
+    vol = qb_plays.groupby("qb_key").size().rename("total_n")
+    qbs = rz.join(d3, how="inner").join(vol, how="left")
     qbs = qbs[(qbs["rz_plays"] >= MIN_QB_PLAYS_RZ) & (qbs["d3_plays"] >= MIN_QB_PLAYS_3RD)].copy()
 
     name_map = (qb_plays.dropna(subset=["qb_key","qb_name"])

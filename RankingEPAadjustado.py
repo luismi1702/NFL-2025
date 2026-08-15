@@ -5,12 +5,12 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.colors import LinearSegmentedColormap
 
 # === Config ===
-SEASON    = None  # None = auto-detectar última temporada
+SEASON    = season_cli()  # None = auto-detectar última temporada
 MIN_WEEK  = 1     # semana inicial del rango analizado
 MAX_WEEK  = 18    # semana final   (18 = temporada completa; ajustar mid-season)
 MIN_PLAYS = 100   # mínimo de jugadas para incluir un equipo en el ranking
@@ -46,18 +46,20 @@ def add_logos_to_positions(ax, teams, y_positions,
             continue
         try:
             img = plt.imread(path)
+            # Recorta margenes transparentes: algunos archivos traen mucho aire
+            # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+            if img.ndim == 3 and img.shape[2] == 4:
+                ys, xs = np.where(img[:, :, 3] > 0.02)
+                if len(ys):
+                    img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
             h, w = img.shape[:2]
             aspect = (w / float(h)) if h else 1.0
 
-            if team in hard_penalty:
-                zoom = base_zoom / hard_penalty[team]
-            else:
-                if aspect <= 1.3:
-                    divisor = 1.0
-                else:
-                    divisor = 1.0 + 0.6 * (aspect - 1.3)
-                divisor = np.clip(divisor, 1.0, 2.2)
-                zoom = base_zoom / divisor
+            # Normaliza por el area de tinta real; los wordmarks apaisados
+            # pueden ensancharse hasta 1.8x para compensar su poca altura
+            zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+            if w * zoom > 900.0 * (base_zoom):
+                zoom = 900.0 * (base_zoom) / w
 
             ab = AnnotationBbox(
                 OffsetImage(img, zoom=zoom, resample=True),
@@ -114,12 +116,15 @@ def plot_ranking(data_df, title, subtitle, outfile, higher_is_better=True):
     ax.grid(axis="x", linestyle="--", alpha=0.25, color=GRID)
     ax.axvline(0, color=GRID, linewidth=1)
 
-    # Valores al lado de cada barra
+    # Valores al lado de cada barra (negativos a la izquierda, fuera de la barra)
     x_right = ax.get_xlim()[1]
     for y, v in zip(y_pos, dfp["EPA_ajustado"]):
-        ax.text(min(v + 0.004 * rng, x_right - 0.01 * rng),
-                y, f"{v:+.3f}",
-                va="center", ha="left", fontsize=10, color=FG)
+        if v >= 0:
+            ax.text(min(v + 0.004 * rng, x_right - 0.01 * rng), y, f"{v:+.3f}",
+                    va="center", ha="left", fontsize=10, color=FG)
+        else:
+            ax.text(v - 0.004 * rng, y, f"{v:+.3f}",
+                    va="center", ha="right", fontsize=10, color=FG)
 
     # Logos
     add_logos_to_positions(ax, dfp["Equipo"], y_pos,
@@ -152,8 +157,8 @@ def plot_ranking(data_df, title, subtitle, outfile, higher_is_better=True):
 def main():
     global SEASON, OUT_OFF, OUT_DEF
     df, SEASON = cargar_pbp(SEASON)
-    OUT_OFF = f"ranking_ofensivo_ajustado_{SEASON}.png"
-    OUT_DEF = f"ranking_defensivo_ajustado_{SEASON}.png"
+    OUT_OFF = salida(f"ranking_ofensivo_ajustado_{SEASON}.png", SEASON)
+    OUT_DEF = salida(f"ranking_defensivo_ajustado_{SEASON}.png", SEASON)
     print(f"PBP {SEASON} semanas {MIN_WEEK}-{MAX_WEEK}: {len(df):,} jugadas REG")
     to_num(df, ["epa", "week"])
 

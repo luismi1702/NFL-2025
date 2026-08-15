@@ -9,12 +9,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli
 from matplotlib.ticker import FuncFormatter
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON    = None   # None = auto-detectar última temporada
+SEASON    = season_cli()   # None = auto-detectar última temporada
 ROLL      = 3
 MIN_PLAYS = 15
 DPI       = 170
@@ -23,7 +23,6 @@ FG        = "#EDEDED"
 GRID      = "#2a2f3a"
 
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 
 HIGHLIGHT_COLORS = [
     "#06d6a0", "#ffd166", "#ef476f",
@@ -37,13 +36,18 @@ def load_logo(team, base_zoom=0.028):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -123,13 +127,13 @@ print(f"Destacados: {highlight}")
 fig, ax = plt.subplots(figsize=(15, 8), facecolor=BG)
 ax.set_facecolor(BG)
 
-# Líneas de fondo (todos los equipos)
+# Líneas de fondo (todos los equipos) — muy tenues para no competir
 for team in teams:
     series = rolled[team].dropna()
     if series.empty:
         continue
     ax.plot(series.index, series.values,
-            color="#2e3340", linewidth=0.9, alpha=0.7, zorder=1)
+            color="#262b36", linewidth=0.8, alpha=0.45, zorder=1)
 
 # Ampliar X para dejar espacio a logos
 xmin, xmax = rolled.index.min(), rolled.index.max()
@@ -173,10 +177,9 @@ for i in range(1, len(adj_y)):
 for (orig_y, lw, team, color), new_y in zip(endpoints, adj_y):
     x_label = xmax + 0.5
 
-    # Línea conectora si el label se desplazó
-    if abs(new_y - orig_y) > y_range * 0.01:
-        ax.plot([lw, x_label - 0.1], [orig_y, new_y],
-                color=color, linewidth=0.6, alpha=0.4, zorder=3)
+    # Línea conectora siempre (une el final de la serie con su logo)
+    ax.plot([lw, x_label + 0.45], [orig_y, new_y],
+            color=color, linewidth=0.9, alpha=0.6, zorder=3, linestyle=":")
 
     # Logo
     logo = load_logo(team, base_zoom=0.028)
@@ -220,7 +223,7 @@ fig.text(0.99, 0.01, "@CuartayDato",
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.90])
 
-out = f"season_arc_{mode_label.lower()}_{SEASON}.png"
+out = salida(f"season_arc_{mode_label.lower()}_{SEASON}.png", SEASON)
 fig.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {out}")

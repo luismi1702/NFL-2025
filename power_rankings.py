@@ -7,19 +7,18 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli, week_cli, sello
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON = None   # None = auto-detectar última temporada
+SEASON = season_cli()   # None = auto-detectar última temporada
 BG     = "#0f1115"
 FG     = "#EDEDED"
 GRID   = "#2a2f3a"
 DPI    = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 RYG = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
 # ── HELPERS ────────────────────────────────────────────────────────────────────
@@ -43,13 +42,18 @@ def load_logo(team, base_zoom=0.055):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -65,7 +69,7 @@ def safe_norm(series):
     return (series - mn) / rng
 
 # ── INPUT ──────────────────────────────────────────────────────────────────────
-week = int(input("Semana (numero): ").strip())
+week = week_cli() or int(input("Semana (numero): ").strip())
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
 # solo_reg=False: el filtro "hasta semana N" es del usuario
@@ -159,6 +163,29 @@ if team_col_candidates:
 stats = stats.reset_index(drop=True)
 print(f"Equipos en rankings: {len(stats)}")
 
+# ── RECORD W-L (desde el cache de schedules; opcional) ────────────────────────
+def records_hasta_semana(season, max_week):
+    try:
+        sch = pd.read_parquet("pbp_cache/schedules.parquet")
+    except Exception:
+        return {}
+    for c in ("result", "week", "season"):
+        sch[c] = pd.to_numeric(sch[c], errors="coerce")
+    reg = sch[(sch["season"] == season) & (sch["game_type"] == "REG") &
+              (sch["week"] <= max_week) & sch["result"].notna()]
+    recs = {}
+    for t in set(reg["home_team"]) | set(reg["away_team"]):
+        h = reg[reg["home_team"] == t]
+        a = reg[reg["away_team"] == t]
+        w = int((h["result"] > 0).sum() + (a["result"] < 0).sum())
+        l = int((h["result"] < 0).sum() + (a["result"] > 0).sum())
+        e = int((h["result"] == 0).sum() + (a["result"] == 0).sum())
+        recs[t] = f"{w}-{l}" + (f"-{e}" if e else "")
+    return recs
+
+
+records = records_hasta_semana(SEASON, week)
+
 # ── PLOT ───────────────────────────────────────────────────────────────────────
 n_teams = len(stats)
 fig, ax = plt.subplots(figsize=(12, 11), facecolor=BG)
@@ -205,19 +232,22 @@ for idx in range(len(stats)):
     else:
         ax.text(x_logo, y, team, ha="center", va="center", fontsize=7, color=FG)
 
-    # Composite value
-    ax.text(comp + 0.012, y, f"{comp:.3f}", ha="left", va="center",
-            fontsize=8, color=FG, zorder=5)
+    # Composite value + récord W-L
+    rec = records.get(team, "")
+    ax.text(comp + 0.012, y, f"{comp:.3f}" + (f"   {rec}" if rec else ""),
+            ha="left", va="center", fontsize=8, color=FG, zorder=5)
 
-    # Off/Def EPA inside or near bar
+    # Off/Def EPA inside or near bar — texto oscuro sobre barras claras
     bar_label = f"OF:{off:+.3f} DF:{deff:+.3f}"
     text_x = max(comp * 0.5, 0.05)
+    r, g, b, _ = RYG(norm_color(comp))
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
     ax.text(text_x, y, bar_label, ha="center", va="center",
-            fontsize=6.5, color="#cccccc", alpha=0.85, zorder=5)
+            fontsize=6.5, color="#0a0e13" if lum > 0.45 else "#EDEDED",
+            fontweight="bold", zorder=5)
 
 # ── AXES STYLING ───────────────────────────────────────────────────────────────
-ax.set_yticks(y_pos)
-ax.set_yticklabels([""] * n_teams)
+ax.set_yticks([])   # sin ticks: los logos hacen de etiqueta
 ax.invert_yaxis()
 ax.set_xlim(-0.14, 1.10)
 ax.set_xlabel("Score compuesto (0-1)", color=FG, fontsize=11)
@@ -228,29 +258,22 @@ ax.grid(axis="x", color=GRID, linewidth=0.5, alpha=0.4)
 ax.set_axisbelow(True)
 ax.xaxis.label.set_color(FG)
 
-# Colorbar
-sm = ScalarMappable(cmap=RYG, norm=norm_color)
-sm.set_array([])
-cb = fig.colorbar(sm, ax=ax, pad=0.01, shrink=0.5)
-cb.set_label("Score compuesto", color=FG, fontsize=8)
-cb.ax.yaxis.set_tick_params(color=FG)
-plt.setp(cb.ax.yaxis.get_ticklabels(), color=FG, fontsize=7)
-cb.outline.set_edgecolor(GRID)
+# (colorbar eliminado: el color es el propio score, ya visible en la barra)
 
 # ── TITLES ─────────────────────────────────────────────────────────────────────
 fig.text(0.5, 0.97, f"Power Rankings NFL {SEASON} \u2014 Semana {week}",
          ha="center", va="top", fontsize=16, fontweight="bold", color=FG)
 fig.text(0.5, 0.92,
-         "40% EPA ofensivo + 40% EPA defensivo + 20% tendencia \u00faltimas 3 semanas",
+         "40% EPA ofensivo + 40% EPA defensivo + 20% tendencia ofensiva \u00faltimas 3 semanas",
          ha="center", va="top", fontsize=10, color="#888888", fontstyle="italic")
-fig.text(0.01, 0.01, f"Fuente: nflverse-data  \u00b7  NFL {SEASON}",
+fig.text(0.01, 0.01, f"Fuente: nflverse-data  \u00b7  {sello(SEASON)}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig.text(0.99, 0.01, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
 
-plt.tight_layout(rect=[0, 0.03, 0.96, 0.91])
+plt.tight_layout(rect=[0, 0.03, 1, 0.91])
 
-outfile = f"power_rankings_week{week}_{SEASON}.png"
+outfile = salida(f"power_rankings_{SEASON}.png", SEASON, week)
 fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {outfile}")

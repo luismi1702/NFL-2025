@@ -9,12 +9,12 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli, sello
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import Normalize
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-SEASON  = None   # None = auto-detectar última temporada
+SEASON  = season_cli()   # None = auto-detectar última temporada
 
 BG     = "#0f1115"
 CARD   = "#151924"
@@ -23,7 +23,6 @@ GRID   = "#2a2f3a"
 ACCENT = "#2d6cdf"
 DPI    = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 
 MIN_PLAYS      = 20
 MIN_PLAYS_TM   = 10
@@ -38,10 +37,18 @@ def load_logo(team, base_zoom=0.07, fade=1.0):
         img = plt.imread(path).astype(float)
         if img.max() > 1.0:
             img = img / 255.0
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        zoom = base_zoom / HARD_PENALTY[team] if team in HARD_PENALTY else \
-               base_zoom / np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         if fade < 1.0:
             if img.shape[2] == 4:
                 img = img.copy(); img[..., 3] *= fade
@@ -233,12 +240,12 @@ if modo == "equipo":
              f"Clutch = 4Q + prórroga con diferencia ≤ {SCORE_DIFF_MAX} pts  ·  Δ = diferencia clutch vs temporada  ·  --- = media liga clutch",
              ha="center", va="top", fontsize=8, color="#888", fontstyle="italic")
     fig.text(0.01, 0.008,
-             f"Fuente: nflverse PBP  |  NFL {SEASON}  |  Mín {MIN_PLAYS_TM} jugadas",
+             f"Fuente: nflverse PBP  |  {sello(SEASON)}  |  Mín {MIN_PLAYS_TM} jugadas",
              ha="left", va="bottom", fontsize=7, color="#555", fontstyle="italic")
     fig.text(0.99, 0.008, "@CuartayDato",
              ha="right", va="bottom", fontsize=9, color="#888", alpha=0.8, fontstyle="italic")
 
-    outfile = f"clutch_performance_{team}_{SEASON}.png"
+    outfile = salida(f"clutch_performance_{team}_{SEASON}.png", SEASON)
     plt.savefig(outfile, dpi=DPI, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
     print(f"Guardado: {outfile}")
@@ -289,13 +296,18 @@ else:
     ax.axvline(x_center, color=GRID, linewidth=0.8, alpha=0.5, zorder=1)
     ax.axhline(y_center, color=GRID, linewidth=0.8, alpha=0.5, zorder=1)
 
-    quad_kw = dict(fontsize=8, ha="center", va="center", fontstyle="italic", zorder=1)
-    x_pad = (x_max - x_min) * 0.22
-    y_pad = (y_max - y_min) * 0.22
-    ax.text(x_center + x_pad, y_center - y_pad, "COMPLETOS\n(ataque + def. clutch)", color="#1a6b3a", **quad_kw)
-    ax.text(x_center - x_pad, y_center - y_pad, "BUENOS DEF.\nmal ataque clutch",    color="#555",    **quad_kw)
-    ax.text(x_center + x_pad, y_center + y_pad, "BUENOS ATQ.\nmala def. clutch",     color="#555",    **quad_kw)
-    ax.text(x_center - x_pad, y_center + y_pad, "VULNERABLES\n(ambos lados)",        color="#7a2020", **quad_kw)
+    # Etiquetas de cuadrante en las esquinas (en el centro pisaban los logos)
+    xm = (x_max - x_min) * 0.02
+    ym = (y_max - y_min) * 0.02
+    quad_kw = dict(fontsize=8, fontstyle="italic", zorder=1)
+    ax.text(x_max - xm, y_min + ym, "COMPLETOS\n(ataque + def. clutch)",
+            ha="right", va="bottom", color="#1a6b3a", **quad_kw)
+    ax.text(x_min + xm, y_min + ym, "BUENOS DEF.\nmal ataque clutch",
+            ha="left", va="bottom", color="#555", **quad_kw)
+    ax.text(x_max - xm, y_max - ym, "BUENOS ATQ.\nmala def. clutch",
+            ha="right", va="top", color="#555", **quad_kw)
+    ax.text(x_min + xm, y_max - ym, "VULNERABLES\n(ambos lados)",
+            ha="left", va="top", color="#7a2020", **quad_kw)
 
     for _, row in df.iterrows():
         tm   = row["team"]
@@ -333,12 +345,12 @@ else:
     fig.text(0.5, 0.952,
              "Cuadrante inferior-derecho = equipos completos en situaciones críticas",
              ha="center", va="top", fontsize=8, color="#888", fontstyle="italic")
-    fig.text(0.01, 0.008, f"Fuente: nflverse PBP  |  NFL {SEASON}  |  Mín {MIN_PLAYS} jugadas clutch",
+    fig.text(0.01, 0.008, f"Fuente: nflverse PBP  |  {sello(SEASON)}  |  Mín {MIN_PLAYS} jugadas clutch",
              ha="left", va="bottom", fontsize=7, color="#555", fontstyle="italic")
     fig.text(0.99, 0.008, "@CuartayDato",
              ha="right", va="bottom", fontsize=9, color="#888", alpha=0.8, fontstyle="italic")
 
-    outfile = f"clutch_performance_{SEASON}.png"
+    outfile = salida(f"clutch_performance_{SEASON}.png", SEASON)
     plt.savefig(outfile, dpi=DPI, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
     print(f"Guardado: {outfile}")

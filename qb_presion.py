@@ -9,12 +9,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, cargar_participation, salida, season_cli
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON            = None   # None = auto-detectar última temporada
+SEASON            = season_cli()   # None = auto-detectar última temporada
 MIN_WEEK          = 1
 MAX_WEEK          = 18
 MIN_SNAPS_CLEAN   = 50
@@ -26,7 +26,6 @@ GRID              = "#2a2f3a"
 RYG               = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 
 # ── HELPERS ────────────────────────────────────────────────────────────────────
 def pick_col(df, *candidates):
@@ -45,19 +44,36 @@ def short_name(name: str) -> str:
     return f"{parts[0][0]}. {' '.join(parts[1:])}"
 
 
+def separar_etiquetas(xs, lys, x_tol, y_tol):
+    """Separa verticalmente etiquetas que caerian casi encima (los puntos
+    no se mueven; solo el texto baja). lys = y iniciales de las etiquetas."""
+    idx = sorted(range(len(xs)), key=lambda i: -lys[i])
+    out = list(lys)
+    for pos, i in enumerate(idx):
+        for j in idx[:pos]:
+            if abs(xs[i] - xs[j]) < x_tol and abs(out[i] - out[j]) < y_tol:
+                out[i] = min(out[i], out[j] - y_tol)
+    return out
+
+
 def load_logo(team, base_zoom=0.055):
     path = os.path.join(LOGOS_DIR, f"{team}.png")
     if not os.path.exists(path):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -84,12 +100,26 @@ if id_col is None:
 
 df = df[df[id_col].notna()].copy()
 
+# Presion real FTN (was_pressure) via participation — incluye hurries,
+# no solo qb_hit/sack. Si no esta disponible, cae al proxy de siempre.
+try:
+    part, _ = cargar_participation(SEASON)
+    part = part[["nflverse_game_id", "play_id", "was_pressure"]].rename(
+        columns={"nflverse_game_id": "game_id"})
+    part["play_id"] = pd.to_numeric(part["play_id"], errors="coerce")
+    df["play_id"]   = pd.to_numeric(df["play_id"],   errors="coerce")
+    df = df.merge(part, on=["game_id", "play_id"], how="left")
+except Exception as e:
+    print(f"  Aviso: participacion FTN no disponible ({e})")
+
 # Pressure detection
 pressure_source = "unknown"
 press_col = pick_col(df, "was_pressure")
 if press_col is not None:
     df["pressured"] = pd.to_numeric(df[press_col], errors="coerce").fillna(0).astype(bool)
-    pressure_source = "was_pressure"
+    if "sack" in df.columns:   # un sack siempre es presion (por si FTN no lo marca)
+        df["pressured"] |= pd.to_numeric(df["sack"], errors="coerce").fillna(0).eq(1)
+    pressure_source = "was_pressure (FTN)"
 else:
     hit_col  = pick_col(df, "qb_hit")
     sack_col = pick_col(df, "sack")
@@ -145,9 +175,11 @@ print(f"QBs incluidos: {len(merged)}")
 fig, ax = plt.subplots(figsize=(10, 7), facecolor=BG)
 ax.set_facecolor(BG)
 
-# Normalize epa_press for color
-norm  = Normalize(vmin=merged["epa_press"].min(), vmax=merged["epa_press"].max())
-cmap  = RYG
+# Color = % de dropbacks bajo presion (info nueva; antes duplicaba el eje Y)
+merged["press_pct"] = (merged["snaps_press"] /
+                       (merged["snaps_press"] + merged["snaps_clean"]) * 100)
+norm  = Normalize(vmin=merged["press_pct"].min(), vmax=merged["press_pct"].max())
+cmap  = LinearSegmentedColormap.from_list("ryg_inv", ["#06d6a0", "#ffd166", "#d84a4a"])
 
 # Size proportional to snaps_press
 size_raw = merged["snaps_press"].values.astype(float)
@@ -158,17 +190,24 @@ sizes = size_min + size_norm * (size_max - size_min)
 sc = ax.scatter(
     merged["epa_clean"], merged["epa_press"],
     s=sizes,
-    c=merged["epa_press"],
+    c=merged["press_pct"],
     cmap=cmap, norm=norm,
     edgecolors="#ffffff", linewidths=0.4,
     alpha=0.85, zorder=3,
 )
 
-# QB labels
-for _, row in merged.iterrows():
+# QB labels — debajo del punto y sin solaparse entre QBs cercanos
+xr_rng = merged["epa_clean"].max() - merged["epa_clean"].min()
+yr_rng = merged["epa_press"].max() - merged["epa_press"].min()
+label_off = yr_rng * 0.05
+lys = separar_etiquetas(
+    merged["epa_clean"].tolist(),
+    [v - label_off for v in merged["epa_press"]],
+    xr_rng * 0.10, yr_rng * 0.045)
+for (_, row), ly in zip(merged.iterrows(), lys):
     ax.text(
-        row["epa_clean"], row["epa_press"], row["qb_label"],
-        ha="center", va="center", fontsize=8.5, color=FG, fontweight="bold",
+        row["epa_clean"], ly, row["qb_label"],
+        ha="center", va="top", fontsize=8.5, color=FG, fontweight="bold",
         path_effects=[pe.Stroke(linewidth=2, foreground=BG), pe.Normal()],
         zorder=4,
     )
@@ -179,10 +218,6 @@ ax.axvline(0, color=FG, linewidth=0.7, linestyle="--", alpha=0.35, zorder=2)
 
 xmin, xmax = ax.get_xlim()
 ymin, ymax = ax.get_ylim()
-diag_min = max(xmin, ymin)
-diag_max = min(xmax, ymax)
-ax.plot([diag_min, diag_max], [diag_min, diag_max],
-        color="#888888", linewidth=1.0, linestyle=":", alpha=0.5, zorder=2)
 
 # Quadrant labels
 pad = 0.03
@@ -197,7 +232,7 @@ ax.text(xmin + pad, ymin + pad, "Problemas en\ntodo",
 
 # Colorbar
 cb = fig.colorbar(sc, ax=ax, pad=0.01)
-cb.set_label("EPA/jugada bajo presion", color=FG, fontsize=8)
+cb.set_label("% de dropbacks bajo presion (rojo = sufre mas presion)", color=FG, fontsize=8)
 cb.ax.yaxis.set_tick_params(color=FG)
 plt.setp(cb.ax.yaxis.get_ticklabels(), color=FG, fontsize=7)
 cb.outline.set_edgecolor(GRID)
@@ -220,7 +255,8 @@ subtitle_press = pressure_source
 fig.text(0.5, 0.97, f"QB performance: Pocket limpio vs Bajo presion — NFL {SEASON}",
          ha="center", va="top", color=FG, fontsize=13, fontweight="bold")
 fig.text(0.5, 0.92,
-         f"Presion: {subtitle_press} | Min {MIN_SNAPS_CLEAN} snaps limpios, {MIN_SNAPS_PRESSURE} bajo presion | Color = EPA bajo presion",
+         f"Presion: {subtitle_press} | Min {MIN_SNAPS_CLEAN} snaps limpios, {MIN_SNAPS_PRESSURE} bajo presion | "
+         f"Color = % de presion sufrida | Tamaño = snaps bajo presion",
          ha="center", va="top", color="#aaaaaa", fontsize=8.5)
 fig.text(0.01, 0.01, "Fuente: nflverse PBP",
          ha="left", va="bottom", color="#666666", fontsize=7)
@@ -229,7 +265,7 @@ fig.text(0.99, 0.01, "@CuartayDato",
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.91])
 
-out = f"qb_presion_{SEASON}.png"
+out = salida(f"qb_presion_{SEASON}.png", SEASON)
 fig.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {out}")

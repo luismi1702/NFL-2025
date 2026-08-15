@@ -10,12 +10,12 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp, cargar_participation
+from pbp_loader import cargar_pbp, cargar_participation, DatosNoDisponibles, salida, season_cli, sello
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-SEASON  = None   # None = auto-detectar última temporada
+SEASON  = season_cli()   # None = auto-detectar última temporada
 
 BG    = "#0f1115"
 CARD  = "#151924"
@@ -24,7 +24,6 @@ FG    = "#EDEDED"
 GRID  = "#2a2f3a"
 DPI   = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 
 MIN_SNAPS    = 10
 MIN_SNAPS_TM = 8    # mínimo para modo equipo (menos jugadas en RZ)
@@ -47,10 +46,18 @@ def load_logo(team, zoom=0.035):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        z = zoom / HARD_PENALTY[team] if team in HARD_PENALTY else \
-            zoom / np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        z = zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * z > 900.0 * (zoom):
+            z = 900.0 * (zoom) / w
         return OffsetImage(img, zoom=z, resample=True)
     except Exception:
         return None
@@ -94,7 +101,14 @@ pbp["epa"]     = pd.to_numeric(pbp["epa"],     errors="coerce")
 pbp["play_id"] = pd.to_numeric(pbp["play_id"], errors="coerce")
 print(f"PBP {SEASON}: {len(pbp):,} jugadas REG")
 
-part, _ = cargar_participation(SEASON)
+try:
+    part, _ = cargar_participation(SEASON)
+except DatosNoDisponibles as e:
+    raise SystemExit(
+        "\n  No se puede generar este grafico todavia.\n"
+        f"  {e}\n"
+        "  Este visual necesita datos de participacion (el personal en campo en zona roja),\n"
+        "  que nflverse publica mas tarde que el play-by-play.\n")
 part = part[["nflverse_game_id", "play_id", "offense_personnel"]]
 part = part.rename(columns={"nflverse_game_id": "game_id"})
 part["play_id"] = pd.to_numeric(part["play_id"], errors="coerce")
@@ -243,12 +257,12 @@ if modo == "equipo":
              "| = media de liga en RZ  ·  ◆ = EPA del mismo equipo en campo abierto  ·  #N = ranking liga",
              ha="center", va="top", fontsize=8, color="#888", fontstyle="italic")
     fig.text(0.01, 0.008,
-             f"Fuente: nflverse PBP + NGS participation  |  NFL {SEASON}  |  Mín {MIN_SNAPS_TM} snaps en RZ",
+             f"Fuente: nflverse PBP + NGS participation  |  {sello(SEASON)}  |  Mín {MIN_SNAPS_TM} snaps en RZ",
              ha="left", va="bottom", fontsize=7, color="#555", fontstyle="italic")
     fig.text(0.99, 0.008, "@CuartayDato",
              ha="right", va="bottom", fontsize=9, color="#888", alpha=0.8, fontstyle="italic")
 
-    outfile = f"red_zone_personal_{team}_{SEASON}.png"
+    outfile = salida(f"red_zone_personal_{team}_{SEASON}.png", SEASON)
     plt.savefig(outfile, dpi=DPI, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
     print(f"Guardado: {outfile}")
@@ -265,7 +279,9 @@ else:
                .agg(epa="mean", n="count").reset_index())
         grp = grp[grp["n"] >= MIN_SNAPS]
         pivot = grp.pivot(index=team_col, columns="off_pkg", values="epa")
-        return pivot.reindex(columns=OFF_PKG_ORDER)
+        # Solo paquetes con algun dato (elimina columnas 100% vacias como "10")
+        cols = [c for c in OFF_PKG_ORDER if c in pivot.columns and pivot[c].notna().any()]
+        return pivot.reindex(columns=cols)
 
     def build_pivot_n(df, team_col):
         grp = (df[df["off_pkg"].notna()]
@@ -274,7 +290,8 @@ else:
         grp.columns = [team_col, "off_pkg", "n"]
         grp = grp[grp["n"] >= MIN_SNAPS]
         pivot = grp.pivot(index=team_col, columns="off_pkg", values="n")
-        return pivot.reindex(columns=OFF_PKG_ORDER)
+        cols = [c for c in OFF_PKG_ORDER if c in pivot.columns and pivot[c].notna().any()]
+        return pivot.reindex(columns=cols)
 
     off_rz = build_pivot(rz_plays, "posteam")
     def_rz = build_pivot(rz_plays, "defteam")
@@ -296,8 +313,11 @@ else:
         if len(valid) == 0:
             ax.axis("off")
             return
-        v_abs = max(abs(np.nanmin(data)), abs(np.nanmax(data)), 0.05)
-        norm  = Normalize(vmin=-v_abs, vmax=v_abs)
+        # Percentiles 5-95 en vez de min/max: un outlier con n minimo
+        # (ej. -1.95 con n=10) no debe aplanar la escala del resto
+        v_abs = max(abs(np.nanpercentile(data, 5)),
+                    abs(np.nanpercentile(data, 95)), 0.05)
+        norm  = Normalize(vmin=-v_abs, vmax=v_abs, clip=True)
         n_teams, n_pkgs = len(pivot.index), len(pivot.columns)
 
         # Alternating row backgrounds for readability
@@ -320,7 +340,7 @@ else:
                     txt_col = "#0a0e13" if lum > 0.45 else FG
                     ax.text(col_j, row_i, f"{sign}{val:.2f}\n({n_val})",
                             ha="center", va="center",
-                            color=txt_col, fontsize=5.5, fontweight="bold",
+                            color=txt_col, fontsize=7.5, fontweight="bold",
                             zorder=2, linespacing=1.2)
 
         # Subtle row separators
@@ -351,26 +371,30 @@ else:
         ax.set_facecolor(BG)
         for sp in ax.spines.values(): sp.set_edgecolor(GRID)
 
-    fig = plt.figure(figsize=(17, 30), facecolor=BG)
-    gs  = gridspec.GridSpec(2, 1, figure=fig, hspace=0.07,
-                             left=0.08, right=0.97, top=0.935, bottom=0.02)
+    # Dos PNGs separados (ataque / defensa): un solo lienzo de 32×2 paneles
+    # hacía los textos de celda diminutos e ilegibles en móvil.
+    def render_uno(pivot, pivot_n, cmap, titulo_seccion, lado, sufijo):
+        fig = plt.figure(figsize=(17, 15.5), facecolor=BG)
+        gs  = gridspec.GridSpec(1, 1, figure=fig,
+                                 left=0.08, right=0.97, top=0.885, bottom=0.035)
+        draw_hm(fig.add_subplot(gs[0]), pivot, pivot_n, cmap, titulo_seccion)
+        fig.text(0.5, 0.968,
+                 f"Red Zone por Personal — {lado}  |  Jugadas dentro de las 20 yardas  |  NFL {SEASON}",
+                 ha="center", va="top", fontsize=16, fontweight="bold", color=FG)
+        fig.text(0.5, 0.944, f"Mínimo {MIN_SNAPS} snaps por celda  |  Valor: EPA medio  (n = snaps)",
+                 ha="center", va="top", fontsize=9, color="#888", fontstyle="italic")
+        fig.text(0.01, 0.006, f"Fuente: nflverse PBP + NGS participation  |  {sello(SEASON)}",
+                 ha="left", va="bottom", fontsize=7.5, color="#555", fontstyle="italic")
+        fig.text(0.99, 0.006, "@CuartayDato",
+                 ha="right", va="bottom", fontsize=10, color="#888", alpha=0.8, fontstyle="italic")
+        outfile = salida(f"red_zone_personal_{sufijo}_{SEASON}.png", SEASON)
+        plt.savefig(outfile, dpi=DPI, bbox_inches="tight", facecolor=BG)
+        plt.close(fig)
+        print(f"Guardado: {outfile}")
 
-    draw_hm(fig.add_subplot(gs[0]), off_rz, off_rz_n, RYG,
-            "Red Zone — EPA ofensivo por personal  ·  mejor ataque arriba  (verde = mejor que media, rojo = peor)")
-    draw_hm(fig.add_subplot(gs[1]), def_rz, def_rz_n, RYG_r,
-            "Red Zone — EPA permitido por personal rival  ·  mejor defensa arriba  (verde = buena defensa, rojo = vulnerable)")
-
-    fig.text(0.5, 0.980,
-             f"Red Zone por Personal  |  Jugadas dentro de las 20 yardas  |  NFL {SEASON}",
-             ha="center", va="top", fontsize=15, fontweight="bold", color=FG)
-    fig.text(0.5, 0.968, f"Mínimo {MIN_SNAPS} snaps por celda  |  Valor: EPA medio  (n = snaps)",
-             ha="center", va="top", fontsize=8, color="#888", fontstyle="italic")
-    fig.text(0.01, 0.006, f"Fuente: nflverse PBP + NGS participation  |  NFL {SEASON}",
-             ha="left", va="bottom", fontsize=7, color="#555", fontstyle="italic")
-    fig.text(0.99, 0.006, "@CuartayDato",
-             ha="right", va="bottom", fontsize=9, color="#888", alpha=0.8, fontstyle="italic")
-
-    outfile = f"red_zone_personal_{SEASON}.png"
-    plt.savefig(outfile, dpi=DPI, bbox_inches="tight", facecolor=BG)
-    plt.close(fig)
-    print(f"Guardado: {outfile}")
+    render_uno(off_rz, off_rz_n, RYG,
+               "EPA ofensivo por personal  ·  mejor ataque arriba  (verde = mejor que media, rojo = peor)",
+               "Ataque", "ataque")
+    render_uno(def_rz, def_rz_n, RYG_r,
+               "EPA permitido por personal rival  ·  mejor defensa arriba  (verde = buena defensa, rojo = vulnerable)",
+               "Defensa", "defensa")

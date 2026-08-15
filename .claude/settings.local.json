@@ -138,7 +138,14 @@
       "mcp__filesystem__directory_tree",
       "mcp__filesystem__search_files",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\luism\\\\OneDrive\\\\Desktop\\\\Claude Projects\\\\NFL 2025\" -Recurse -Filter \"informe_equipo.py\" | ForEach-Object { $_.FullName })",
-      "PowerShell(Copy-Item *)"
+      "PowerShell(Copy-Item *)",
+      "PowerShell($conn = Get-NetTCPConnection -LocalPort 8765 -State Listen -ErrorAction SilentlyContinue; if \\($conn\\) { $p = Get-Process -Id $conn.OwningProcess; \"PID $\\($p.Id\\) desde $\\($p.StartTime\\)\" } else { \"server NO está corriendo\" })",
+      "PowerShell(\\(Get-Item server.py\\).LastWriteTime; \\(Get-Item galeria.html\\).LastWriteTime; if \\(Test-Path _preview\\) { Get-ChildItem _preview | Select-Object Name, LastWriteTime | Format-Table -AutoSize } else { \"_preview NO existe\" })",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(python \"C:\\\\Users\\\\luism\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-luism-OneDrive-Desktop-Claude-Projects-NFL-2025\\\\58febfa3-8160-425c-a2f8-cb1fa92b76b9\\\\scratchpad\\\\contar_tuits.py\")",
+      "PowerShell(python contenders_tracker.py --season 2025)",
+      "PowerShell(python \"C:\\\\Users\\\\luism\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-luism-OneDrive-Desktop-Claude-Projects-NFL-2025\\\\58febfa3-8160-425c-a2f8-cb1fa92b76b9\\\\scratchpad\\\\contar_tuits_v2.py\")",
+      "PowerShell(Get-Content *)"
     ]
   }
 }

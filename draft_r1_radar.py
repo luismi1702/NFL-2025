@@ -108,13 +108,18 @@ def add_logo(fig, ax, team, zoom=0.18):
         return
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team == "NYJ":
-            z = zoom / 4.5
-        else:
-            divisor = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            z = zoom / divisor
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        z = zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * z > 900.0 * (zoom):
+            z = 900.0 * (zoom) / w
         ab = AnnotationBbox(
             OffsetImage(img, zoom=z, resample=True),
             (0.5, 0.5),

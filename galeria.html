@@ -167,6 +167,16 @@ header span{font-size:.72rem;color:var(--muted)}
 #run-btn:hover{box-shadow:0 4px 22px rgba(45,108,223,.55);transform:translateY(-1px)}
 #run-btn:active{transform:translateY(0)}
 #run-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+#view-btn{
+  background:rgba(45,108,223,.10);color:var(--blue2);
+  border:1px solid rgba(45,108,223,.4);
+  padding:.58rem 1.3rem;border-radius:7px;
+  font-size:.81rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  cursor:pointer;display:flex;align-items:center;gap:.5rem;
+  transition:background .15s,opacity .15s;
+}
+#view-btn:hover{background:rgba(45,108,223,.22)}
+#view-btn:disabled{opacity:.35;cursor:not-allowed}
 .offline-hint{
   font-size:.74rem;color:var(--red);
   padding:.5rem .9rem;
@@ -208,6 +218,11 @@ header span{font-size:.72rem;color:var(--muted)}
   padding:.55rem 1rem;border-top:1px solid var(--border);
 }
 .res-name{font-size:.68rem;color:var(--muted)}
+.prev-badge{
+  font-size:.6rem;padding:.12rem .5rem;border-radius:4px;margin-left:.6rem;
+  background:rgba(201,168,76,.12);color:var(--gold);
+  border:1px solid rgba(201,168,76,.3);letter-spacing:.05em;
+}
 .dl-btn{
   background:rgba(6,214,160,.1);color:var(--green);
   border:1px solid rgba(6,214,160,.25);
@@ -271,7 +286,10 @@ header span{font-size:.72rem;color:var(--muted)}
       </div>
       <hr class="p-divider">
       <div id="p-inputs" class="input-row"></div>
-      <button id="run-btn">▶ Ejecutar</button>
+      <div id="btn-row" style="display:flex;gap:.7rem">
+        <button id="view-btn" title="Ejecuta el script y muestra el gráfico como vista previa temporal, sin guardar nada en la carpeta">👁 Ver análisis</button>
+        <button id="run-btn" title="Ejecuta el script y guarda el PNG en la carpeta del proyecto">⚡ Generar PNG</button>
+      </div>
       <div id="offline-hint" class="offline-hint" style="display:none">
         El servidor no está activo. Abre <strong>ABRIR DASHBOARD.bat</strong> para poder ejecutar scripts.
       </div>
@@ -299,48 +317,49 @@ const TEAMS  = ['ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN',
 
 const SCRIPTS = [
   // QBs
-  { file:'comparador_qbs.py',              name:'Comparador QBs',          cat:'QBs',        desc:'Radar 6 métricas EPA + DAKOTA',                     inputs:['QB 1|Mahomes','QB 2|Allen'],    pngs:[] },
-  { file:'qb_overview.py',                   name:'QBs Overview',             cat:'QBs',        desc:'EPA/play vs CPOE · tamaño=volumen · color=DAKOTA', inputs:[],                               pngs:['qb_overview_'+SEASON+'.png'] },
+  { file:'comparador_qbs.py',              name:'Comparador QBs',          cat:'QBs',        desc:'Radar 6 métricas EPA + índice EPA+CPOE',            inputs:['QB 1|Mahomes','QB 2|Allen'],    pngs:[] },
+  { file:'qb_overview.py',                   name:'QBs Overview',             cat:'QBs',        desc:'EPA/play vs CPOE · tamaño=volumen · color=EPA bajo presión', inputs:[],                      pngs:['qb_overview_'+SEASON+'.png'] },
   { file:'QBsTotalEPA.py',                  name:'QBs Total EPA',            cat:'QBs',        desc:'Scatter EPA Red Zone vs 3er down',                 inputs:[],                               pngs:['scatter_QB_totalEPA_RZ_vs_3rd_'+SEASON+'.png'] },
   { file:'qb_presion.py',                   name:'QBs bajo presión',         cat:'QBs',        desc:'EPA bajo presión vs pocket limpio',                 inputs:[],                               pngs:['qb_presion_'+SEASON+'.png'] },
   { file:'mapa_pases_por_zona.py',          name:'Mapa de pases',            cat:'QBs',        desc:'Completitud por zona del campo',                    inputs:['QB|Mahomes'],                   pngs:[] },
   // Receptores
   { file:'comparador_wrs.py',               name:'Comparador WRs',           cat:'Receptores', desc:'Radar comparativo entre dos WRs',                   inputs:['WR 1|Diggs','WR 2|Adams'],      pngs:[] },
   { file:'comparador_tes.py',               name:'Comparador TEs',           cat:'Receptores', desc:'Radar comparativo entre dos TEs',                   inputs:['TE 1|Kelce','TE 2|Andrews'],    pngs:[] },
-  { file:'ranking_wrs.py',                  name:'Ranking WRs',              cat:'Receptores', desc:'Scatter EPA/target Red Zone vs 3er down',          inputs:[],                               pngs:['ranking_wrs_'+SEASON+'.png'] },
-  { file:'ranking_tes.py',                  name:'Ranking TEs',              cat:'Receptores', desc:'Scatter EPA/target Red Zone vs 3er down',          inputs:[],                               pngs:['ranking_tes_'+SEASON+'.png'] },
+  { file:'ranking_wrs.py',                  name:'Ranking WRs',              cat:'Receptores', desc:'Scatter EPA/target Red Zone vs 3er down',          inputs:[],                               pngs:['scatter_WR_RZ_vs_3rd_'+SEASON+'.png'] },
+  { file:'ranking_tes.py',                  name:'Ranking TEs',              cat:'Receptores', desc:'Scatter EPA/target Red Zone vs 3er down',          inputs:[],                               pngs:['scatter_TE_RZ_vs_3rd_'+SEASON+'.png'] },
   { file:'target_share.py',                 name:'Target Share',             cat:'Receptores', desc:'TGT%, AY%, WOPR y RACR por receptor',               inputs:['Equipo|SF'],                    pngs:TEAMS.map(t=>'target_share_'+t+'_'+SEASON+'.png') },
   // Carrera
   { file:'comparador_rbs.py',               name:'Comparador RBs',           cat:'Carrera',    desc:'Radar comparativo entre dos RBs',                   inputs:['RB 1|McCaffrey','RB 2|Henry'],  pngs:[] },
-  { file:'ranking_rbs.py',                  name:'Ranking RBs',              cat:'Carrera',    desc:'Scatter EPA/acarreo Red Zone vs 3er down',         inputs:[],                               pngs:['ranking_rbs_'+SEASON+'.png'] },
-  { file:'run_gap.py',                      name:'Run Gap Ofensivo',         cat:'Carrera',    desc:'Fan chart EPA/acarreo por hueco — un equipo o 32', inputs:['Equipo (Enter=todos)|'],         pngs:['run_gap_'+SEASON+'.png'] },
-  { file:'run_gap_defensa.py',              name:'Run Gap Defensivo',        cat:'Carrera',    desc:'Fan chart EPA cedido por hueco — un equipo o 32',   inputs:['Equipo (Enter=todos)|'],         pngs:['run_gap_defensa_'+SEASON+'.png'] },
-  { file:'play_action.py',                  name:'Play Action',              cat:'Carrera',    desc:'EPA diferencial con/sin play-action',               inputs:[],                               pngs:['play_action_'+SEASON+'.png'] },
+  { file:'ranking_rbs.py',                  name:'Ranking RBs',              cat:'Carrera',    desc:'Scatter EPA/acarreo Red Zone vs 3er down',         inputs:[],                               pngs:['scatter_RB_RZ_vs_3rd_'+SEASON+'.png'] },
+  { file:'run_gap.py',                      name:'Run Gap Ofensivo',         cat:'Carrera',    desc:'Fan chart EPA/acarreo por hueco — un equipo o 32', inputs:['Equipo (Enter=todos)|'],         pngs:['run_gap_'+SEASON+'.png', ...TEAMS.map(t=>'run_gap_off_'+t+'_'+SEASON+'.png')] },
+  { file:'run_gap_defensa.py',              name:'Run Gap Defensivo',        cat:'Carrera',    desc:'Fan chart EPA cedido por hueco — un equipo o 32',   inputs:['Equipo (Enter=todos)|'],         pngs:['run_gap_defensa_'+SEASON+'.png', ...TEAMS.map(t=>'run_gap_def_'+t+'_'+SEASON+'.png')] },
+  { file:'play_action.py',                  name:'Play Action',              cat:'Carrera',    desc:'EPA/pase con vs sin play-action (FTN charting, 2022+)', inputs:[],                           pngs:['play_action_'+SEASON+'.png'] },
   { file:'oline_presion.py',                name:'O-Line Presión',           cat:'Carrera',    desc:'Tasa de presión permitida por OL',                  inputs:[],                               pngs:['oline_presion_'+SEASON+'.png'] },
+  { file:'oline_presion_origen.py',         name:'O-Line Origen Presión',    cat:'Carrera',    desc:'Por dónde cede presión cada OL: interior/exterior/blitz — heatmap 32 o diagrama de campo', inputs:['Equipo (Enter=todos)|'], pngs:['oline_presion_origen_'+SEASON+'.png', ...TEAMS.map(t=>'oline_presion_origen_'+t+'_'+SEASON+'.png')] },
   // Personal
-  { file:'ataque_vs_personal_ofensivo.py',  name:'Ataque vs Personal Of.',   cat:'Personal',   desc:'EPA por paquete ofensivo — 32 equipos',             inputs:[],                               pngs:['ataque_vs_personal_ofensivo_'+SEASON+'.png'] },
+  { file:'ataque_por_personal_ofensivo.py', name:'Ataque por Personal Of.',  cat:'Personal',   desc:'EPA de cada ataque según su propio paquete ofensivo — 32 equipos', inputs:[],                pngs:['ataque_por_personal_ofensivo_'+SEASON+'.png'] },
   { file:'ataque_vs_personal_defensivo.py', name:'Ataque vs Personal Def.',  cat:'Personal',   desc:'EPA según paquete defensivo rival',                 inputs:[],                               pngs:['ataque_vs_personal_defensivo_'+SEASON+'.png'] },
   { file:'defensa_vs_personal_ofensivo.py', name:'Defensa vs Personal Of.',  cat:'Personal',   desc:'EPA cedido según personal ofensivo rival',          inputs:[],                               pngs:['defensa_vs_personal_ofensivo_'+SEASON+'.png'] },
-  { file:'coberturas.py',                   name:'Coberturas',               cat:'Personal',   desc:'Distribución Cover 0-6-9 por equipo',                 inputs:[],                               pngs:['coberturas_'+SEASON+'.png'] },
-  { file:'informe_equipo.py',               name:'Informe Equipo',           cat:'Personal',   desc:'Informe completo ataque + defensa',                 inputs:['Equipo|SF'],                    pngs:TEAMS.flatMap(t=>['informe_ataque_'+t+'_'+SEASON+'.png','informe_defensa_'+t+'_'+SEASON+'.png']) },
+  { file:'coberturas.py',                   name:'Coberturas',               cat:'Personal',   desc:'Distribución Cover 0-6-9 por equipo',                 inputs:[],                               pngs:['coberturas_defensivas_'+SEASON+'.png'] },
+  { file:'informe_equipo.py',               name:'Informe Equipo',           cat:'Personal',   desc:'Team card: KPIs con rank, facetas en pistas de ranking 1-32 y claves autogeneradas (2 PNGs)',                 inputs:['Equipo|SF'],                    pngs:TEAMS.flatMap(t=>['informe_ataque_'+t+'_'+SEASON+'.png','informe_defensa_'+t+'_'+SEASON+'.png']) },
   { file:'matchup_intel.py',                name:'Matchup Intel',            cat:'Personal',   desc:'Mismatches automáticos: EXPLOIT / NEUTRO / RIESGO', inputs:['Ataque|SF','Defensa|KC'],       pngs:[] },
   { file:'tendencias_playcalling.py',       name:'Tendencias Playcalling',   cat:'Personal',   desc:'Pass% y EPA por down × distancia vs media NFL',     inputs:['Equipo|SF'],                    pngs:TEAMS.map(t=>'tendencias_playcalling_'+t+'_'+SEASON+'.png') },
-  { file:'red_zone_personal.py',            name:'Red Zone Personal',        cat:'Personal',   desc:'EPA en red zone por personal ofensivo — equipo o grid', inputs:['Equipo (Enter=grid)|'],        pngs:['red_zone_personal_'+SEASON+'.png'] },
+  { file:'red_zone_personal.py',            name:'Red Zone Personal',        cat:'Personal',   desc:'EPA en red zone por personal ofensivo — equipo o grid (2 PNGs: ataque y defensa)', inputs:['Equipo (Enter=grid)|'],        pngs:['red_zone_personal_ataque_'+SEASON+'.png','red_zone_personal_defensa_'+SEASON+'.png', ...TEAMS.map(t=>'red_zone_personal_'+t+'_'+SEASON+'.png')] },
   // Defensa
   { file:'comparador_dts.py',               name:'Comparador DTs',           cat:'Defensa',    desc:'Radar DT/NT: sacks, QB hits, TFL, fumbles, EPA on/off',        inputs:['DT 1|Donald','DT 2|Simmons'],  pngs:[] },
   { file:'comparador_edges.py',             name:'Comparador Edges',         cat:'Defensa',    desc:'Radar Edge Rushers: sacks, hits, TFL, EPA on/off',  inputs:['Edge 1|Bosa','Edge 2|Hendrickson'], pngs:[] },
   { file:'comparador_lbs.py',              name:'Comparador LBs',           cat:'Defensa',    desc:'Radar ILB/MLB: tackles, TFL, sacks, INT, PD, EPA on/off', inputs:['LB 1|Wagner','LB 2|White'],    pngs:[] },
   { file:'comparador_cbs.py',              name:'Comparador CBs',           cat:'Defensa',    desc:'Radar Cornerbacks: PD, INT, tackles, TFL, fumbles forzados, EPA on/off', inputs:['CB 1|McDuffie','CB 2|Sauce'], pngs:[] },
   { file:'comparador_safeties.py',         name:'Comparador Safeties',      cat:'Defensa',    desc:'Radar Safeties: tackles, PD, INT, blitz, TFL, EPA on/off',     inputs:['Safety 1|Adams','Safety 2|Byard'], pngs:[] },
-  { file:'cuarto_down.py',                  name:'4th Down',                 cat:'Defensa',    desc:'Análisis de conversiones en 4th down',              inputs:[],                               pngs:['cuarto_down_'+SEASON+'.png'] },
-  { file:'power_rankings.py',               name:'Power Rankings',           cat:'Defensa',    desc:'Rankings por EPA/play y calendario',                inputs:['Semana|18'],                    pngs:['power_rankings_'+SEASON+'.png'] },
+  { file:'cuarto_down.py',                  name:'4th Down',                 cat:'Defensa',    desc:'Calidad de decisiones del HC en 4º down vs modelo analítico', inputs:[],                     pngs:['cuarto_down_'+SEASON+'.png'] },
+  { file:'power_rankings.py',               name:'Power Rankings',           cat:'Defensa',    desc:'Composite: 40% EPA of. + 40% def. + 20% tendencia ofensiva', inputs:['Semana|18'],           pngs:Array.from({length:18},(_,i)=>'power_rankings_week'+(i+1)+'_'+SEASON+'.png') },
   // Resúmenes
-  { file:'series_success.py',               name:'Series Success',           cat:'Resúmenes',  desc:'Heatmap: % posesiones TD · FG · 1st · Punt · TO',  inputs:[],                               pngs:['series_success_'+SEASON+'.png'] },
-  { file:'DatoSemana.py',                   name:'Dato de la Semana',        cat:'Resúmenes',  desc:'Outlier estadístico de la semana (z-score)',        inputs:['Semana|5'],                     pngs:['DatoSemana_'+SEASON+'.png'] },
-  { file:'MVPsSemana.py',                   name:'MVPs Semana',              cat:'Resúmenes',  desc:'Candidatos MVP de la semana',                       inputs:['Semana|5','Top-3 (s/n)|s'],     pngs:['MVPsSemana_'+SEASON+'.png'] },
-  { file:'MVPsSeason.py',                   name:'MVPs Temporada',           cat:'Resúmenes',  desc:'Seguimiento MVP de la temporada',                   inputs:['Top-3 (s/n)|s'],                pngs:['MVPsSeason_'+SEASON+'.png'] },
-  { file:'season_arc.py',                   name:'Season Arc',               cat:'Resúmenes',  desc:'Trayectoria de rendimiento de un equipo',           inputs:['Modo (A/D)|A','Equipos (Enter=auto)|'], pngs:[] },
-  { file:'resumen_partido.py',              name:'Resumen Partido',          cat:'Resúmenes',  desc:'Resumen estadístico de un partido',                 inputs:['Equipo A|SF','Equipo B|DAL','Semana|5'], pngs:[] },
+  { file:'series_success.py',               name:'Series Success',           cat:'Resúmenes',  desc:'Heatmap: % series TD · FG · 1st · Punt · Fallo',   inputs:[],                               pngs:['series_success_'+SEASON+'.png'] },
+  { file:'DatoSemana.py',                   name:'Dato de la Semana',        cat:'Resúmenes',  desc:'Outlier estadístico de la semana (z-score)',        inputs:['Semana|5'],                     pngs:Array.from({length:18},(_,i)=>'dato_semana_outlier_week'+(i+1)+'.png') },
+  { file:'MVPsSemana.py',                   name:'MVPs Semana',              cat:'Resúmenes',  desc:'Líderes EPA de la semana (solo consola, sin PNG)',  inputs:['Semana|5','Top-3 (s/n)|s'],     pngs:[] },
+  { file:'MVPsSeason.py',                   name:'MVPs Temporada',           cat:'Resúmenes',  desc:'Líderes EPA de la temporada + rookies (solo consola, sin PNG)', inputs:['Top-3 (s/n)|s'],    pngs:[] },
+  { file:'season_arc.py',                   name:'Season Arc',               cat:'Resúmenes',  desc:'Trayectoria de rendimiento de un equipo',           inputs:['Modo (A/D)|A','Equipos (Enter=auto)|'], pngs:['season_arc_ataque_'+SEASON+'.png','season_arc_defensa_'+SEASON+'.png'] },
+  { file:'resumen_partido.py',              name:'Resumen Partido',          cat:'Resúmenes',  desc:'2 PNGs: boxscore + Win Probability, y Claves del partido (desviaciones vs la norma)', inputs:['Equipo A|SF','Equipo B|DAL','Semana|5'], pngs:[] },
   { file:'Previas.py',                      name:'Previas',                  cat:'Resúmenes',  desc:'Preview de partido o jornada completa',  inputs:['select:Modo|partido,jornada','when:partido:Equipo A|SF','when:partido:Equipo B|DAL','when:jornada:Semana|18'],  pngs:[] },
   // Draft
   { file:'draft_success.py',                name:'Draft Success',            cat:'Draft',      desc:'Heatmap éxito por rango de pick y posición',        inputs:[],                               pngs:['draft_success_por_posicion.png'] },
@@ -351,13 +370,13 @@ const SCRIPTS = [
   { file:'draft_ranking_equipos.py',        name:'Ranking Draft Equipos',    cat:'Draft',      desc:'Ranking de equipos por éxito histórico en el draft · heatmap por equipo · grid 32 equipos', inputs:['select:Modo|ranking,equipo,grid','when:equipo:Equipo|SF'], pngs:['draft_ranking_equipos.png','draft_heatmap_equipo.png','draft_grid_heatmap.png'] },
   { file:'draft_eval_2026.py',              name:'Draft Eval 2026',          cat:'Draft',      desc:'Éxitos esperados por equipo en el Draft 2026 · tasas históricas por posición × ronda', inputs:[], pngs:['draft_eval_2026.png'] },
   // Otros
-  { file:'proe.py',                         name:'PROE',                     cat:'Otros',      desc:'Probabilidad de extender posesión en 4th down',     inputs:[],                               pngs:['proe_'+SEASON+'.png'] },
+  { file:'proe.py',                         name:'PROE',                     cat:'Otros',      desc:'Pass Rate Over Expectation — pass rate real vs esperado (xpass)', inputs:[],                pngs:['proe_'+SEASON+'.png'] },
   { file:'valor_turnovers.py',              name:'Valor Turnovers',          cat:'Otros',      desc:'Valor de los turnovers en EPA',                     inputs:[],                               pngs:['valor_turnovers_'+SEASON+'.png'] },
-  { file:'RankingEPAadjustado.py',          name:'EPA Ajustado',             cat:'Otros',      desc:'Rankings EPA ajustado por rival',                   inputs:[],                               pngs:['RankingEPAadjustado_'+SEASON+'.png'] },
+  { file:'RankingEPAadjustado.py',          name:'EPA Ajustado',             cat:'Otros',      desc:'Rankings EPA ajustado por rival',                   inputs:[],                               pngs:['ranking_ofensivo_ajustado_'+SEASON+'.png','ranking_defensivo_ajustado_'+SEASON+'.png'] },
   { file:'Manning_bot.py',                  name:'Manning Bot',              cat:'Otros',      desc:'Predictor de resultados NFL (XGBoost ~68%)',         inputs:['Reentrenar modelo (s/N)|N','Semana|18'], pngs:[] },
-  { file:'clutch_performance.py',           name:'Clutch Performance',       cat:'Resúmenes',  desc:'EPA en 4Q cerrados (≤7 pts): equipo o scatter 32', inputs:['Equipo (Enter=scatter)|'],       pngs:['clutch_performance_'+SEASON+'.png'] },
-  { file:'game_script.py',                  name:'Game Script',              cat:'Resúmenes',  desc:'EPA · PROE · 3er/4th down por contexto de marcador', inputs:['Equipo (Enter=scatter)|'],       pngs:['game_script_'+SEASON+'.png'] },
-  { file:'contenders_tracker.py',           name:'Contenders Tracker',       cat:'Otros',      desc:'Qué equipos cumplen los 12 criterios de campeón · datos frescos, auto-detecta semana', inputs:[], pngs:[] },
+  { file:'clutch_performance.py',           name:'Clutch Performance',       cat:'Resúmenes',  desc:'EPA en 4Q cerrados (≤7 pts): equipo o scatter 32', inputs:['Equipo (Enter=scatter)|'],       pngs:['clutch_performance_'+SEASON+'.png', ...TEAMS.map(t=>'clutch_performance_'+t+'_'+SEASON+'.png')] },
+  { file:'game_script.py',                  name:'Game Script',              cat:'Resúmenes',  desc:'EPA · PROE · 3er/4th down por contexto de marcador', inputs:['Equipo (Enter=scatter)|'],       pngs:['game_script_'+SEASON+'.png', ...TEAMS.map(t=>'game_script_'+t+'_'+SEASON+'.png')] },
+  { file:'contenders_tracker.py',           name:'Contenders Tracker',       cat:'Otros',      desc:'Qué equipos cumplen los 12 criterios de campeón · datos frescos, auto-detecta semana', inputs:[], pngs:Array.from({length:18},(_,i)=>'contenders_s'+SEASON+'_w'+(i+1)+'.png') },
 ];
 
 // ── Estado ─────────────────────────────────────────────────────────────────
@@ -365,6 +384,7 @@ let serverOnline = false;
 let current      = null;
 let pollT        = null;
 let activeCat    = 'Todos';
+let running      = false;   // hay un job en curso → no tocar los botones
 
 // ── Servidor: ping cada 5s ─────────────────────────────────────────────────
 async function pingServer() {
@@ -502,16 +522,23 @@ function openPanel(s) {
   loadExistingPngs(s);
 }
 
+function setBtnsIdle() {
+  const vb = document.getElementById('view-btn');
+  const rb = document.getElementById('run-btn');
+  vb.disabled = rb.disabled = false;
+  vb.innerHTML = '👁 Ver análisis';
+  rb.innerHTML = '⚡ Generar PNG';
+}
+
 function updateRunBtn() {
-  const btn  = document.getElementById('run-btn');
+  const row  = document.getElementById('btn-row');
   const hint = document.getElementById('offline-hint');
   if (serverOnline) {
-    btn.style.display = 'flex';
-    btn.disabled      = false;
-    btn.innerHTML     = '▶ Ejecutar';
+    row.style.display  = 'flex';
+    if (!running) setBtnsIdle();
     hint.style.display = 'none';
   } else {
-    btn.style.display  = 'none';
+    row.style.display  = 'none';
     hint.style.display = 'block';
   }
 }
@@ -539,7 +566,10 @@ function loadExistingPngs(s) {
 }
 
 // ── Run ────────────────────────────────────────────────────────────────────
-document.getElementById('run-btn').onclick = async () => {
+// makePng=true  → ejecuta y guarda el PNG (boton "Generar PNG")
+// makePng=false → modo vista: solo consola, savefig desactivado en el server
+async function runScript(makePng) {
+  if (running) return;
   const inputs = [...document.querySelectorAll('#p-inputs .input-group')].map(div => {
     const sel = div.querySelector('select');
     if (sel) return sel.value;
@@ -548,13 +578,16 @@ document.getElementById('run-btn').onclick = async () => {
     return div.style.display === 'none' ? '' : (i.value.trim() || i.dataset.ph);
   });
 
-  const btn = document.getElementById('run-btn');
-  btn.disabled  = true;
-  btn.innerHTML = '<span class="spin"></span>Ejecutando...';
+  const vb = document.getElementById('view-btn');
+  const rb = document.getElementById('run-btn');
+  running = true;
+  vb.disabled = rb.disabled = true;
+  (makePng ? rb : vb).innerHTML =
+    '<span class="spin"></span>' + (makePng ? 'Generando...' : 'Analizando...');
 
   const logEl = document.getElementById('log');
   logEl.className   = 'log visible';
-  logEl.textContent = 'Iniciando...\n';
+  logEl.textContent = makePng ? 'Generando PNG...\n' : 'Generando vista previa (no se guarda)...\n';
   document.getElementById('results').innerHTML = '';
 
   let res;
@@ -562,11 +595,11 @@ document.getElementById('run-btn').onclick = async () => {
     res = await fetch(API + '/api/run', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ file: current.file, inputs }),
+      body: JSON.stringify({ file: current.file, inputs, png: makePng }),
     });
   } catch {
     logEl.textContent = 'No se pudo conectar con el servidor.\nAbre ABRIR DASHBOARD.bat primero.';
-    btn.disabled = false; btn.innerHTML = '▶ Ejecutar';
+    running = false; setBtnsIdle();
     return;
   }
 
@@ -579,20 +612,22 @@ document.getElementById('run-btn').onclick = async () => {
 
     if (job.s !== 'run') {
       clearInterval(pollT); pollT = null;
-      btn.disabled  = false;
-      btn.innerHTML = '↺ Ejecutar de nuevo';
+      running = false;
+      setBtnsIdle();
       logEl.className = 'log visible ' + (job.s === 'ok' ? '' : 'log-err');
 
-      // muestra PNGs nuevos
+      // muestra PNGs nuevos (guardados) o vistas previas temporales (_preview/)
       if (job.imgs?.length) {
         const ts2 = Date.now();
         job.imgs.forEach(png => {
+          const shown = png.replace(/^_preview\//, '');
+          const badge = makePng ? '' : '<span class="prev-badge">vista previa · no guardado</span>';
           document.getElementById('results').insertAdjacentHTML('beforeend', `
             <div class="res-card">
-              <img src="${API}/img/${encodeURIComponent(png)}?t=${ts2}" onclick="openLb('${png}','${API}/img/',${ts2})" alt="${png}">
+              <img src="${API}/img/${encodeURIComponent(png)}?t=${ts2}" onclick="openLb('${png}','${API}/img/',${ts2})" alt="${shown}">
               <div class="res-foot">
-                <span class="res-name">${png}</span>
-                <a class="dl-btn" href="${API}/img/${encodeURIComponent(png)}" download="${png}">⬇ Descargar</a>
+                <span class="res-name">${shown}${badge}</span>
+                <a class="dl-btn" href="${API}/img/${encodeURIComponent(png)}" download="${shown}">⬇ Descargar</a>
               </div>
             </div>`);
         });
@@ -600,7 +635,9 @@ document.getElementById('run-btn').onclick = async () => {
       await pingServer();
     }
   }, 1200);
-};
+}
+document.getElementById('run-btn').onclick  = () => runScript(true);
+document.getElementById('view-btn').onclick = () => runScript(false);
 
 // ── Lightbox ───────────────────────────────────────────────────────────────
 function openLb(png, base, ts) {

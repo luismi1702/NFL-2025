@@ -1,34 +1,35 @@
 """
 comparador_edges.py
 Radar chart comparando dos Edge Rushers (DE/OLB) en 6 dimensiones.
-5 métricas de stats_player + EPA on/off del PBP + participación.
+5 métricas de stats_player + EPA en sacks del PBP.
 
-Métrica 6: EPA on/off (pbp_participation)
-  = EPA_off (sin jugador en campo) - EPA_on (con jugador en campo)
-  Positivo = el equipo permite más EPA sin él → buen defensor.
+Métrica 6: Disrupción por partido = (sacks + QB hits + TFL) / PJ.
 """
 
 import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp, cargar_stats, cargar_participation
+from pbp_loader import cargar_pbp, cargar_stats, salida, season_cli, sello
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
+import sys
+# Consolas Windows (cp1252) no soportan caracteres como '≥'
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON            = None   # None = auto-detectar última temporada
+SEASON            = season_cli()   # None = auto-detectar última temporada
 BG        = "#0f1115"
 FG        = "#EDEDED"
 GRID      = "#2a2f3a"
 DPI       = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 RYG = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
 EDGE_POSITIONS = {"DE", "OLB"}   # DE en 4-3, OLB en 3-4
 MIN_SACKS = 1                    # mínimo sacks para entrar en la cohorte
-MIN_SNAPS = 5                    # mínimo jugadas on/off para calcular EPA
 
 E1_COLOR = "#06d6a0"
 E2_COLOR = "#ffd166"
@@ -56,23 +57,6 @@ def safe_norm_series(series):
     return (series - mn) / rng
 
 
-def get_gsis_id(stats_row):
-    """Busca GSIS ID en varias columnas posibles del stats_row."""
-    for col in ("player_id", "gsis_id", "player_gsis_id", "nflverse_id"):
-        val = stats_row.get(col)
-        if val is not None and not (isinstance(val, float) and pd.isna(val)):
-            return str(val).strip()
-    return None
-
-
-def get_player_team(stats_row):
-    for col in ("recent_team", "team", "team_abbr"):
-        val = stats_row.get(col)
-        if val is not None and not (isinstance(val, float) and pd.isna(val)):
-            return str(val).strip()
-    return None
-
-
 def find_edge(query, edge_stats, df_stats):
     """Return player_name of the Edge Rusher matching query (most sacks if multiple)."""
     nm_col = pick_col(edge_stats, "player_name", "player_display_name")
@@ -96,88 +80,7 @@ def find_edge(query, edge_stats, df_stats):
     return row[nm_col], row
 
 
-# ── PARTICIPACIÓN — JOIN ROBUSTO ────────────────────────────────────────────────
-_PART_GAME_COL = None   # se detecta una vez
-
-def _detect_part_columns(part_df, pbp_df):
-    """Detecta los nombres correctos de columnas en participation y diagnostica."""
-    global _PART_GAME_COL
-
-    print("\n--- Diagnóstico pbp_participation ---")
-    print(f"  Columnas: {list(part_df.columns)}")
-
-    # Detectar columna game_id en participation
-    for cand in ("game_id", "nflverse_game_id", "old_game_id"):
-        if cand in part_df.columns:
-            _PART_GAME_COL = cand
-            break
-
-    if _PART_GAME_COL is None:
-        print("  [ERROR] No se encontró columna game_id en participation")
-        return False
-
-    # Comparar formato game_id
-    pbp_gid  = str(pbp_df["game_id"].dropna().iloc[0]) if "game_id" in pbp_df.columns else "???"
-    part_gid = str(part_df[_PART_GAME_COL].dropna().iloc[0])
-    print(f"  PBP game_id (ejemplo): {pbp_gid}")
-    print(f"  Participation {_PART_GAME_COL} (ejemplo): {part_gid}")
-    print(f"  Formatos {'COINCIDEN' if pbp_gid[:4] == part_gid[:4] else 'DISTINTOS — JOIN FALLARÁ'}")
-
-    # Comparar play_id tipos
-    print(f"  PBP play_id dtype: {pbp_df['play_id'].dtype if 'play_id' in pbp_df.columns else 'NO EXISTE'}")
-    print(f"  Participation play_id dtype: {part_df['play_id'].dtype if 'play_id' in part_df.columns else 'NO EXISTE'}")
-
-    # Muestra defense_players
-    dp_sample = str(part_df["defense_players"].dropna().iloc[0]) if "defense_players" in part_df.columns else "NO EXISTE"
-    print(f"  defense_players (ejemplo): {dp_sample[:80]}")
-    print("-----------------------------------\n")
-    return True
-
-
-def get_on_off_epa(gsis_id, team, pbp_df, part_df):
-    """
-    EPA on/off usando pbp_participation.
-    Positivo = el equipo permite más EPA sin el jugador → buen defensor.
-    """
-    if gsis_id is None or part_df is None or team is None:
-        return float("nan")
-
-    game_col = _PART_GAME_COL or "game_id"
-
-    # Jugadas defensivas del equipo (run + pass)
-    def_plays = pbp_df[
-        (pbp_df["defteam"] == team) &
-        pbp_df["epa"].notna() &
-        pbp_df["play_type"].isin(["run", "pass"])
-    ][["play_id", "game_id", "epa"]].copy()
-
-    if def_plays.empty:
-        return float("nan")
-
-    # Preparar participation con nombre correcto de game_id
-    part_sub = part_df[["play_id", game_col, "defense_players"]].copy()
-    if game_col != "game_id":
-        part_sub = part_sub.rename(columns={game_col: "game_id"})
-
-    merged = def_plays.merge(part_sub, on=["play_id", "game_id"], how="inner")
-
-    if merged.empty:
-        return float("nan")
-
-    merged["on_field"] = merged["defense_players"].fillna("").str.contains(
-        gsis_id, regex=False
-    )
-
-    on_plays  = merged[merged["on_field"]]["epa"]
-    off_plays = merged[~merged["on_field"]]["epa"]
-
-    if len(on_plays) < MIN_SNAPS or len(off_plays) < MIN_SNAPS:
-        return float("nan")
-
-    return off_plays.mean() - on_plays.mean()
-
-
-def compute_edge_metrics(player_name, stats_row, sack_df, sack_col, pbp_df, part_df):
+def compute_edge_metrics(player_name, stats_row, sack_df, sack_col):
     # 1. Sacks
     sacks = float(stats_row.get("def_sacks", float("nan")))
 
@@ -198,9 +101,8 @@ def compute_edge_metrics(player_name, stats_row, sack_df, sack_col, pbp_df, part
         epa_sacks = float("nan")
 
     # 6. EPA on/off
-    gsis_id = get_gsis_id(stats_row)
-    team    = get_player_team(stats_row)
-    epa_on_off = get_on_off_epa(gsis_id, team, pbp_df, part_df)
+    games = float(stats_row.get("games", 0) or 0)
+    disrupcion_pj = (sacks + qb_hits + tfl) / games if games > 0 else float("nan")
 
     return {
         "Sacks":            sacks,
@@ -208,7 +110,7 @@ def compute_edge_metrics(player_name, stats_row, sack_df, sack_col, pbp_df, part
         "TFL":              tfl,
         "Fumbles forzados": ff,
         "EPA en sacks":     epa_sacks,
-        "EPA on/off":       epa_on_off,
+        "Disrupción/PJ":    disrupcion_pj,
     }
 
 # ── INPUT ──────────────────────────────────────────────────────────────────────
@@ -243,33 +145,12 @@ sack_df  = df_pbp[
 ].copy() if sack_col else pd.DataFrame()
 print(f"Jugadas de sack con EPA: {len(sack_df):,}")
 
-# ── DATA — PARTICIPACIÓN ────────────────────────────────────────────────────────
-try:
-    part_df, _ = cargar_participation(SEASON)
-    # Normalizar tipos para el join
-    if "play_id" in part_df.columns:
-        part_df["play_id"] = pd.to_numeric(part_df["play_id"], errors="coerce")
-    if "play_id" in df_pbp.columns:
-        df_pbp["play_id"] = pd.to_numeric(df_pbp["play_id"], errors="coerce")
-    # game_id como string
-    for gid_cand in ("game_id", "nflverse_game_id"):
-        if gid_cand in part_df.columns:
-            part_df[gid_cand] = part_df[gid_cand].astype(str)
-    if "game_id" in df_pbp.columns:
-        df_pbp["game_id"] = df_pbp["game_id"].astype(str)
-    print(f"Participación: {len(part_df):,} filas")
-    _detect_part_columns(part_df, df_pbp)
-except Exception as e:
-    print(f"  [!] No se pudo cargar participación: {e}")
-    print("  [i] EPA on/off mostrará N/D para todos los jugadores.")
-    part_df = None
-
 # ── FIND EDGE RUSHERS ──────────────────────────────────────────────────────────
 e1_name, e1_stats_row = find_edge(e1_input, edge_stats, df_stats)
 e2_name, e2_stats_row = find_edge(e2_input, edge_stats, df_stats)
 print(f"Comparando: {e1_name} vs {e2_name}")
-print(f"  [info] GSIS IDs: {get_gsis_id(e1_stats_row)!r}, {get_gsis_id(e2_stats_row)!r}")
-print(f"  [info] Teams: {get_player_team(e1_stats_row)!r}, {get_player_team(e2_stats_row)!r}")
+team1 = str(e1_stats_row.get("recent_team", "") or "")
+team2 = str(e2_stats_row.get("recent_team", "") or "")
 
 # ── COMPUTE METRICS FOR ALL EDGES (for normalization) ──────────────────────────
 METRIC_KEYS = [
@@ -278,7 +159,7 @@ METRIC_KEYS = [
     "TFL",
     "Fumbles forzados",
     "EPA en sacks",
-    "EPA on/off",
+    "Disrupción/PJ",
 ]
 
 nm_col = pick_col(edge_stats, "player_name", "player_display_name")
@@ -294,12 +175,9 @@ for name in qualified_names:
     if row.empty:
         continue
     all_raw[name] = compute_edge_metrics(
-        name, row.iloc[0], sack_df, sack_col, df_pbp, part_df
+        name, row.iloc[0], sack_df, sack_col
     )
 
-# Diagnóstico EPA on/off para los dos jugadores elegidos
-nd_count = sum(1 for v in all_raw.values() if pd.isna(v.get("EPA on/off", float("nan"))))
-print(f"  [info] EPA on/off: {len(all_raw)-nd_count}/{len(all_raw)} jugadores tienen valor (resto N/D)")
 
 norm_df     = pd.DataFrame(all_raw).T
 norm_scaled = pd.DataFrame(index=norm_df.index)
@@ -362,9 +240,9 @@ for metric in METRIC_KEYS:
 
 ax.set_xticklabels(xticklabels, color=FG, fontsize=7.5, ha="center")
 
-ax.plot(angles, v1_radar, color=E1_COLOR, linewidth=2.2, zorder=4, label=e1_name)
+ax.plot(angles, v1_radar, color=E1_COLOR, linewidth=2.2, zorder=4, label=f"{e1_name} ({team1})")
 ax.fill(angles, v1_radar, color=E1_COLOR, alpha=0.20, zorder=3)
-ax.plot(angles, v2_radar, color=E2_COLOR, linewidth=2.2, zorder=4, label=e2_name)
+ax.plot(angles, v2_radar, color=E2_COLOR, linewidth=2.2, zorder=4, label=f"{e2_name} ({team2})")
 ax.fill(angles, v2_radar, color=E2_COLOR, alpha=0.20, zorder=3)
 
 ref_ring = [0.5] * (N + 1)
@@ -386,14 +264,14 @@ fig.text(0.5, 0.97, f"{e1_name} vs {e2_name}",
 fig.text(0.5, 0.92,
          f"Comparación radar — 6 dimensiones | Normalizadas entre DE/OLB con ≥{MIN_SACKS} sack",
          ha="center", va="top", fontsize=9, color="#888888", fontstyle="italic")
-fig.text(0.01, 0.01, f"Fuente: nflverse-data + stats_player + pbp_participation  ·  NFL {SEASON}",
+fig.text(0.01, 0.01, f"Fuente: nflverse-data · stats_player + PBP  ·  {sello(SEASON)}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig.text(0.99, 0.01, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.91])
 
-outfile = f"comparador_{safe_e1}_{safe_e2}_{SEASON}.png"
+outfile = salida(f"comparador_{safe_e1}_{safe_e2}_{SEASON}.png", SEASON)
 fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {outfile}")

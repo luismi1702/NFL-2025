@@ -5,6 +5,8 @@
 
 import sys
 import os
+import sys
+sys.stdout.reconfigure(encoding="utf-8")   # consola cp1252: los caracteres > y >= la rompen
 import shutil
 from datetime import date
 

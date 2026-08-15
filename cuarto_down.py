@@ -10,19 +10,18 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON       = None   # None = auto-detectar última temporada
+SEASON       = season_cli()   # None = auto-detectar última temporada
 DPI          = 170
 BG           = "#0f1115"
 FG           = "#EDEDED"
 GRID         = "#2a2f3a"
 RYG          = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 MIN_PLAYS    = 15   # mínimo de 4to-down decisiones para incluir al equipo
 
 # ── MODELO DE RECOMENDACIÓN ────────────────────────────────────────────────────
@@ -68,13 +67,18 @@ def load_logo(team, base_zoom=0.038):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -255,7 +259,7 @@ fig.text(0.01, 0.005,
 fig.text(0.99, 0.005, "@CuartayDato",
          ha="right", va="bottom", color="#888888", fontsize=9, alpha=0.85, fontstyle="italic")
 
-out = f"cuarto_down_{SEASON}.png"
+out = salida(f"cuarto_down_{SEASON}.png", SEASON)
 fig.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {out}")

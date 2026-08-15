@@ -115,11 +115,15 @@ def get_logo(team, base_zoom=0.042):
     if not os.path.exists(path):
         return None
     img = Image.open(path).convert("RGBA")
+    # Recorta el margen transparente (NYJ es un wordmark con mucho aire)
+    caja = img.getbbox()
+    if caja:
+        img = img.crop(caja)
     w, h = img.size
-    aspect = w / h
-    zoom = base_zoom / max(1.0, min(2.2, 1.0 + 0.6 * (aspect - 1.3)))
-    if team == "NYJ":
-        zoom /= 4.5
+    # Normaliza por el area de tinta real, no por el lienzo
+    zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+    if w * zoom > 900.0 * base_zoom:
+        zoom = 900.0 * base_zoom / w
     return OffsetImage(img, zoom=zoom)
 
 

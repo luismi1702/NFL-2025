@@ -11,13 +11,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli, sello
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-SEASON    = None   # None = auto-detectar última temporada
+SEASON    = season_cli()   # None = auto-detectar última temporada
 MIN_PLAYS = 25
 
 BG     = "#0f1115"
@@ -27,7 +27,6 @@ GRID   = "#2a2f3a"
 ACCENT = "#2d6cdf"
 DPI    = 170
 LOGOS_DIR    = "logos"
-HARD_PENALTY = {"NYJ": 4.5}
 
 RYG = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
@@ -61,10 +60,18 @@ def load_logo(team, base_zoom=0.033):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        zoom = base_zoom / HARD_PENALTY[team] if team in HARD_PENALTY else \
-               base_zoom / np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -184,12 +191,8 @@ if modo == "grid":
             ax.text(x, y, team_id, ha="center", va="center",
                     fontsize=7, color=FG, zorder=4)
 
-    if diag_lo < diag_hi:
-        mid = (diag_lo + diag_hi) / 2
-        ax.text(mid, mid + (y_hi - y_lo) * 0.03,
-                "igual rendimiento en ambos contextos",
-                ha="center", va="bottom", fontsize=7, color=GRID,
-                fontstyle="italic", rotation=38, rotation_mode="anchor")
+    # (texto sobre la diagonal eliminado: pisaba los logos del centro;
+    #  el subtítulo ya explica qué significa la diagonal)
 
     ax.set_xlabel("EPA/play  cuando va perdiendo", color=FG, fontsize=11, labelpad=7)
     ax.set_ylabel("EPA/play  cuando va ganando",   color=FG, fontsize=11, labelpad=7)
@@ -201,14 +204,14 @@ if modo == "grid":
              "Por encima de la diagonal = rinden mejor con ventaja  ·  "
              "Por debajo = mejoran cuando van perdiendo",
              ha="center", va="top", fontsize=8.5, color="#888", fontstyle="italic")
-    fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  NFL {SEASON}",
+    fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  {sello(SEASON)}",
              ha="left", va="bottom", fontsize=7.5, color="#555", fontstyle="italic")
     fig.text(0.99, 0.01, "@CuartayDato",
              ha="right", va="bottom", fontsize=9, color="#888888",
              alpha=0.8, fontstyle="italic")
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.91])
-    out = f"game_script_{SEASON}.png"
+    out = salida(f"game_script_{SEASON}.png", SEASON)
     plt.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
     plt.close(fig)
     print(f"Guardado: {out}")
@@ -496,13 +499,13 @@ else:
              f"EPA · Pass rate vs liga · 3er down · 4th down  —  según contexto de partido  "
              f"·  Barra amarilla = media NFL  ·  Mín. {MIN_PLAYS} jugadas",
              ha="center", va="top", fontsize=8, color="#888", fontstyle="italic")
-    fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  NFL {SEASON}",
+    fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  {sello(SEASON)}",
              ha="left", va="bottom", fontsize=7.5, color="#555", fontstyle="italic")
     fig.text(0.99, 0.01, "@CuartayDato",
              ha="right", va="bottom", fontsize=9, color="#888888",
              alpha=0.8, fontstyle="italic")
 
-    out = f"game_script_{team}_{SEASON}.png"
+    out = salida(f"game_script_{team}_{SEASON}.png", SEASON)
     plt.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
     plt.close(fig)
     print(f"Guardado: {out}")

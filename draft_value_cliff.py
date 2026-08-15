@@ -223,6 +223,85 @@ def plot_cliff(df, pos_filter=None):
 
 
 # ─────────────────────────────────────────────
+# 2b. Modo grid — small multiples 2×4
+# ─────────────────────────────────────────────
+def plot_cliff_grid(df):
+    """Una mini-gráfica por posición (2×4); el resto de posiciones queda en
+    gris tenue como contexto. Sustituye al spaghetti de 8 líneas cruzadas."""
+    rate = df.groupby(["pos_group", "round"])["success"].mean().mul(100).unstack()
+    rate = rate.reindex(POS_ORDER).reindex(columns=range(1, 8))
+    rounds = list(range(1, 8))
+
+    y_top = int(np.ceil(float(rate.max().max()) / 10) * 10) + 5
+
+    fig, axes = plt.subplots(2, 4, figsize=(14.5, 8.2), dpi=DPI,
+                             sharex=True, sharey=True)
+    fig.patch.set_facecolor(BG)
+    fig.subplots_adjust(left=0.05, right=0.985, top=0.84, bottom=0.09,
+                        hspace=0.30, wspace=0.08)
+
+    for ax, pos in zip(axes.flat, POS_ORDER):
+        ax.set_facecolor(CARD)
+
+        # Contexto: el resto de posiciones en gris muy tenue
+        for otra in POS_ORDER:
+            if otra == pos:
+                continue
+            vals_o = [rate.loc[otra, r] for r in rounds]
+            ax.plot(rounds, vals_o, color="#252c3b", linewidth=1.0,
+                    alpha=0.8, zorder=1)
+
+        vals  = [rate.loc[pos, r] for r in rounds]
+        color = POS_COLORS[pos]
+        ax.plot(rounds, vals, color=color, linewidth=2.6, marker="o",
+                markersize=5.5, markerfacecolor=color, markeredgecolor=BG,
+                markeredgewidth=1.0, zorder=3)
+
+        # Mayor caída entre rondas consecutivas
+        best = (0.0, None)
+        for i in range(len(vals) - 1):
+            if not (np.isnan(vals[i]) or np.isnan(vals[i + 1])):
+                d = vals[i] - vals[i + 1]
+                if d > best[0]:
+                    best = (d, i)
+        if best[1] is not None and best[0] >= 5:
+            i = best[1]
+            ax.annotate(f"↓{best[0]:.0f} pp",
+                        xy=(rounds[i] + 0.5, (vals[i] + vals[i + 1]) / 2),
+                        ha="left", va="center", fontsize=8, fontweight="bold",
+                        color=color, zorder=4)
+
+        ax.set_title(pos, color=color, fontsize=13, fontweight="bold",
+                     loc="left", pad=4)
+        ax.set_xticks(rounds)
+        ax.set_xticklabels([f"R{r}" for r in rounds], color="#888888", fontsize=7.5)
+        ax.set_xlim(0.6, 7.4)
+        ax.set_ylim(0, y_top)
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0f}%"))
+        ax.tick_params(colors="#888888", labelsize=7.5, length=0)
+        ax.yaxis.grid(True, color=GRID_C, linewidth=0.5, alpha=0.6)
+        ax.set_axisbelow(True)
+        for sp in ax.spines.values():
+            sp.set_edgecolor(GRID_C)
+
+    fig.text(0.05, 0.965, "¿A partir de qué ronda es un riesgo draftear cada posición?",
+             ha="left", va="top", fontsize=15, fontweight="bold", color=FG)
+    fig.text(0.05, 0.915,
+             "% de picks que firmaron segundo contrato (≥2 años) con su equipo de draft · 2011–2022"
+             "  ·  gris = resto de posiciones  ·  ↓ = mayor caída entre rondas",
+             ha="left", va="top", fontsize=9, color="#888888", fontstyle="italic")
+    fig.text(0.01, 0.01, "Fuente: PFR & OverTheCap via nflreadpy",
+             ha="left", va="bottom", color="#555555", fontsize=7.5, fontstyle="italic")
+    fig.text(0.99, 0.01, "@CuartayDato",
+             ha="right", va="bottom", color="#888888", fontsize=9, alpha=0.8,
+             fontstyle="italic")
+
+    plt.savefig(OUT, dpi=DPI, bbox_inches="tight", facecolor=BG)
+    plt.close()
+    print(f"Guardado: {OUT}")
+
+
+# ─────────────────────────────────────────────
 # 3. Main
 # ─────────────────────────────────────────────
 if __name__ == "__main__":
@@ -234,4 +313,4 @@ if __name__ == "__main__":
     if modo.startswith("p") and pos_raw in POS_ORDER:
         plot_cliff(df, pos_filter=pos_raw)
     else:
-        plot_cliff(df, pos_filter=None)
+        plot_cliff_grid(df)

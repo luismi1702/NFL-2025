@@ -13,7 +13,10 @@ Uso:
   python contenders_tracker.py --season 2024 --week 14
 """
 import os, sys, argparse, warnings
+import socket
 import numpy as np
+
+socket.setdefaulttimeout(30)   # una descarga colgada no debe congelar el script
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -33,7 +36,6 @@ GREEN = "#06d6a0"
 YELLOW= "#ffd166"
 RED   = "#d84a4a"
 DIM   = "#444c5e"
-HARD_PENALTY = {"NYJ": 4.5}
 
 SCHEDULE_URL = "https://github.com/nflverse/nfldata/raw/master/data/games.csv"
 PBP_URL      = ("https://github.com/nflverse/nflverse-data/releases/download/"
@@ -52,17 +54,19 @@ PBP_COLS = [
 # Recalibrados 2026-06 con las definiciones autosuficientes de este script
 # (sacks/YPA oficiales desde PBP): cada umbral = valor del peor campeon con
 # pequeño margen flotante. Peores campeones: KC19 (def_epa -0.0158),
-# TB20 (pts cedidos pace 377.2), LA21 (3a bajada 0.4104), PHI24 (sacks 45),
+# TB20 (pts cedidos pace 377.2), LA21 (3er down 0.4104), PHI24 (sacks 45),
 # NE18 (yds/jugada 5.7809).
 THRESHOLDS = {
     "wins_pace":        {"umbral": 11.00,  "lb": False, "label": "Victorias (ritmo)"},
     "ptdiff_pace":      {"umbral": 59.00,  "lb": False, "label": "Dif. puntos (ritmo)"},
     "def_epa":          {"umbral": -0.015, "lb": True,  "label": "EPA defensivo"},
     "pts_allowed_pace": {"umbral": 378.00, "lb": True,  "label": "Pts cedidos (ritmo)"},
-    "def_third_conv":   {"umbral": 0.415,  "lb": True,  "label": "3a bajada cedida"},
+    "def_third_conv":   {"umbral": 0.415,  "lb": True,  "label": "3er down cedido"},
     "pts_scored_pace":  {"umbral": 355.00, "lb": False, "label": "Pts anotados (ritmo)"},
     "ypa":              {"umbral": 6.91,   "lb": False, "label": "Yds/intento pase"},
-    "drive_score_rate": {"umbral": 0.3461, "lb": False, "label": "% drives con TD/FG"},
+    # drive_score_rate recalibrado 2026-07: definicion corregida (drives por
+    # (week, fixed_drive)); peor campeon DEN15 (0.3204)
+    "drive_score_rate": {"umbral": 0.3184, "lb": False, "label": "% drives con puntos"},
     "turnovers_def_pace":{"umbral": 17.00, "lb": False, "label": "Turnovers forzados (ritmo)"},
     "sacks_allowed_pace":{"umbral": 45.50, "lb": True,  "label": "Sacks permitidos (ritmo)"},
     "success_rate_def": {"umbral": 0.45,   "lb": True,  "label": "Success rate DEF"},
@@ -77,10 +81,19 @@ def load_logo(team, zoom=0.04):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        div = HARD_PENALTY.get(team, np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2))
-        return OffsetImage(img, zoom=zoom / div, resample=True)
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        z = zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * z > 900.0 * zoom:
+            z = 900.0 * zoom / w
+        return OffsetImage(img, zoom=z, resample=True)
     except Exception:
         return None
 
@@ -172,7 +185,7 @@ def compute(sch: pd.DataFrame, season: int, max_week: int):
     pbp = pbp[pbp["week"] <= max_week]
     pr  = pbp[pbp["play_type"].isin(["pass", "run"])]
 
-    # EPA def, 3a bajada cedida, turnovers forzados — por semana y luego agregado,
+    # EPA def, 3er down cedido, turnovers forzados — por semana y luego agregado,
     # misma definicion que los game logs de Manning_bot con la que se calibraron los umbrales
     weekly = []
     for (week, team), d in pr.groupby(["week", "defteam"]):
@@ -214,9 +227,10 @@ def compute(sch: pd.DataFrame, season: int, max_week: int):
     for team in pr["posteam"].dropna().unique():
         off = pbp[pbp["posteam"] == team]
         plays_def = pr[pr["defteam"] == team]
-        # Nota: groupby solo por fixed_drive replica la definicion de los antiguos
-        # newmetrics con la que se calibro el umbral 0.3461 — no cambiar sin recalibrar
-        drives = off.groupby("fixed_drive").first()
+        # Un equipo juega max 1 partido/semana → (week, fixed_drive) identifica
+        # cada drive sin game_id (fixed_drive se reinicia cada partido).
+        # Umbral recalibrado con esta definicion (lab/patch_caches_drive_score.py).
+        drives = off.groupby(["week", "fixed_drive"]).first()
         rows.append({
             "team": team,
             "drive_score_rate": drives["drive_ended_with_score"].fillna(0).mean(),
@@ -299,7 +313,8 @@ def render(df, season, week, n_weeks_played):
     COL_W     = (0.99 - COL_START) / n_metrics
 
     ax.set_xlim(0, 1)
-    ax.set_ylim(0, n_rows + 1)
+    # -1.4 abajo: deja visible la fila de leyenda (chips en y=-0.85)
+    ax.set_ylim(-1.4, n_rows + 1)
 
     # Cabeceras metricas
     for j, lbl in enumerate(metric_labels):
@@ -362,9 +377,9 @@ def render(df, season, week, n_weeks_played):
             ax.text(x, y, sym, ha="center", va="center",
                     color=tcol, fontsize=10, fontweight="bold", zorder=3)
 
-    # Leyenda
-    for lx, col, txt in [(0.01, GREEN, "CONTENDER"), (0.09, YELLOW, "1-2 metricas"),
-                          (0.19, RED, "3+ metricas"), (0.29, DIM, "sin datos")]:
+    # Leyenda (desplazada a la derecha para no pisar la fuente)
+    for lx, col, txt in [(0.30, GREEN, "CONTENDER"), (0.42, YELLOW, "fallan 1-2"),
+                          (0.54, RED, "fallan 3+"), (0.66, DIM, "sin datos")]:
         chip = FancyBboxPatch((lx, -0.85), 0.07, 0.60,
                               boxstyle="round,pad=0.01", facecolor=col, alpha=0.85, zorder=2)
         ax.add_patch(chip)

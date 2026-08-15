@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 import pandas as pd
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-SEASON   = None   # None = auto-detectar última temporada
+SEASON   = season_cli()   # None = auto-detectar última temporada
 MIN_WEEK = 1
 MAX_WEEK = 18
 
@@ -60,7 +60,7 @@ print(f"PBP {SEASON}: {len(df):,} jugadas REG")
 df["week"]          = pd.to_numeric(df["week"],          errors="coerce")
 df["air_yards"]     = pd.to_numeric(df["air_yards"],     errors="coerce")
 df["complete_pass"] = pd.to_numeric(df["complete_pass"], errors="coerce")
-df["touchdown"]     = pd.to_numeric(df["touchdown"],     errors="coerce")
+df["pass_touchdown"] = pd.to_numeric(df["pass_touchdown"], errors="coerce")
 df["yards_gained"]  = pd.to_numeric(df["yards_gained"],  errors="coerce")
 df["sack"]          = pd.to_numeric(df.get("sack"),      errors="coerce").fillna(0)
 df["qb_spike"]      = pd.to_numeric(df.get("qb_spike"),  errors="coerce").fillna(0)
@@ -130,7 +130,8 @@ for prof in ["Cortos", "Medios", "Profundos"]:
         comp     = int(sub["complete_pass"].sum())
         comp_pct = round(comp / intentos * 100, 1)
         yardas   = int(sub.loc[sub["complete_pass"] == 1, "yards_gained"].sum())
-        tds      = int(sub["touchdown"].sum())
+        # pass_touchdown: solo TDs de pase del ataque (touchdown incluiria pick-six)
+        tds      = int(sub["pass_touchdown"].sum())
         RAW[(prof, zona)] = {"Intentos": intentos, "Comp": comp, "Comp%": comp_pct,
                              "Yardas": yardas, "TD": tds}
 
@@ -300,7 +301,7 @@ ax.text(0.90, 0.042, "@CuartayDato", ha="right", va="center",
 
 # ── GUARDAR ───────────────────────────────────────────────────────────────────
 slug    = QB_NAME.replace(".", "").replace(" ", "_")
-outfile = f"mapa_pases_{slug}_{SEASON}.png"
+outfile = salida(f"mapa_pases_{slug}_{SEASON}.png", SEASON)
 plt.savefig(outfile, dpi=DPI, bbox_inches="tight", facecolor=BG)
 plt.close()
 print(f"Guardado: {outfile}")

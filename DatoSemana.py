@@ -6,12 +6,12 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp
+from pbp_loader import cargar_pbp, salida, season_cli, week_cli, sello
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.colors import LinearSegmentedColormap
 
 # === Config ===
-SEASON    = None   # None = auto-detectar última temporada
+SEASON    = season_cli()   # None = auto-detectar última temporada
 LOGOS_DIR = "logos"
 
 # Estilo
@@ -22,7 +22,6 @@ DPI     = 170
 FIGSIZE = (12, 9)
 RYG     = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
-HARD_PENALTY = {"NYJ": 4.5}
 
 # ---------- Utilidades ----------
 def to_num(df, cols):
@@ -54,13 +53,18 @@ def logo_image(team, base_zoom=0.055):
         return None
     try:
         img = plt.imread(path)
+        # Recorta margenes transparentes: algunos archivos traen mucho aire
+        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
+        if img.ndim == 3 and img.shape[2] == 4:
+            ys, xs = np.where(img[:, :, 3] > 0.02)
+            if len(ys):
+                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         h, w = img.shape[:2]
-        aspect = w / float(h) if h else 1.0
-        if team in HARD_PENALTY:
-            zoom = base_zoom / HARD_PENALTY[team]
-        else:
-            div = np.clip(1.0 + 0.6 * max(0.0, aspect - 1.3), 1.0, 2.2)
-            zoom = base_zoom / div
+        # Normaliza por el area de tinta real; los wordmarks apaisados
+        # pueden ensancharse hasta 1.8x para compensar su poca altura
+        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
+        if w * zoom > 900.0 * (base_zoom):
+            zoom = 900.0 * (base_zoom) / w
         return OffsetImage(img, zoom=zoom, resample=True)
     except Exception:
         return None
@@ -94,30 +98,12 @@ def metric_series(dfw: pd.DataFrame, key: str):
         s = sub.groupby("posteam")["epa"].mean()
         return s, "EPA/pase ofensivo (semana)", True, "{:+.3f}", 18, cnt
 
-    if key == "def_epa_allowed":
-        sub = dfw[dfw["play_type"].isin(["run","pass"]) & dfw["defteam"].notna()]
-        cnt = sub.groupby("defteam").size()
-        s = sub.groupby("defteam")["epa"].mean()
-        return s, "EPA/jugada permitido (semana)", False, "{:+.3f}", 25, cnt
-
-    if key == "def_rush_allowed":
-        sub = dfw[(dfw["play_type"]=="run") & dfw["defteam"].notna()]
-        cnt = sub.groupby("defteam").size()
-        s = sub.groupby("defteam")["epa"].mean()
-        return s, "EPA/carrera permitido (semana)", False, "{:+.3f}", 12, cnt
-
-    if key == "def_pass_allowed":
-        sub = dfw[(dfw["play_type"]=="pass") & dfw["defteam"].notna()]
-        cnt = sub.groupby("defteam").size()
-        s = sub.groupby("defteam")["epa"].mean()
-        return s, "EPA/pase permitido (semana)", False, "{:+.3f}", 18, cnt
-
     if key == "st_epa":
         st_types = {"kickoff","kickoff_return","punt","punt_return","field_goal","extra_point"}
         sub = dfw[dfw["play_type"].isin(st_types) & dfw["posteam"].notna()]
         cnt = sub.groupby("posteam").size()
         s = sub.groupby("posteam")["epa"].mean()
-        return s, "EPA/jugada equipos especiales (semana)", True, "{:+.3f}", 6, cnt
+        return s, "EPA/jugada equipos especiales (semana)", True, "{:+.3f}", 10, cnt
 
     if key == "fg_pct":
         fg_col = "field_goal_result" if "field_goal_result" in dfw.columns else ("fg_result" if "fg_result" in dfw.columns else None)
@@ -132,6 +118,35 @@ def metric_series(dfw: pd.DataFrame, key: str):
         return s, "FG% (semana)", True, "{:.1f}%", 3, cnt
 
     raise ValueError("key no reconocida")
+
+# Cada metrica ofensiva tiene su espejo defensivo: son LAS MISMAS jugadas
+# reagrupadas por el equipo que defiende. Por eso no se evaluan como candidatas
+# (darian exactamente el mismo z y el desempate iria siempre al ataque); se usan
+# para reencuadrar el titular cuando el outlier es un desastre y no una hazaña.
+ESPEJO_DEF = {
+    "off_epa":  ("EPA/jugada permitido (semana)",  "run/pass"),
+    "off_rush": ("EPA/carrera permitido (semana)", "run"),
+    "off_pass": ("EPA/pase permitido (semana)",    "pass"),
+}
+
+
+def voltear_a_defensa(dfw, key):
+    """Misma metrica agrupada por defteam. Devuelve (serie, titulo, cuentas)."""
+    titulo, tipos = ESPEJO_DEF[key]
+    filtro = ["run", "pass"] if tipos == "run/pass" else [tipos]
+    sub = dfw[dfw["play_type"].isin(filtro) & dfw["defteam"].notna()]
+    return sub.groupby("defteam")["epa"].mean(), titulo, sub.groupby("defteam").size()
+
+
+def penalizacion_muestra(n, k=15):
+    """Encoge el z segun el tamaño de muestra del outlier.
+
+    Sin esto, equipos especiales gana un tercio de las semanas: con 6-10 jugadas
+    un punt bloqueado parece mas 'extremo' que un ataque brillante sobre 65
+    jugadas. Con k=15 una muestra de 8 pesa 0.59 y una de 65 pesa 0.90.
+    """
+    n = max(int(n), 1)
+    return (n / (n + k)) ** 0.5
 
 # ---------- Plot ----------
 def plot_outlier(series, title, week, higher_is_better, fmt, counts, out_idx, outfile):
@@ -169,11 +184,15 @@ def plot_outlier(series, title, week, higher_is_better, fmt, counts, out_idx, ou
         bars[idx].set_edgecolor("#ffffff")
         bars[idx].set_linewidth(2.2)
 
-    # Texto de valores
+    # Texto de valores (negativos a la izquierda, fuera de la barra)
     xr = ax.get_xlim()[1]
     for yy, v, t in zip(y, vals, teams):
-        ax.text(min(v + 0.006*rng, xr - 0.01*rng), yy, fmt.format(v),
-                va="center", ha="left", fontsize=10, color=FG)
+        if v >= 0:
+            ax.text(min(v + 0.006*rng, xr - 0.01*rng), yy, fmt.format(v),
+                    va="center", ha="left", fontsize=10, color=FG)
+        else:
+            ax.text(v - 0.006*rng, yy, fmt.format(v),
+                    va="center", ha="right", fontsize=10, color=FG)
 
     # Logos a la izquierda
     xmin, xmax = ax.get_xlim()
@@ -209,7 +228,8 @@ def plot_outlier(series, title, week, higher_is_better, fmt, counts, out_idx, ou
         ax.spines[spine].set_visible(False)
 
     # Fuente
-    fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  NFL {SEASON}  ·  Solo pases y carreras",
+    # Sin coletilla "solo pases y carreras": la métrica puede ser de ST/FG
+    fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  {sello(SEASON)}",
              ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 
     # Firma
@@ -222,7 +242,7 @@ def plot_outlier(series, title, week, higher_is_better, fmt, counts, out_idx, ou
 
 # ---------- Main ----------
 if __name__ == "__main__":
-    week_in = input("Semana (número, p.ej. 5): ").strip()
+    week_in = str(week_cli() or "") or input("Semana (número, p.ej. 5): ").strip()
     try:
         week = int(week_in)
     except:
@@ -235,14 +255,11 @@ if __name__ == "__main__":
     if dfw.empty:
         raise SystemExit(f"No hay jugadas para la semana {week}.")
 
-    # Lista de métricas a evaluar para outliers
-    keys = [
-        "off_epa", "off_rush", "off_pass",
-        "def_epa_allowed", "def_rush_allowed", "def_pass_allowed",
-        "st_epa", "fg_pct"
-    ]
+    # Solo metricas ofensivas y de equipos especiales: las defensivas son las
+    # mismas jugadas reagrupadas (ver ESPEJO_DEF) y jamas ganarian el desempate.
+    keys = ["off_epa", "off_rush", "off_pass", "st_epa", "fg_pct"]
 
-    best = None  # (abs_z, key, series_filtrada, title, hib, fmt, counts, out_team)
+    best = None  # (z, key, series_filtrada, title, hib, fmt, counts, out_team)
     for key in keys:
         try:
             s_raw, title, hib, fmt, min_plays, counts = metric_series(dfw, key)
@@ -258,17 +275,33 @@ if __name__ == "__main__":
         rz = robust_zscores(s)
         if rz.empty:
             continue
-        # elegir el más extremo por |z|
-        out_team = rz.abs().idxmax()
-        abs_z = float(rz.loc[out_team])
-        if (best is None) or (abs(abs_z) > abs(best[0])):
-            best = (abs_z, key, s, title, hib, fmt, counts, out_team)
+        # elegir el más extremo por |z|, encogido por tamaño de muestra
+        rz_aj = rz * rz.index.map(lambda t: penalizacion_muestra(counts.get(t, 0)))
+        out_team = rz_aj.abs().idxmax()
+        z = float(rz_aj.loc[out_team])
+        if (best is None) or (abs(z) > abs(best[0])):
+            best = (z, key, s, title, hib, fmt, counts, out_team)
 
     if best is None:
         raise SystemExit("No se pudo determinar un outlier con suficiente volumen de jugadas.")
 
-    abs_z, key, series, title, hib, fmt, counts, out_team = best
-    print(f"Outlier detectado -> {out_team} en '{title}' (|z|={abs(abs_z):.2f})")
+    z, key, series, title, hib, fmt, counts, out_team = best
 
-    outfile = f"dato_semana_outlier_week{week}.png"
+    # Reencuadre: un ataque hundido es, contado desde el otro lado, una gran
+    # actuacion defensiva — y casi siempre es la mejor historia de las dos.
+    if z < 0 and key in ESPEJO_DEF:
+        s_def, title_def, cnt_def = voltear_a_defensa(dfw, key)
+        s_def = s_def.dropna()
+        if len(s_def) >= 6:
+            rival = s_def.idxmin()          # menos EPA permitido = mejor defensa
+            print(f"Outlier -> {out_team} hundido en '{title}' (z={z:+.2f})")
+            print(f"Reencuadrado como defensa: {rival} en '{title_def}'")
+            series, title, hib, fmt, counts, out_team = (
+                s_def, title_def, False, fmt, cnt_def, rival)
+        else:
+            print(f"Outlier detectado -> {out_team} en '{title}' (z={z:+.2f})")
+    else:
+        print(f"Outlier detectado -> {out_team} en '{title}' (z={z:+.2f})")
+
+    outfile = salida(f"dato_semana_outlier_{SEASON}.png", SEASON, week)
     plot_outlier(series, title, week, hib, fmt, counts, out_team, outfile)
