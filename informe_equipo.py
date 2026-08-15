@@ -3,10 +3,11 @@ informe_equipo.py
 Informe completo de un equipo NFL: dos PNGs (ataque y defensa).
 
 Rediseño jul-2026 — "team card" presentable:
-  - Cabecera con 4 KPIs grandes y su ranking de liga
+  - Banda superior: 3 KPIs con su ranking + DONDE DOMINA en fila
   - Columna izquierda: cada faceta como punto sobre una pista de ranking 1→32
     (un solo eje universal: izquierda = top de la liga, derecha = cola)
-  - Columna derecha: fortalezas y debilidades autogeneradas + identidad
+  - Columna derecha: debilidades, identidad y un bloque PRESION que reune
+    el KPI, el % y el origen (mini-campo con las cuatro flechas)
 Datos: nflverse PBP + NGS participation (coberturas, personal, presión).
 """
 
@@ -46,8 +47,6 @@ COV_LABELS = {"COVER_0": "Cover 0", "COVER_1": "Cover 1", "2_MAN": "2-Man",
               "COVER_2": "Cover 2", "COVER_3": "Cover 3", "COVER_4": "Cover 4",
               "COVER_6": "Cover 6", "COVER_9": "Cover 9"}
 MZ_ORDER   = ["Hombre", "Zona"]
-PRES_ORDER = ["Bajo presion", "Pocket limpio"]
-PRES_LABEL = {"Bajo presion": "Bajo presión", "Pocket limpio": "Pocket limpio"}
 
 
 # ── HELPERS ────────────────────────────────────────────────────────────────────
@@ -224,8 +223,8 @@ def secciones(side):
         ("COBERTURAS" + (" QUE LE PRESENTAN" if side == "off" else " QUE JUEGA"),
          "defense_coverage_type", COV_ORDER, COV_LABELS),
         ("HOMBRE / ZONA", "man_zone", MZ_ORDER, {}),
-        ("PRESIÓN" + (" SUFRIDA" if side == "off" else " GENERADA"),
-         "pressure", PRES_ORDER, PRES_LABEL),
+        # La presión ya no es una faceta suelta al final de la columna: vive en
+        # el bloque PRESIÓN de la derecha, junto al KPI y al origen
     ]
     out = []
     for titulo, col, orden, lmap in cfg:
@@ -287,6 +286,262 @@ def claves(secs, n_top=3):
 HALO = [pe.withStroke(linewidth=2.2, foreground=CARD)]
 
 
+# ── ORIGEN DE LA PRESIÓN ──────────────────────────────────────────────────────
+ORIGENES = ["INT", "EXT", "LB", "DB"]
+ORIGEN_LABEL = {"INT": "Interior", "EXT": "Exterior",
+                "LB": "Blitz LB", "DB": "Blitz DB"}
+ORIGEN_COLOR = {"INT": "#2d6cdf", "EXT": "#06d6a0",
+                "LB": "#ffd166", "DB": "#d84a4a"}
+
+_MAPA_DEPTH = {
+    "DT": "INT", "NT": "INT",
+    "DE": "EXT", "OLB": "EXT", "EDGE": "EXT", "RUSH": "EXT",
+    "JACK": "EXT", "LEO": "EXT",
+    "LB": "LB", "ILB": "LB", "MLB": "LB", "WLB": "LB", "SLB": "LB",
+    "MIKE": "LB", "WILL": "LB", "SAM": "LB",
+    "CB": "DB", "DB": "DB", "S": "DB", "FS": "DB", "SS": "DB", "NB": "DB",
+}
+_MAPA_POS = {"DT": "INT", "NT": "INT", "DE": "EXT", "OLB": "EXT", "EDGE": "EXT",
+             "LB": "LB", "ILB": "LB", "MLB": "LB",
+             "CB": "DB", "S": "DB", "FS": "DB", "SS": "DB", "DB": "DB"}
+PESO_INTERIOR = 280   # un DE de 3-4 juega por dentro; ver dline_presion_origen
+
+
+def _clasificar_rusher(depth, pos, peso=None):
+    d = depth.upper() if isinstance(depth, str) else ""
+    if d == "DE" and peso and float(peso) >= PESO_INTERIOR:
+        return "INT"
+    if d in _MAPA_DEPTH:
+        return _MAPA_DEPTH[d]
+    if isinstance(pos, str) and pos.upper() in _MAPA_POS:
+        return _MAPA_POS[pos.upper()]
+    return None
+
+
+def _mapa_origen():
+    """gsis_id → origen, por depth chart (única fuente fiable para edge/interior)."""
+    from pbp_loader import cargar_rosters
+    ros, _ = cargar_rosters(SEASON)
+    m = {}
+    for _, r in ros.iterrows():
+        gid = r.get("gsis_id")
+        if pd.isna(gid):
+            continue
+        cl = _clasificar_rusher(r.get("depth_chart_position"), r.get("position"),
+                                r.get("weight"))
+        if cl:
+            m[gid] = cl
+    return m
+
+
+def origen_presion(side):
+    """Reparto de la presión por origen, del equipo y de la liga.
+
+    Cada cara usa la misma fuente que su script dedicado, para que los números
+    del informe coincidan con el gráfico grande:
+      - defensa: presiones reales de PFR      -> igual que dline_presion_origen
+      - ataque:  atribución de sacks+QB hits  -> igual que oline_presion_origen
+        (los hurries no traen autor en datos públicos, por eso aquí es
+        atribución y no presión completa)
+    """
+    try:
+        if side == "def":
+            from pbp_loader import cargar_pfr, cargar_rosters
+            pfr, _ = cargar_pfr("def", SEASON)
+            pfr = pfr[pfr["tm"] != "3TM"].copy()
+            pfr["prss"] = pd.to_numeric(pfr["prss"], errors="coerce").fillna(0)
+            ros, _ = cargar_rosters(SEASON)
+            por_nombre = {}
+            for _, r in ros.iterrows():
+                cl = _clasificar_rusher(r.get("depth_chart_position"),
+                                        r.get("position"), r.get("weight"))
+                if cl:
+                    por_nombre.setdefault(_clave_nombre(r.get("full_name")), cl)
+            pfr["origen"] = pfr["player"].map(_clave_nombre).map(por_nombre)
+            ev = pfr.dropna(subset=["origen"])
+            equipo_col, mi = "tm", team
+            tot = ev.groupby([equipo_col, "origen"])["prss"].sum().unstack(fill_value=0)
+        else:
+            # Quién presionó a este ataque: autores de sacks y QB hits
+            m = _mapa_origen()
+            filas = []
+            for col_id, col_eq in [("sack_player_id", "posteam"),
+                                   ("qb_hit_1_player_id", "posteam"),
+                                   ("qb_hit_2_player_id", "posteam"),
+                                   ("half_sack_1_player_id", "posteam"),
+                                   ("half_sack_2_player_id", "posteam")]:
+                if col_id not in pbp.columns:
+                    continue
+                sub = pbp[pbp[col_id].notna()][[col_id, col_eq]].copy()
+                sub.columns = ["pid", "equipo"]
+                filas.append(sub)
+            if not filas:
+                return None
+            ev = pd.concat(filas, ignore_index=True)
+            ev["origen"] = ev["pid"].map(m)
+            ev = ev.dropna(subset=["origen", "equipo"])
+            tot = ev.groupby(["equipo", "origen"]).size().unstack(fill_value=0)
+            mi = team
+
+        tot = tot.reindex(columns=ORIGENES, fill_value=0)
+        pct = tot.div(tot.sum(axis=1).replace(0, np.nan), axis=0) * 100
+        if mi not in pct.index:
+            return None
+        return {"equipo": {o: float(pct.loc[mi, o]) for o in ORIGENES},
+                "liga":   {o: float(pct[o].mean()) for o in ORIGENES},
+                "n":      int(tot.loc[mi].sum())}
+    except Exception as e:
+        print(f"  Aviso: sin origen de presión ({type(e).__name__}: {str(e)[:60]})")
+        return None
+
+
+def _clave_nombre(n):
+    n = str(n).lower().replace(".", " ").replace("'", "").replace("-", " ")
+    p = [x for x in n.split() if x not in ("jr", "sr", "ii", "iii", "iv", "v")]
+    if not p:
+        return ""
+    return p[0] if len(p) == 1 else p[0][0] + " " + p[-1]
+
+
+def pares_identidad(es_off):
+    """Filas de IDENTIDAD: (nombre, % del equipo, % de la liga).
+
+    Se calcula aparte del dibujo porque su numero de filas decide cuanto
+    espacio le queda al bloque PRESION."""
+    if es_off:
+        uso_pkg  = snap_pct(off, "off_pkg")
+        lg_pkg   = snap_pct(all_plays, "off_pkg")
+
+        def pct_propio(df_team, col):
+            """% de jugadas propias con esa cualidad (decisión del equipo,
+            no lo que le hace el rival) + su media de liga."""
+            t  = df_team[col].mean() * 100 if col in df_team else np.nan
+            lg = all_plays[col].mean() * 100
+            return (0.0 if pd.isna(t) else t), lg
+
+        sg_t,  sg_lg  = pct_propio(off, "shotgun")
+        nh_t,  nh_lg  = pct_propio(off, "no_huddle")
+        pa_t,  pa_lg  = pct_propio(off, "is_play_action")
+        uc_t,  uc_lg  = (100 - sg_t if sg_t else np.nan), (100 - sg_lg)
+        top_pkgs = sorted(
+            [p for p in OFF_PKG_ORDER if uso_pkg.get(p, 0) >= 5],
+            key=lambda p: -uso_pkg.get(p, 0))
+        pares = [("Shotgun", sg_t, sg_lg),
+                 ("Bajo centro", uc_t, uc_lg),
+                 ("No-huddle", nh_t, nh_lg),
+                 ("Play-action", pa_t, pa_lg)] + [
+                 (f"Personal {p}", uso_pkg.get(p, 0), lg_pkg.get(p, 0))
+                 for p in top_pkgs]
+    else:
+        uso_pkg  = snap_pct(defn, "def_pkg")
+        lg_pkg   = snap_pct(all_plays, "def_pkg")
+        jug_mz   = snap_pct(defn, "man_zone")
+        lg_mz    = snap_pct(all_plays, "man_zone")
+        pr       = snap_pct(defn, "pressure")
+        lg_pr    = snap_pct(all_plays, "pressure")
+        pares = [("Juega zona", jug_mz.get("Zona", 0), lg_mz.get("Zona", 0)),
+                 ("Genera presión", pr.get("Bajo presion", 0), lg_pr.get("Bajo presion", 0))] + [
+                 (f"Juega {p}", uso_pkg.get(p, 0), lg_pkg.get(p, 0))
+                 for p in DEF_PKG_ORDER if uso_pkg.get(p, 0) >= 5]
+    return pares
+
+
+def dibujar_presion(ax, side, y0, y1, card):
+    """Bloque PRESIÓN: el KPI, y bajo él un mini-campo con las cuatro flechas.
+
+    Versión reducida del diagrama de dline_presion_origen / oline_presion_origen:
+    sin línea ofensiva ni nombres, solo el QB y los cuatro orígenes con su %.
+    El grosor de la flecha es el % del reparto, igual que en el grande.
+    """
+    import matplotlib.patches as mpatches
+    from matplotlib.path import Path as MPath
+
+    es_off = side == "off"
+    titulo = "PRESIÓN SUFRIDA" if es_off else "PRESIÓN GENERADA"
+    card(y0, y1, titulo, "#e0a458")
+
+    # KPI de presión, traído desde la cabecera
+    serie = (pases_lg.groupby("posteam")["was_pressure"].mean() * 100 if es_off
+             else pases_lg.groupby("defteam")["was_pressure"].mean() * 100)
+    rank, nt, val = team_rank(serie, team, ascending=es_off)
+    ax.text(64.6, y1 - 5.6, f"{val:.1f}%" if pd.notna(val) else "N/D",
+            ha="left", va="center", fontsize=15, fontweight="bold",
+            color=FG, zorder=3)
+    if rank:
+        ax.add_patch(plt.Circle((72.6, y1 - 5.6), 1.5,
+                                color=rank_color(rank, nt), zorder=3))
+        ax.text(72.6, y1 - 5.6, str(rank), ha="center", va="center",
+                fontsize=8.5, fontweight="bold", color="#0a0e13", zorder=4)
+    ax.text(75.4, y1 - 5.6, "de los dropbacks", ha="left", va="center",
+            fontsize=6.8, color="#9aa3b5", zorder=3)
+
+    datos = origen_presion(side)
+    if not datos:
+        ax.text(64.6, y0 + 6.0, "Origen de la presión no disponible",
+                ha="left", va="center", fontsize=7.5, color="#777777", zorder=3)
+        return
+
+    # ── Mini-campo apaisado ───────────────────────────────────────────────
+    # La geometría se calcula sobre el alto REAL del bloque: con posiciones
+    # fijas desde y0, el campo quedaba aplastado abajo y las etiquetas se
+    # pisaban entre sí.
+    top_c = y1 - 8.6          # bajo el KPI
+    bot_c = y0 + 2.8          # sobre la nota del pie
+    h_c   = max(top_c - bot_c, 6.0)
+
+    qx, qy = 81.0, bot_c + h_c * 0.06
+    ax.add_patch(plt.Circle((qx, qy), 1.7, color="#E5C070", zorder=8))
+    ax.text(qx, qy, "QB", ha="center", va="center", color=BG,
+            fontsize=7, fontweight="bold", zorder=9)
+
+    # Los cuatro orígenes en FILA a la misma altura, no en arco: en 35 unidades
+    # de ancho el arco hacía que las etiquetas se pisaran con las flechas y que
+    # "Exterior" se saliera por el borde derecho de la tarjeta.
+    X_ORI = {"DB": 67.4, "LB": 76.2, "INT": 85.0, "EXT": 93.8}
+    y_ori = bot_c + h_c * 0.80
+
+    for o in ORIGENES:
+        px, py = X_ORI[o], y_ori
+        # El ángulo de llegada se deduce de la posición: siempre correcto,
+        # sin tablas de ángulos que reajustar si se mueve un origen
+        ang_deg = np.degrees(np.arctan2(py - qy, px - qx))
+        pct  = datos["equipo"][o]
+        lg   = datos["liga"][o]
+        col  = ORIGEN_COLOR[o]
+        lw   = 1.0 + 5.0 * min(pct / 60.0, 1.0)
+        ang  = np.radians(ang_deg)
+        ux, uy = np.cos(ang), np.sin(ang)
+        destino = np.array([qx, qy]) + np.array([ux, uy]) * 2.1
+        ctrl = (qx + (px - qx) * 0.85, qy + h_c * 0.30)
+        ax.add_patch(mpatches.PathPatch(
+            MPath([(px, py), ctrl, tuple(destino)],
+                  [MPath.MOVETO, MPath.CURVE3, MPath.CURVE3]),
+            facecolor="none", edgecolor=col, linewidth=lw, zorder=3,
+            capstyle="round", alpha=0.95))
+        perp = np.array([-uy, ux])
+        tip  = destino - np.array([ux, uy]) * 0.15
+        base = tip + np.array([ux, uy]) * (0.7 + lw * 0.09)
+        an   = 0.34 + lw * 0.07
+        ax.add_patch(plt.Polygon([tip, base + perp * an, base - perp * an],
+                                 color=col, zorder=6))
+        # Etiqueta sobre el origen: nombre, % y comparación con la liga
+        d = pct - lg
+        ax.text(px, py + 3.4, ORIGEN_LABEL[o], ha="center", va="center",
+                fontsize=6.8, fontweight="bold", color=FG, zorder=9)
+        ax.text(px, py + 1.9, f"{pct:.0f}%", ha="center", va="center",
+                fontsize=9.5, fontweight="bold", color=col, zorder=9)
+        ax.text(px, py + 0.6, f"{d:+.0f} liga", ha="center", va="center",
+                fontsize=6, zorder=9,
+                color="#06d6a0" if d >= 0 else "#767E90")
+
+    nota = ("origen: atribución de sacks y QB hits"
+            if es_off else "origen: presiones reales (PFR)")
+    ax.text(64.6, y0 + 0.9,
+            f"grosor = % del reparto  ·  {nota}  ·  n={datos['n']}",
+            ha="left", va="center", fontsize=6.3, color="#666666",
+            fontstyle="italic", zorder=3)
+
+
 def draw_informe(side, outfile):
     secs = secciones(side)
     kpi  = kpis(side)
@@ -300,38 +555,61 @@ def draw_informe(side, outfile):
     ax.set_xlim(0, 100)
     ax.set_ylim(0, 100)
 
-    # ── Cabecera ──────────────────────────────────────────────────────────────
-    ax.add_patch(plt.Rectangle((0, 91.5), 100, 8.5, color=CARD, zorder=0))
-    logo = load_logo(team, base_zoom=0.085)
+    # ── Cabecera (comprimida: era 8.5 de alto para un logo y dos líneas) ──────
+    ax.add_patch(plt.Rectangle((0, 94.6), 100, 5.4, color=CARD, zorder=0))
+    logo = load_logo(team, base_zoom=0.062)
     if logo is not None:
-        ab = AnnotationBbox(logo, (5.5, 95.7), frameon=False, zorder=3)
+        ab = AnnotationBbox(logo, (4.6, 97.3), frameon=False, zorder=3)
         ax.add_artist(ab)
-    ax.text(50, 97.4, f"{team}  ·  INFORME {'OFENSIVO' if es_off else 'DEFENSIVO'}  ·  NFL {SEASON}",
-            ha="center", va="center", fontsize=16, fontweight="bold", color=FG)
-    ax.text(50, 93.4,
+    ax.text(50, 98.2, f"{team}  ·  INFORME {'OFENSIVO' if es_off else 'DEFENSIVO'}  ·  NFL {SEASON}",
+            ha="center", va="center", fontsize=15, fontweight="bold", color=FG)
+    ax.text(50, 95.7,
             "Cada faceta situada en su ranking de liga  ·  izquierda = top NFL  ·  "
             "tamaño de fuente del uso = peso real de esa situación",
-            ha="center", va="center", fontsize=8, color="#888888", fontstyle="italic")
+            ha="center", va="center", fontsize=7.5, color="#888888", fontstyle="italic")
 
-    # ── KPIs ──────────────────────────────────────────────────────────────────
-    kx = [11, 30, 49, 68]
+    # ── Banda superior: 3 KPIs (izquierda) + DONDE DOMINA (derecha) ───────────
+    # El 4º KPI era la presión y se ha ido al bloque PRESIÓN del final, donde
+    # está el resto del tema. La leyenda "1 = mejor / de 32" se quitó: el badge
+    # verde ya se entiende solo y ocupaba un hueco que ahora usa DONDE DOMINA.
+    Y0_BANDA, Y1_BANDA = 84.2, 93.6
+    kx = [11.5, 31.5, 51.5]
     for (x, k) in zip(kx, kpi):
-        ax.add_patch(plt.Rectangle((x - 8.5, 83.2), 17, 6.9, color=CARD, zorder=1))
-        if k["fmt"] == "epa":
-            vtxt = f"{k['val']:+.3f}"
-        else:
-            vtxt = f"{k['val']:.1f}%"
-        ax.text(x, 88.2, k["nombre"], ha="center", va="center",
+        ax.add_patch(plt.Rectangle((x - 9.3, Y0_BANDA), 18.6, Y1_BANDA - Y0_BANDA,
+                                   color=CARD, zorder=1))
+        vtxt = f"{k['val']:+.3f}" if k["fmt"] == "epa" else f"{k['val']:.1f}%"
+        ax.text(x, Y1_BANDA - 2.0, k["nombre"], ha="center", va="center",
                 fontsize=7.5, color="#9aa3b5", zorder=2)
-        ax.text(x - 2.2, 85.4, vtxt, ha="center", va="center", fontsize=13,
-                fontweight="bold", color=FG, zorder=2)
+        ax.text(x - 2.4, Y0_BANDA + 3.1, vtxt, ha="center", va="center",
+                fontsize=13.5, fontweight="bold", color=FG, zorder=2)
         col = rank_color(k["rank"], k["n_teams"])
-        ax.add_patch(plt.Circle((x + 4.6, 85.4), 1.55, color=col, zorder=2))
-        ax.text(x + 4.6, 85.4, f"{k['rank']}" if k["rank"] else "—",
+        ax.add_patch(plt.Circle((x + 5.0, Y0_BANDA + 3.1), 1.6, color=col, zorder=2))
+        ax.text(x + 5.0, Y0_BANDA + 3.1, f"{k['rank']}" if k["rank"] else "—",
                 ha="center", va="center", fontsize=9.5, fontweight="bold",
                 color="#0a0e13", zorder=3)
-    ax.text(84.5, 86.8, "1 = mejor\nde 32", ha="left", va="center",
-            fontsize=7, color="#666666", linespacing=1.4)
+
+    # DONDE DOMINA: las 3 facetas en fila, no apiladas — en la banda no caben
+    # a 6.6 de alto cada una, pero en horizontal entran de sobra
+    ax.add_patch(plt.Rectangle((63.2, Y0_BANDA), 35.4, Y1_BANDA - Y0_BANDA,
+                               color=CARD, zorder=1))
+    ax.text(64.6, Y1_BANDA - 1.9, "✓  DONDE DOMINA", ha="left", va="center",
+            fontsize=9, fontweight="bold", color="#06d6a0", zorder=3)
+    if not fort:
+        ax.text(64.6, Y0_BANDA + 3.0, "Sin facetas top-8 con uso relevante",
+                ha="left", va="center", fontsize=7.5, color="#777777", zorder=3)
+    else:
+        ancho = 35.4 / max(len(fort), 1)
+        for i, it in enumerate(fort):
+            cx = 63.2 + ancho * (i + 0.5)
+            ax.text(cx, Y0_BANDA + 4.3, it["label"][:16], ha="center", va="center",
+                    fontsize=8.5, fontweight="bold", color=FG, zorder=3)
+            ax.add_patch(plt.Circle((cx - 3.4, Y0_BANDA + 1.8), 1.15,
+                                    color=rank_color(it["rank"], it["n_teams"]), zorder=4))
+            ax.text(cx - 3.4, Y0_BANDA + 1.8, f"{it['rank']}", ha="center",
+                    va="center", fontsize=7, fontweight="bold", color="#0a0e13", zorder=5)
+            ax.text(cx - 1.6, Y0_BANDA + 1.8,
+                    f"{it['epa']:+.2f} EPA · {it['uso']:.0f}%",
+                    ha="left", va="center", fontsize=6.8, color="#9aa3b5", zorder=3)
 
     # ── Columna izquierda: pistas de ranking ──────────────────────────────────
     ax.add_patch(plt.Rectangle((1.2, 1.5), 60.6, 80.2, color=CARD, zorder=0))
@@ -419,19 +697,8 @@ def draw_informe(side, outfile):
         body = len(items) * ROW_H if items else 3.5
         return TITLE_H + body + PAD_BOT
 
-    y_top = 81.7
-    h_dom = card_h(fort)
-    y0_dom = y_top - h_dom
-    card(y0_dom, y_top, "✓  DONDE DOMINA", "#06d6a0")
-    yy = y_top - TITLE_H - 1.5
-    if not fort:
-        ax.text(64.6, yy, "Sin facetas top-8 con uso relevante", ha="left",
-                va="center", fontsize=8, color="#777777")
-    for it in fort:
-        linea_clave(yy, it, "#06d6a0")
-        yy -= ROW_H
-
-    y1_suf = y0_dom - GAP
+    # DONDE DOMINA ya se ha dibujado arriba, en la banda de los KPIs
+    y1_suf = 82.9
     h_suf = card_h(debs)
     y0_suf = y1_suf - h_suf
     card(y0_suf, y1_suf, "✗  DONDE SUFRE", "#d84a4a")
@@ -443,46 +710,21 @@ def draw_informe(side, outfile):
         linea_clave(yy, it, "#d84a4a")
         yy -= ROW_H
 
-    # Identidad: se queda con todo el espacio restante hasta el pie
-    y1_id, y0_id = y0_suf - GAP, 1.5
+    # IDENTIDAD toma solo lo que necesitan sus filas y el bloque PRESIÓN se
+    # queda TODO el resto: con altura fija a PRESIÓN le faltaba aire para el
+    # mini-campo mientras a IDENTIDAD le sobraba media tarjeta.
+    pares = pares_identidad(es_off)
+    ROW_ID = 3.9
+    y1_id  = y0_suf - GAP
+    h_id   = TITLE_H + len(pares) * ROW_ID + 2.6
+    y0_id  = max(y1_id - h_id, 30.5)          # suelo: PRESIÓN nunca baja de ~28
+
+    # Bloque PRESIÓN: reúne el KPI, el % y el origen, que antes estaban en tres
+    # sitios alejados de la tarjeta (cabecera, columna izquierda y ninguno)
+    dibujar_presion(ax, side, 1.5, y0_id - GAP, card)
+
     card(y0_id, y1_id, "IDENTIDAD", "#8fa1c0")
     yy = y1_id - TITLE_H - 1.5
-    if es_off:
-        uso_pkg  = snap_pct(off, "off_pkg")
-        lg_pkg   = snap_pct(all_plays, "off_pkg")
-
-        def pct_propio(df_team, col):
-            """% de jugadas propias con esa cualidad (decisión del equipo,
-            no lo que le hace el rival) + su media de liga."""
-            t  = df_team[col].mean() * 100 if col in df_team else np.nan
-            lg = all_plays[col].mean() * 100
-            return (0.0 if pd.isna(t) else t), lg
-
-        sg_t,  sg_lg  = pct_propio(off, "shotgun")
-        nh_t,  nh_lg  = pct_propio(off, "no_huddle")
-        pa_t,  pa_lg  = pct_propio(off, "is_play_action")
-        uc_t,  uc_lg  = (100 - sg_t if sg_t else np.nan), (100 - sg_lg)
-        top_pkgs = sorted(
-            [p for p in OFF_PKG_ORDER if uso_pkg.get(p, 0) >= 5],
-            key=lambda p: -uso_pkg.get(p, 0))
-        pares = [("Shotgun", sg_t, sg_lg),
-                 ("Bajo centro", uc_t, uc_lg),
-                 ("No-huddle", nh_t, nh_lg),
-                 ("Play-action", pa_t, pa_lg)] + [
-                 (f"Personal {p}", uso_pkg.get(p, 0), lg_pkg.get(p, 0))
-                 for p in top_pkgs]
-    else:
-        uso_pkg  = snap_pct(defn, "def_pkg")
-        lg_pkg   = snap_pct(all_plays, "def_pkg")
-        jug_mz   = snap_pct(defn, "man_zone")
-        lg_mz    = snap_pct(all_plays, "man_zone")
-        pr       = snap_pct(defn, "pressure")
-        lg_pr    = snap_pct(all_plays, "pressure")
-        pares = [("Juega zona", jug_mz.get("Zona", 0), lg_mz.get("Zona", 0)),
-                 ("Genera presión", pr.get("Bajo presion", 0), lg_pr.get("Bajo presion", 0))] + [
-                 (f"Juega {p}", uso_pkg.get(p, 0), lg_pkg.get(p, 0))
-                 for p in DEF_PKG_ORDER if uso_pkg.get(p, 0) >= 5]
-
     # Nº de filas que caben realmente en el hueco disponible
     n_rows_max = max(int((yy - y0_id - 2.0) / 3.9) + 1, 1)
     for nombre, pct, lg in pares[:n_rows_max]:

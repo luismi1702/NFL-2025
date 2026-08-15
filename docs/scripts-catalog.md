@@ -68,7 +68,7 @@
 ## Análisis de equipo / matchup
 | Script | Descripción |
 |--------|-------------|
-| informe_equipo.py | Team card de un equipo: 2 PNGs (ataque y defensa). Rediseñado jul-2026: 4 KPIs con rank, cada faceta (personal, coberturas, man/zona, presión) como punto en pista de ranking 1→32, fortalezas/debilidades autogeneradas (top/bottom 25% del nº real de equipos con muestra) e identidad (uso vs media NFL) |
+| informe_equipo.py | Team card de un equipo: 2 PNGs (ataque y defensa). Banda superior con 3 KPIs y DONDE DOMINA en fila; columna izquierda con cada faceta en pista de ranking 1→32; derecha con debilidades, identidad y bloque PRESION (KPI + origen en mini-campo de 4 flechas). Defensa usa presiones reales de PFR; ataque, atribucion de sacks+QB hits |
 | matchup_intel.py | Intel táctica A vs B — mismatches automáticos (EXPLOIT / NEUTRO / RIESGO) |
 | game_script.py | Análisis del game script: cómo juega un equipo según el marcador |
 | RankingEPAadjustado.py | Rankings ajustados por EPA y calendario |
