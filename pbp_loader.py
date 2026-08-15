@@ -60,11 +60,26 @@ socket.setdefaulttimeout(30)
 
 CACHE = "pbp_cache"
 
-PBP_URL   = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.parquet"
-STATS_URL = "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_reg_{season}.csv.gz"
-PART_URL  = "https://github.com/nflverse/nflverse-data/releases/download/pbp_participation/pbp_participation_{season}.parquet"
-FTN_URL   = "https://github.com/nflverse/nflverse-data/releases/download/ftn_charting/ftn_charting_{season}.parquet"
+_REL = "https://github.com/nflverse/nflverse-data/releases/download/"
+
+PBP_URL   = _REL + "pbp/play_by_play_{season}.parquet"
+STATS_URL = _REL + "stats_player/stats_player_reg_{season}.csv.gz"
+PART_URL  = _REL + "pbp_participation/pbp_participation_{season}.parquet"
+FTN_URL   = _REL + "ftn_charting/ftn_charting_{season}.parquet"
 SCHED_URL = "https://github.com/nflverse/nfldata/raw/master/data/games.csv"
+
+# Fuentes por temporada que SI se actualizan cada pocas horas en temporada
+# (verificado en los cron de nflverse-pfr / nflverse-rosters, ago-2026)
+PFR_SEASON_URL = _REL + "pfr_advstats/advstats_season_{tipo}.parquet"
+PFR_WEEK_URL   = _REL + "pfr_advstats/advstats_week_{tipo}_{season}.parquet"
+SNAPS_URL      = _REL + "snap_counts/snap_counts_{season}.parquet"
+INJ_URL        = _REL + "injuries/injuries_{season}.parquet"
+TEAM_URL       = _REL + "stats_team/stats_team_week_{season}.parquet"
+
+# Fuentes con TODAS las temporadas en un solo fichero (sin {season})
+NGS_URL       = _REL + "nextgen_stats/ngs_{tipo}.parquet"
+QBR_URL       = _REL + "espn_data/qbr_{nivel}_level.parquet"
+CONTRATOS_URL = _REL + "contracts/historical_contracts.parquet"
 
 _sched_info = None   # (temporada, última semana REG jugada) — 1 descarga por ejecución
 _aviso_dado = False  # el aviso de frescura se imprime una sola vez por ejecución
@@ -361,5 +376,113 @@ def cargar_participation(season=None, refrescar=False):
 
 def cargar_ftn(season=None, refrescar=False):
     """Charting FTN (is_play_action, blitzers, motion... solo 2022+).
-    Join con PBP: nflverse_game_id + nflverse_play_id. Devuelve (df, season)."""
+    Join con PBP: nflverse_game_id + nflverse_play_id. Devuelve (df, season).
+
+    OJO: no trae cobertura ni personal — eso solo vive en cargar_participation."""
     return _cargar_auxiliar(season, refrescar, "ftn_charting", FTN_URL, "FTN charting")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Fuentes que el proyecto no usaba (ago-2026). Todas verificadas: se actualizan
+# cada 6 h (PFR, snaps) o a diario (NGS, lesiones) durante la temporada.
+# ──────────────────────────────────────────────────────────────────────────────
+_PFR_TIPOS = ("def", "pass", "rec", "rush")
+
+
+def cargar_pfr(tipo="def", season=None, semanal=False, refrescar=False):
+    """Stats avanzadas de Pro Football Reference. Devuelve (df, season).
+
+    tipo     def  -> presiones, placajes fallados y COBERTURA por defensor
+                     (tgt, cmp_percent, yds_tgt, rat, dadot, m_tkl_percent...)
+             pass -> pocket_time, pressure_pct, bad_throw_pct, on_tgt_pct por QB
+             rec  -> ybc/yac separados, adot, brk_tkl, drop_percent
+             rush -> ybc_att (yardas antes del contacto), yac_att, brk_tkl
+    semanal  True = fichero de la temporada por semanas; False = acumulado
+
+    Es la fuente que cubre los items 3 y 6 de docs/pff-wishlist.md sin pagar.
+    """
+    if tipo not in _PFR_TIPOS:
+        raise ValueError(f"tipo debe ser uno de {_PFR_TIPOS}")
+    if semanal:
+        return _cargar_auxiliar(season, refrescar, f"pfr_week_{tipo}",
+                                PFR_WEEK_URL.replace("{tipo}", tipo),
+                                f"PFR {tipo} semanal")
+    # El acumulado trae todas las temporadas en un fichero
+    df = _cargar_global(refrescar, f"pfr_season_{tipo}",
+                        PFR_SEASON_URL.format(tipo=tipo), f"PFR {tipo}")
+    if season is None:
+        season = temporada_actual()
+    return df[df["season"] == season].copy(), season
+
+
+def cargar_ngs(tipo="passing", season=None, refrescar=False):
+    """Next Gen Stats de la NFL. Devuelve (df, season).
+
+    passing   -> avg_time_to_throw, aggressiveness, avg_air_yards_to_sticks
+    receiving -> avg_separation, avg_cushion, avg_yac_above_expectation
+    rushing   -> rush_yards_over_expected, avg_time_to_los, %8+ en la caja
+    """
+    if tipo not in ("passing", "receiving", "rushing"):
+        raise ValueError("tipo debe ser passing, receiving o rushing")
+    df = _cargar_global(refrescar, f"ngs_{tipo}", NGS_URL.format(tipo=tipo),
+                        f"NGS {tipo}")
+    if season is None:
+        season = temporada_actual()
+    return df[df["season"] == season].copy(), season
+
+
+def cargar_lesiones(season=None, refrescar=False):
+    """Parte de lesiones semanal (estado, practica, parte del cuerpo)."""
+    return _cargar_auxiliar(season, refrescar, "injuries", INJ_URL, "lesiones")
+
+
+def cargar_snaps(season=None, refrescar=False):
+    """Snaps por jugador y semana (ofensa / defensa / equipos especiales)."""
+    return _cargar_auxiliar(season, refrescar, "snap_counts", SNAPS_URL, "snap counts")
+
+
+def cargar_stats_equipo(season=None, refrescar=False):
+    """Stats de equipo por semana, ya agregadas por nflverse."""
+    return _cargar_auxiliar(season, refrescar, "stats_team_week", TEAM_URL,
+                            "stats de equipo")
+
+
+def cargar_qbr(nivel="week", season=None, refrescar=False):
+    """Total QBR de ESPN. nivel = 'week' o 'season'. Devuelve (df, season).
+
+    Trae qbr_total, pts_added y el desglose pass/run/sack/penalty.
+    Metrica que la audiencia reconoce y que el proyecto no usaba.
+    """
+    if nivel not in ("week", "season"):
+        raise ValueError("nivel debe ser 'week' o 'season'")
+    df = _cargar_global(refrescar, f"qbr_{nivel}", QBR_URL.format(nivel=nivel),
+                        f"QBR {nivel}")
+    if season is None:
+        season = temporada_actual()
+    return df[df["season"] == season].copy(), season
+
+
+def cargar_contratos(refrescar=False):
+    """Contratos historicos de OverTheCap: apy, apy_cap_pct, guaranteed, draft.
+    Se enlaza con el resto por gsis_id. Un solo fichero, todas las temporadas."""
+    return _cargar_global(refrescar, "contratos", CONTRATOS_URL, "contratos")
+
+
+def _cargar_global(refrescar, nombre_cache, url, etiqueta):
+    """Ficheros sin {season}: todas las temporadas en uno. Refresco por antiguedad."""
+    os.makedirs(CACHE, exist_ok=True)
+    cache = os.path.join(CACHE, f"{nombre_cache}.parquet")
+    necesita = refrescar or not os.path.exists(cache)
+    if not necesita:
+        if _info_schedules() is None:
+            _aviso_sin_verificar()
+        else:
+            necesita = (time.time() - os.path.getmtime(cache)) > 3 * 86400
+    if necesita:
+        try:
+            _descargar(url, cache, etiqueta)
+        except Exception as e:
+            if not os.path.exists(cache):
+                raise
+            print(f"  Aviso: no se pudo refrescar {etiqueta} ({e}) — usando cache")
+    return pd.read_parquet(cache)

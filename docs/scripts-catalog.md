@@ -8,6 +8,7 @@
 ## Utilidades / Cache
 | Script | Descripción |
 |--------|-------------|
+| estado_datos.py | Semaforo de fuentes: que hay publicado, hasta que semana llega y cuanto retraso lleva. Uso: `python estado_datos.py [--season N]`. Lanzar cada martes antes de producir |
 | generar_caches.py | Regenera los caches por año (fullmetrics, epa_type, situational, explosive, rz_def, newmetrics + QBs en player_stats). Uso: `python generar_caches.py 2026 [--force]` |
 | server.py | Backend mínimo para ejecutar scripts desde el navegador (http://localhost:8765) |
 

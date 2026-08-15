@@ -2,6 +2,51 @@
 
 ---
 
+## [2026-08-15] — Auditoría de datos: 7 fuentes nuevas y un aviso serio
+
+La auditoría del día anterior fue centrada en el código y no revisó qué datos
+hay disponibles. Luis lo señaló. Al hacerlo bien aparecieron dos cosas grandes.
+
+**`pfr_advstats` cubre media wishlist de PFF, gratis.** 190 assets de Pro
+Football Reference, actualizados cada 6 h en temporada, sin usar en el
+proyecto. Cubre los items 3 y 6 de `docs/pff-wishlist.md` exactamente como
+estaban especificados: placajes fallados y cobertura por defensor (`tgt`,
+`cmp_percent`, `yds_tgt`, `rat`, `dadot`). También presiones por jugador
+(`prss`/`hrry`/`qbkd`), que la wishlist daba por imposible sin pagar. Siguen
+siendo de PFF los items 1 y 8 (presión por liniero, bloqueo por hueco).
+
+**`pbp_participation` no tiene cron.** Es `workflow_dispatch` manual: 8
+ejecuciones en el historial, UNA durante la temporada 2025 (10-feb-2026, ya
+acabada, rellenando 22 semanas de golpe). De ahí salen cobertura, personal,
+presión y rutas → 13 scripts. `ftn_charting` sí corre cada 6 h pero no tiene
+esas columnas, así que no sustituye.
+
+**Cadencia verificada** leyendo los `cron` de nflverse-pfr, ngs-data,
+nflverse-rosters y nflverse-ftn, y contando ejecuciones de la temporada 2025:
+pfr_advstats 38 · snap_counts 40 · nextgen_stats 72 · participation 1.
+
+**Nuevo:**
+- 7 cargadores en `pbp_loader`: `cargar_pfr` (def/pass/rec/rush, acumulado o
+  semanal), `cargar_ngs` (passing/receiving/rushing), `cargar_snaps`,
+  `cargar_lesiones`, `cargar_qbr` (Total QBR de ESPN, 2006-2025),
+  `cargar_stats_equipo` y `cargar_contratos` (OverTheCap, 51.952 filas).
+  Nuevo helper `_cargar_global` para ficheros sin `{season}`.
+- `estado_datos.py`: semáforo de fuentes — qué hay publicado, hasta qué semana
+  llega y cuánto retraso lleva. Deriva la semana de participation desde el
+  `nflverse_game_id`, que no tiene columna `week`. Lanzar cada martes.
+
+**Otros huecos detectados, no atacados todavía:** el PBP tiene 372 columnas y
+el proyecto usa 122. Sin tocar: `vegas_wp`/`vegas_wpa` (win probability con la
+línea), `xyac_epa`/`xyac_mean_yardage` (YAC sobre esperado), `cp`,
+`air_epa`/`yac_epa` (cuánto de un QB es su brazo y cuánto sus receptores),
+`fixed_drive_result` y el bloque `drive_*` completo, y todo lo de equipos
+especiales (`punt_attempt`, `kickoff_*`, `field_goal_attempt`, fair catches).
+
+**Archivos:** pbp_loader.py, estado_datos.py (nuevo), CLAUDE.md,
+docs/decisiones.md, docs/scripts-catalog.md, CHANGELOG.md
+
+---
+
 ## [2026-08-15] — Auditoría de temporada: 8 fallos arreglados antes del arranque 2026
 
 Auditoría de los 59 scripts ejecutándolos uno a uno contra los datos de 2025.

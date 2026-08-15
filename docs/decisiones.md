@@ -2,6 +2,68 @@
 
 ---
 
+## [2026-08-15] — `pbp_participation` no se actualiza en temporada: hay que vigilarlo
+
+**Decisión:** Se añade `estado_datos.py`, un semáforo que reporta qué fuentes
+hay publicadas para una temporada, hasta qué semana llegan y cuánto retraso
+llevan respecto a la liga. Se lanza cada martes antes de producir.
+
+**Motivo:** Al auditar la cadencia real de nflverse (leyendo los `cron` de
+`nflverse-pfr`, `ngs-data`, `nflverse-rosters` y `nflverse-ftn`, y contando
+ejecuciones) apareció que **`update_participation.yaml` no tiene `schedule`: es
+`workflow_dispatch`**. En todo el historial disponible hay 8 ejecuciones y una
+sola durante la temporada 2025 — el 10-feb-2026, ya acabada, que rellenó las 22
+semanas de golpe. De `pbp_participation` salen cobertura, personal, presión y
+rutas, que alimentan 13 scripts. `ftn_charting` sí corre cada 6 h pero **no
+contiene esas columnas** (comprobado: 29 columnas, ninguna de cobertura ni
+personal), así que no sirve de sustituto.
+
+El fallo que esto puede producir es del tipo peligroso: el gráfico sale
+perfecto y los datos son de la temporada pasada. Por eso la respuesta no es
+solo un `try/except` —que ya existe y cubre el caso de "no existe"— sino una
+comprobación explícita de **hasta qué semana llega cada fuente**.
+
+**Alternativas descartadas:**
+- Migrar los 13 scripts a `ftn_charting` → no tiene las columnas necesarias
+- Confiar en el `try/except` de DatosNoDisponibles → solo cubre el caso ruidoso
+  (no publicado), no el silencioso (publicado pero congelado)
+
+**Pendiente:** confirmar en la semana 2 de sep-2026 si `pbp_participation_2026`
+aparece. Si no, cobertura y personal quedan sin fuente gratuita y PFF pasa de
+lujo a plan B.
+
+---
+
+## [2026-08-15] — `pfr_advstats` cubre media wishlist de PFF, gratis
+
+**Decisión:** Se añaden 7 cargadores a `pbp_loader` para fuentes que el
+proyecto no usaba: `cargar_pfr`, `cargar_ngs`, `cargar_snaps`,
+`cargar_lesiones`, `cargar_qbr`, `cargar_stats_equipo` y `cargar_contratos`.
+
+**Motivo:** La auditoría de agosto fue centrada en el código y no revisó el
+universo de datos disponible; Luis lo señaló. Al hacerlo apareció
+`pfr_advstats` (190 assets, estadísticas avanzadas de Pro Football Reference,
+cada 6 h en temporada) que cubre **los items 3 y 6 de `docs/pff-wishlist.md`
+exactamente como estaban especificados**: placajes fallados (`m_tkl`,
+`m_tkl_percent`) y cobertura por defensor (`tgt`, `cmp_percent`, `yds_tgt`,
+`rat`, `dadot`). También trae presiones por jugador (`prss`, `hrry`, `qbkd`),
+que la wishlist daba por imposible sin pagar.
+
+Siguen siendo propietarios de PFF los items 1 y 8 —presión cedida por liniero
+concreto y grades de bloqueo por hueco—, que son los que motivaron la lista.
+
+**Alcance:** No cancela la suscripción; recomienda retrasarla para llegar a
+ella sabiendo qué falta de verdad. Además apareció QBR semanal de ESPN
+(`espn_data`, 2006-2025) y contratos de OverTheCap (51.952 filas con `apy`,
+`apy_cap_pct` y enlace por `gsis_id`), ninguno usado.
+
+**Lección de método:** «qué falta» no se responde inventariando scripts. El
+catálogo estaba bien construido sobre las 4 fuentes que usaba; el hueco estaba
+en las 21 que no. Una auditoría de cobertura tiene que empezar por los datos
+disponibles, no por el código existente.
+
+---
+
 ## [2026-08-15] — Las métricas defensivas de DatoSemana eran código muerto: reencuadre en vez de evaluación
 
 **Decisión:** `DatoSemana.py` evalúa solo métricas ofensivas y de equipos
