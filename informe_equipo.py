@@ -125,6 +125,22 @@ def rank_color(rank, n_teams):
     return RYG(1.0 - (rank - 1) / (n_teams - 1))
 
 
+def color_epa(valor, escala, mas_es_mejor):
+    """Color por VALOR de EPA, no por puesto.
+
+    En la franja de huecos el ranking engañaba: donde toda la liga defiende
+    parecido, un -0.07 y un -0.09 quedaban a 12 puestos de distancia y salían
+    de colores muy distintos pese a ser el mismo rendimiento.
+    """
+    if not escala or pd.isna(valor):
+        return "#3a4050"
+    lo, hi = escala
+    if hi <= lo:
+        return RYG(0.5)
+    t = float(np.clip((valor - lo) / (hi - lo), 0, 1))
+    return RYG(t if mas_es_mejor else 1.0 - t)
+
+
 def facet_table(all_plays, team_col, cat_col, team, ascending):
     """{cat: dict(epa, n, rank, n_teams, lg)} para las categorías de un split.
     ascending=True → rank 1 = EPA más bajo (mejor defensa)."""
@@ -734,11 +750,12 @@ def carrera_por_hueco(es_off):
         if r.empty:
             return None
 
-        out = {}
+        out, todos = {}, []
         for h in GAP_ORDER:
             sub = r[r["hueco"] == h]
             g = sub.groupby(col)["epa"].agg(epa="mean", n="count")
             g = g[g["n"] >= 10]                    # muestra mínima por hueco
+            todos.extend(g["epa"].tolist())        # para la escala de color
             if team not in g.index:
                 out[h] = None
                 continue
@@ -749,16 +766,26 @@ def carrera_por_hueco(es_off):
                           rank=list(orden.index).index(team) + 1,
                           n_teams=len(orden),
                           lg=float(r[r["hueco"] == h]["epa"].mean()))
-        return out if any(v for v in out.values()) else None
+        if not any(v for v in out.values()):
+            return None, None
+        # Escala de color por EPA, no por ranking: con el ranking, un -0.07 y un
+        # -0.09 salían de colores distintos solo porque la liga entera defiende
+        # bien ese hueco y los puestos se separan mucho con valores casi
+        # iguales. Percentiles 5-95 para que un outlier no aplaste el resto.
+        # Va aparte y no dentro de `out`: colarla ahí obliga a que cada
+        # consumidor sepa filtrarla, y es una trampa fácil de pisar.
+        escala = ((float(np.percentile(todos, 5)),
+                   float(np.percentile(todos, 95))) if todos else None)
+        return out, escala
     except Exception as e:
         print(f"  Aviso: sin carrera por hueco ({type(e).__name__})")
-        return None
+        return None, None
 
 
 def dibujar_huecos(ax, es_off, y0, y1, x0, x1):
     """Franja de 7 celdas: los huecos van LE→RE, o sea de izquierda a derecha
     igual que la línea ofensiva, así que la franja se lee como el campo."""
-    datos = carrera_por_hueco(es_off)
+    datos, escala = carrera_por_hueco(es_off)
     titulo = "CARRERA POR HUECO" if es_off else "CARRERA PERMITIDA POR HUECO"
     ax.text(x0 + 1.3, y1 - 1.0, titulo, ha="left", va="center", fontsize=8.5,
             fontweight="bold", color="#8fa1c0", zorder=3)
@@ -782,7 +809,7 @@ def dibujar_huecos(ax, es_off, y0, y1, x0, x1):
             ax.text(cx0 + w / 2, (y_cell0 + y_cell1) / 2, "—", ha="center",
                     va="center", color="#444444", fontsize=8, zorder=2)
         else:
-            bgc = rank_color(d["rank"], d["n_teams"])
+            bgc = color_epa(d["epa"], escala, es_off)
             ax.add_patch(plt.Rectangle((cx0, y_cell0), w - 0.25,
                                        y_cell1 - y_cell0, facecolor=bgc,
                                        edgecolor=BG, linewidth=0.6, zorder=1))
@@ -799,10 +826,10 @@ def dibujar_huecos(ax, es_off, y0, y1, x0, x1):
                 zorder=3, linespacing=1.15)
 
     ax.text(x0 + 1.3, y0 + 1.0,
-            ("EPA por acarreo diseñado  ·  color = ranking de liga  ·  "
+            ("EPA por acarreo diseñado  ·  color = EPA contra la liga  ·  "
              "los huecos van de izquierda a derecha como la línea ofensiva"
              if es_off else
-             "EPA por acarreo diseñado permitido  ·  color = ranking de liga  ·  "
+             "EPA por acarreo diseñado permitido  ·  color = EPA contra la liga  ·  "
              "visto desde la defensa: el hueco del LT rival lo cubre nuestro DE derecho"),
             ha="left", va="center", fontsize=6.2, color="#666666",
             fontstyle="italic", zorder=3)
@@ -971,7 +998,8 @@ def draw_informe(side, outfile):
     # presion (se fue al bloque de la derecha) y carrera por hueco (franja).
     # Sin esto, la tarjeta mostraba dos cosas que su propio resumen no veia.
     extra = metricas_extra(es_off)
-    huecos = carrera_por_hueco(es_off) or {}
+    huecos, _ = carrera_por_hueco(es_off)
+    huecos = huecos or {}
     etiqs_h = GAP_CORTO if es_off else GAP_DEF_LABEL
     for h, d in huecos.items():
         if d:
