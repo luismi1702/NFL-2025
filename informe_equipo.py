@@ -3,7 +3,8 @@ informe_equipo.py
 Informe completo de un equipo NFL: dos PNGs (ataque y defensa).
 
 Rediseño jul-2026 — "team card" presentable:
-  - Banda superior: 3 KPIs con su ranking + DONDE DOMINA en fila
+  - Banda superior: 3 KPIs con su ranking + DONDE DOMINA en fila; debajo,
+    DONDE SUFRE con el mismo formato (las dos son la misma clase de dato)
   - Columna izquierda: cada faceta como punto sobre una pista de ranking 1→32
     (un solo eje universal: izquierda = top de la liga, derecha = cola)
   - Columna izquierda: al pie, franja de CARRERA POR HUECO. En ataque son los
@@ -1021,35 +1022,42 @@ def draw_informe(side, outfile):
                 ha="center", va="center", fontsize=9.5, fontweight="bold",
                 color="#0a0e13", zorder=3)
 
-    # DONDE DOMINA: las 3 facetas en fila, no apiladas — en la banda no caben
-    # a 6.6 de alto cada una, pero en horizontal entran de sobra
-    ax.add_patch(plt.Rectangle((63.2, Y0_BANDA), 35.4, Y1_BANDA - Y0_BANDA,
-                               color=CARD, zorder=1))
-    ax.text(64.6, Y1_BANDA - 1.9, "✓  DONDE DOMINA", ha="left", va="center",
-            fontsize=9, fontweight="bold", color="#06d6a0", zorder=3)
-    if not fort:
-        ax.text(64.6, Y0_BANDA + 3.0, "Sin facetas top-8 con uso relevante",
-                ha="left", va="center", fontsize=7.5, color="#777777", zorder=3)
-    else:
-        ancho = 35.4 / max(len(fort), 1)
-        for i, it in enumerate(fort):
+    # DOMINA y SUFRE comparten formato: las 3 facetas EN FILA, no apiladas.
+    # Antes SUFRE era una lista vertical y quedaban dos secciones de la misma
+    # naturaleza dibujadas de forma distinta.
+    def banda_claves(y0, y1, titulo, color, items, vacio):
+        ax.add_patch(plt.Rectangle((63.2, y0), 35.4, y1 - y0, color=CARD, zorder=1))
+        ax.text(64.6, y1 - 1.9, titulo, ha="left", va="center",
+                fontsize=9, fontweight="bold", color=color, zorder=3)
+        if not items:
+            ax.text(64.6, y0 + 3.0, vacio, ha="left", va="center",
+                    fontsize=7.5, color="#777777", zorder=3)
+            return
+        ancho = 35.4 / max(len(items), 1)
+        for i, it in enumerate(items):
             cx = 63.2 + ancho * (i + 0.5)
-            # Sin truncar a 16: "Carrera Exterior izq" perdía el lado, que es
-            # justo lo que distingue el dato. Se encoge la fuente si hace falta.
+            # Sin truncar: "Carrera Exterior izq" perdía el lado, que es justo
+            # lo que distingue el dato. Se encoge la fuente si hace falta.
             etq = it["label"]
             fs  = 8.5 if len(etq) <= 17 else (7.6 if len(etq) <= 22 else 6.9)
-            ax.text(cx, Y0_BANDA + 4.3, etq, ha="center", va="center",
+            ax.text(cx, y0 + 4.3, etq, ha="center", va="center",
                     fontsize=fs, fontweight="bold", color=FG, zorder=3)
-            ax.add_patch(plt.Circle((cx - 3.4, Y0_BANDA + 1.8), 1.15,
+            ax.add_patch(plt.Circle((cx - 3.4, y0 + 1.8), 1.15,
                                     color=rank_color(it["rank"], it["n_teams"]), zorder=4))
-            ax.text(cx - 3.4, Y0_BANDA + 1.8, f"{it['rank']}", ha="center",
+            ax.text(cx - 3.4, y0 + 1.8, f"{it['rank']}", ha="center",
                     va="center", fontsize=7, fontweight="bold", color="#0a0e13", zorder=5)
+            if it["n_teams"] < 30:
+                ax.text(cx - 3.4, y0 - 0.1, f"de {it['n_teams']}", ha="center",
+                        va="center", fontsize=5.5, color="#777777", zorder=5)
             es_extra = it["seccion"] in ("EXTRA", "HUECOS", "PRESIÓN")
             unidad = "%" if it.get("es_pct") else " EPA"
-            ax.text(cx - 1.6, Y0_BANDA + 1.8,
+            ax.text(cx - 1.6, y0 + 1.8,
                     f"{it['epa']:+.2f}{unidad}" if es_extra
                     else f"{it['epa']:+.2f} EPA · {it['uso']:.0f}%",
                     ha="left", va="center", fontsize=6.8, color="#9aa3b5", zorder=3)
+
+    banda_claves(Y0_BANDA, Y1_BANDA, "✓  DONDE DOMINA", "#06d6a0", fort,
+                 "Sin facetas top con uso relevante")
 
     # ── Columna izquierda: pistas de ranking ──────────────────────────────────
     ax.add_patch(plt.Rectangle((1.2, 1.5), 60.6, 80.2, color=CARD, zorder=0))
@@ -1119,49 +1127,15 @@ def draw_informe(side, outfile):
         ax.text(64.6, y1 - 1.9, titulo, ha="left", va="center", fontsize=9.5,
                 fontweight="bold", color=color, zorder=3)
 
-    def linea_clave(yy, it, color):
-        verbo_uso = "uso" if it["seccion"].startswith(("PERSONAL OFENSIVO PROPIO",
-                                                       "PERSONAL DEFENSIVO PROPIO",
-                                                       "COBERTURAS QUE JUEGA")) else "visto"
-        # Los candidatos ocultos no tienen "% de uso": son métricas de equipo,
-        # no facetas situacionales. Mostrar "100% visto" en ellas era relleno.
-        es_extra = it["seccion"] in ("EXTRA", "HUECOS", "PRESIÓN")
-        ax.text(64.6, yy, f"{it['label']}", ha="left", va="center",
-                fontsize=9, fontweight="bold", color=FG, zorder=3)
-        ax.add_patch(plt.Circle((96.2, yy), 1.15, color=rank_color(it["rank"], it["n_teams"]),
-                                zorder=4))
-        ax.text(96.2, yy, f"{it['rank']}", ha="center", va="center", fontsize=7,
-                fontweight="bold", color="#0a0e13", zorder=5)
-        if it["n_teams"] < 30:
-            ax.text(96.2, yy - 2.0, f"de {it['n_teams']}", ha="center",
-                    va="center", fontsize=5.5, color="#777777", zorder=5)
-        unidad = "%" if it.get("es_pct") else " EPA"
-        detalle = (f"{it['epa']:+.2f}{unidad} (liga {it['lg']:+.2f})  ·  n={it['n']}"
-                   if es_extra else
-                   f"{it['epa']:+.2f} EPA (liga {it['lg']:+.2f})  ·  "
-                   f"{it['uso']:.0f}% {verbo_uso}  ·  n={it['n']}")
-        ax.text(64.6, yy - 1.6, detalle,
-                ha="left", va="center", fontsize=6.8, color="#9aa3b5", zorder=3)
+    TITLE_H, GAP = 4.2, 1.6
 
-    # Alturas dinámicas: DOMINA/SUFRE ocupan solo lo que necesitan sus items;
-    # todo el espacio que sobra se lo queda IDENTIDAD (que es la más densa)
-    TITLE_H, ROW_H, PAD_BOT, GAP = 4.2, 6.6, 1.3, 1.6
-    def card_h(items):
-        body = len(items) * ROW_H if items else 3.5
-        return TITLE_H + body + PAD_BOT
-
-    # DONDE DOMINA ya se ha dibujado arriba, en la banda de los KPIs
+    # DONDE SUFRE, justo debajo y con el MISMO formato que DOMINA. Como banda
+    # ocupa 9.4 en vez de las ~25 de la lista vertical, así que además libera
+    # sitio para IDENTIDAD y para el mini-campo de presión.
     y1_suf = 82.9
-    h_suf = card_h(debs)
-    y0_suf = y1_suf - h_suf
-    card(y0_suf, y1_suf, "✗  DONDE SUFRE", "#d84a4a")
-    yy = y1_suf - TITLE_H - 1.5
-    if not debs:
-        ax.text(64.6, yy, "Sin facetas en la cola con uso relevante", ha="left",
-                va="center", fontsize=8, color="#777777")
-    for it in debs:
-        linea_clave(yy, it, "#d84a4a")
-        yy -= ROW_H
+    y0_suf = y1_suf - (Y1_BANDA - Y0_BANDA)
+    banda_claves(y0_suf, y1_suf, "✗  DONDE SUFRE", "#d84a4a", debs,
+                 "Sin facetas en la cola con uso relevante")
 
     # IDENTIDAD toma solo lo que necesitan sus filas y el bloque PRESIÓN se
     # queda TODO el resto: con altura fija a PRESIÓN le faltaba aire para el
