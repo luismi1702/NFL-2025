@@ -446,6 +446,40 @@ def pares_identidad(es_off):
     return pares
 
 
+def presion_por_equipo(es_off):
+    """(serie de presión por equipo, etiqueta). Misma fuente que el reparto.
+
+    Defensa: presiones acreditadas (PFR) por dropback encajado.
+    Ataque:  veces presionado el QB (PFR) por dropback.
+    Se usa PFR y no `was_pressure` para que el KPI y el desglose por origen
+    salgan del mismo pozo y el reparto divida de verdad ese número.
+    """
+    try:
+        from pbp_loader import cargar_pfr
+        drop = pbp[pd.to_numeric(pbp["qb_dropback"], errors="coerce") == 1]
+        if es_off:
+            pfr, _ = cargar_pfr("pass", SEASON)
+            pfr = pfr[pfr["team"] != "3TM"].copy()
+            pfr["times_pressured"] = pd.to_numeric(pfr["times_pressured"],
+                                                   errors="coerce").fillna(0)
+            tot = pfr.groupby("team")["times_pressured"].sum()
+            den = drop.groupby("posteam").size()
+            etiqueta = "presiones sufridas por dropback"
+        else:
+            pfr, _ = cargar_pfr("def", SEASON)
+            pfr = pfr[pfr["tm"] != "3TM"].copy()
+            pfr["prss"] = pd.to_numeric(pfr["prss"], errors="coerce").fillna(0)
+            tot = pfr.groupby("tm")["prss"].sum()
+            den = drop.groupby("defteam").size()
+            etiqueta = "presiones por dropback"
+        return (tot / den * 100).dropna(), etiqueta
+    except Exception as e:
+        print(f"  Aviso: KPI de presión desde PBP ({type(e).__name__})")
+        col = "posteam" if es_off else "defteam"
+        return (pases_lg.groupby(col)["was_pressure"].mean() * 100,
+                "de los dropbacks")
+
+
 def dibujar_presion(ax, side, y0, y1, card):
     """Bloque PRESIÓN: el KPI, y bajo él un mini-campo con las cuatro flechas.
 
@@ -460,20 +494,24 @@ def dibujar_presion(ax, side, y0, y1, card):
     titulo = "PRESIÓN SUFRIDA" if es_off else "PRESIÓN GENERADA"
     card(y0, y1, titulo, "#e0a458")
 
-    # KPI de presión, traído desde la cabecera
-    serie = (pases_lg.groupby("posteam")["was_pressure"].mean() * 100 if es_off
-             else pases_lg.groupby("defteam")["was_pressure"].mean() * 100)
+    # KPI de presión desde PFR, la MISMA fuente que el reparto de abajo: con
+    # was_pressure (% de dropbacks presionados) el KPI y el desglose salían de
+    # pozos distintos y no se podía decir "de esa presión, el 60% viene por
+    # fuera" — dos jugadores pueden acreditarse presión en la misma jugada.
+    serie, etiqueta = presion_por_equipo(es_off)
     rank, nt, val = team_rank(serie, team, ascending=es_off)
     ax.text(64.6, y1 - 5.6, f"{val:.1f}%" if pd.notna(val) else "N/D",
             ha="left", va="center", fontsize=15, fontweight="bold",
             color=FG, zorder=3)
-    if rank:
-        ax.add_patch(plt.Circle((72.6, y1 - 5.6), 1.5,
-                                color=rank_color(rank, nt), zorder=3))
-        ax.text(72.6, y1 - 5.6, str(rank), ha="center", va="center",
-                fontsize=8.5, fontweight="bold", color="#0a0e13", zorder=4)
-    ax.text(75.4, y1 - 5.6, "de los dropbacks", ha="left", va="center",
+    ax.text(70.6, y1 - 5.6, etiqueta, ha="left", va="center",
             fontsize=6.8, color="#9aa3b5", zorder=3)
+    if rank:
+        ax.add_patch(plt.Circle((85.0, y1 - 5.6), 1.5,
+                                color=rank_color(rank, nt), zorder=3))
+        ax.text(85.0, y1 - 5.6, str(rank), ha="center", va="center",
+                fontsize=8.5, fontweight="bold", color="#0a0e13", zorder=4)
+        ax.text(87.4, y1 - 5.6, f"de {nt}", ha="left", va="center",
+                fontsize=6.5, color="#767E90", zorder=3)
 
     datos = origen_presion(side)
     if not datos:
