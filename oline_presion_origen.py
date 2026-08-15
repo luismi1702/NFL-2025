@@ -1,16 +1,20 @@
 """
 oline_presion_origen.py
 Por dónde le llega la presión a cada línea ofensiva.
-- Sin equipo (Enter): heatmap 32 equipos — presión total (FTN) + origen de la
-  presión atribuida: interior (DT/NT), exterior (DE/OLB), blitz LB, blitz DB.
+- Sin equipo (Enter): heatmap 32 equipos — presión sufrida por 100 dropbacks
+  + origen de la presión atribuida: interior (DT/NT), exterior (DE/OLB),
+  blitz LB, blitz DB.
 - Con equipo (ej: SF): diagrama de campo estilo run_gap con las flechas de
   presión convergiendo sobre el QB.
 
 Nota de datos: nflverse no dice qué liniero fue batido (eso es PFF de pago).
 El proxy honesto es el ORIGEN de la presión: quién la generó — interior =
 guards/center batidos; exterior = tackles batidos. La atribución solo existe
-en sacks y QB hits (los hurries no traen autor en los datos públicos); la
-presión total sí es real (was_pressure de FTN).
+en sacks y QB hits (los hurries no traen autor en los datos públicos), asi que
+las columnas de origen NO suman la de presión total.
+La presión total viene de PFR (times_pressured, con hurries) y no de
+was_pressure de participación: ese dataset no tiene cron en nflverse y se
+congela durante la temporada.
 """
 
 import os
@@ -24,7 +28,8 @@ from matplotlib.path import Path as MPath
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from pbp_loader import cargar_pbp, cargar_participation, cargar_stats, salida, season_cli, sello
+from pbp_loader import (cargar_pbp, cargar_participation, cargar_stats,
+                        cargar_rosters, cargar_pfr, salida, season_cli, sello)
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -86,9 +91,19 @@ def load_logo(team, base_zoom=0.038):
         return None
 
 
-def clasificar(depth, pos):
-    if isinstance(depth, str) and depth.strip().upper() in MAPA_DEPTH:
-        return MAPA_DEPTH[depth.strip().upper()]
+# "DE" no significa lo mismo en un 4-3 que en un 3-4: en el segundo juega por
+# dentro. Misma regla que dline_presion_origen — los dos scripts clasifican a
+# los mismos defensores y tienen que coincidir, o el "exterior" de uno no es el
+# del otro. Ver PESO_INTERIOR allí para la validación del corte.
+PESO_INTERIOR = 280
+
+
+def clasificar(depth, pos, peso=None):
+    d = depth.strip().upper() if isinstance(depth, str) else ""
+    if d == "DE" and peso and float(peso) >= PESO_INTERIOR:
+        return "INT"
+    if d in MAPA_DEPTH:
+        return MAPA_DEPTH[d]
     if isinstance(pos, str) and pos.strip().upper() in MAPA_POS:
         return MAPA_POS[pos.strip().upper()]
     return None
@@ -119,14 +134,14 @@ except Exception as e:
     df["offense_players"] = np.nan
 
 # Posiciones: roster (depth_chart_position granular) + fallback player_stats
-import nflreadpy as nfl
-ros = nfl.load_rosters(SEASON).to_pandas()
+ros, _ = cargar_rosters(SEASON)
 id2clase = {}
 for _, r in ros.iterrows():
     gid = r.get("gsis_id")
     if pd.isna(gid):
         continue
-    cl = clasificar(r.get("depth_chart_position"), r.get("position"))
+    cl = clasificar(r.get("depth_chart_position"), r.get("position"),
+                    r.get("weight"))
     if cl:
         id2clase[gid] = cl
 
@@ -165,7 +180,23 @@ print(f"Presiones atribuidas (sacks + QB hits): {len(ev):,}")
 equipos = sorted(drops["posteam"].dropna().unique())
 tabla = pd.DataFrame(index=equipos)
 tabla["dropbacks"] = drops.groupby("posteam").size()
-tabla["press_pct"] = drops.groupby("posteam")["was_pressure"].mean() * 100
+
+# Presión total sufrida desde PFR (times_pressured por QB, incluye hurries).
+# Antes salía de was_pressure de participación, que es el dataset SIN cron de
+# nflverse: se congela durante la temporada. Además el informe de equipo ya usa
+# PFR para este mismo KPI, y daban números distintos para el mismo concepto.
+try:
+    _pfr, _ = cargar_pfr("pass", SEASON)
+    _pfr = _pfr[_pfr["team"] != "3TM"].copy()
+    _pfr["times_pressured"] = pd.to_numeric(_pfr["times_pressured"],
+                                            errors="coerce").fillna(0)
+    tabla["press_pct"] = (_pfr.groupby("team")["times_pressured"].sum()
+                          / tabla["dropbacks"] * 100)
+    FUENTE_PRESS = "PFR (con hurries)"
+except Exception as e:
+    print(f"  Aviso: presión total desde FTN ({type(e).__name__})")
+    tabla["press_pct"] = drops.groupby("posteam")["was_pressure"].mean() * 100
+    FUENTE_PRESS = "FTN"
 tabla["sacks"]     = drops.groupby("posteam")["sack"].sum().astype(int)
 tabla["hits"]      = drops.groupby("posteam")["qb_hit"].sum().astype(int)
 for o in ORIGENES:
@@ -182,13 +213,13 @@ media_liga = {o: tabla[f"pct_{o}"].mean() for o in ORIGENES}
 
 # Consola
 print(f"\n{'='*78}")
-print(f"  Origen de la presión cedida | NFL {SEASON}  (% de dropbacks; menos = mejor OL)")
+print(f"  Origen de la presión cedida | NFL {SEASON}  (por 100 dropbacks; menos = mejor OL)")
 print(f"{'='*78}")
 print(f"{'Off':<5}{'Press%':>8}" + "".join(f"{o:>9}" for o in ORIGENES))
 for tm in tabla.index:
     r = tabla.loc[tm]
     p = f"{r['press_pct']:.1f}" if pd.notna(r["press_pct"]) else "N/D"
-    print(f"{tm:<5}{p:>8}" + "".join(f"{r[f'pct_{o}']:>8.1f}%" for o in ORIGENES))
+    print(f"{tm:<5}{p:>8}" + "".join(f"{r[f'pct_{o}']:>9.1f}" for o in ORIGENES))
 
 
 # ── HEATMAP 32 EQUIPOS ────────────────────────────────────────────────────────
@@ -196,7 +227,7 @@ def draw_heatmap():
     teams   = tabla.index.tolist()
     n_teams = len(teams)
     cols    = ["PRESS"] + ORIGENES
-    col_labels = {"PRESS": "Presión total\n(FTN)"} | ORIGEN_LABELS
+    col_labels = {"PRESS": "Presión sufrida\npor 100 dropbacks"} | ORIGEN_LABELS
     n_cols  = len(cols)
     logo_w  = 1.2
     fig_w   = logo_w + n_cols * 1.5 + 1.4
@@ -267,11 +298,12 @@ def draw_heatmap():
     fig.text(0.5, 0.99, f"¿Por dónde cede presión cada línea ofensiva? | NFL {SEASON}",
              ha="center", va="top", fontsize=14, fontweight="bold", color=FG)
     fig.text(0.5, 0.975,
-             "Ordenado por presión total FTN (mejor OL arriba)  ·  Origen = % de dropbacks con sack/QB hit de ese tipo de rusher  ·  "
-             "Interior ≈ guards/center batidos, Exterior ≈ tackles",
+             "Todo por 100 dropbacks (mejor OL arriba)  ·  las columnas de origen "
+             "solo cuentan sacks y QB hits, así que NO suman la primera: los hurries "
+             "no traen autor  ·  Interior ≈ guards/center batidos, Exterior ≈ tackles",
              ha="center", va="top", fontsize=8.5, color="#888888", fontstyle="italic")
     fig.text(0.01, 0.005,
-             f"Fuente: nflverse-data (FTN + atribución de sacks/QB hits)  |  {sello(SEASON)}",
+             f"Fuente: nflverse-data · presión total de Pro Football Reference, origen por atribución de sacks/QB hits  |  {sello(SEASON)}",
              ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
     fig.text(0.99, 0.005, "@CuartayDato", ha="right", va="bottom", fontsize=9,
              color="#888888", alpha=0.85, fontstyle="italic")
@@ -386,7 +418,7 @@ def draw_diagrama(team):
         extra  = "  (izq+dcha)" if o == "EXT" else ""
         ax.text(px, py + 0.52, f"{nombre}{extra}", ha="center", va="bottom",
                 color=FG, fontsize=9.5, fontweight="bold", zorder=10)
-        ax.text(px, py + 0.16, f"{pct:.1f}%  ·  n={n}  ·  liga {media_liga[o]:.1f}%",
+        ax.text(px, py + 0.16, f"{pct:.1f}  ·  n={n}  ·  liga {media_liga[o]:.1f}",
                 ha="center", va="bottom", color=col, fontsize=8, zorder=10)
 
     # Círculos OL: titular de cada puesto (dorsal + apellido, sin métricas —
@@ -423,9 +455,9 @@ def draw_diagrama(team):
         ax.add_artist(ab)
 
     # Barra de stats
-    press = f"{r['press_pct']:.1f}%" if pd.notna(r["press_pct"]) else "N/D"
+    press = f"{r['press_pct']:.1f}" if pd.notna(r["press_pct"]) else "N/D"
     STATS = [(f"{int(r['dropbacks'])}", "DROPBACKS"),
-             (press,                    "PRESIÓN (FTN)"),
+             (press,                    "PRESIÓN / 100 DB"),
              (f"{int(r['sacks'])}",     "SACKS"),
              (f"{int(r['hits'])}",      "QB HITS")]
     xs = np.linspace(-3.3, 3.3, len(STATS))
@@ -455,7 +487,7 @@ def draw_diagrama(team):
              "Interior ≈ guards/center batidos, Exterior ≈ tackles (sin lado en los datos públicos)",
              ha="center", va="top", fontsize=8, color="#888888", fontstyle="italic")
     fig.text(0.01, 0.01,
-             f"Fuente: nflverse-data (FTN + atribución de sacks/QB hits)  |  {sello(SEASON)}",
+             f"Fuente: nflverse-data · presión total de Pro Football Reference, origen por atribución de sacks/QB hits  |  {sello(SEASON)}",
              ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
     fig.text(0.99, 0.01, "@CuartayDato", ha="right", va="bottom", fontsize=9,
              color="#888888", alpha=0.85, fontstyle="italic")
