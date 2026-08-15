@@ -6,6 +6,23 @@ volver a proponerlo.
 
 Lo que necesita suscripción a PFF vive aparte, en `docs/pff-wishlist.md`.
 
+## El filtro, antes de proponer nada
+
+**La pregunta no es "¿falta esto en el catálogo?" sino "¿lo tiene alguien
+más?".** Que un hueco sea grande y fácil de llenar no lo convierte en contenido
+que merezca la pena: si el lector lo encuentra a un clic en cualquier web
+generalista, publicarlo no aporta nada. El valor de la cuenta está en lo que no
+se encuentra en otro sitio.
+
+Ese filtro ya se ha llevado por delante la clasificación (construida y
+borrada), el parte de lesiones y el QBR de ESPN. Aplicarlo ANTES de escribir
+código, no después.
+
+Corolario útil: a veces el filtro no descarta la idea, la reencuadra. Los datos
+de snaps en bruto son consulta; filtrados a posiciones de balón y contados como
+"quién se ganó un puesto" son análisis. Antes de tirar algo, probar si hay un
+corte que lo convierta en historia.
+
 ---
 
 ## Manning Bot
@@ -74,15 +91,23 @@ hecho; falta dibujar. Abre además DPOY, novato del año y entrenador.
 
 Los cargadores existen (ago-2026); faltan los gráficos.
 
-- **`cargar_qbr`** — Total QBR de ESPN, semanal, 2006-2025. Es la métrica de QB
-  que el aficionado reconoce por nombre y ninguno de los cinco scripts de QB la
-  usa. Trae `pts_added` y desglose pase/carrera/sack/penalty
 - **`cargar_contratos`** — 51.952 contratos de OverTheCap con `apy`,
   `apy_cap_pct` y `guaranteed`, enlazados por `gsis_id` y con datos de draft.
   Rendimiento por dólar; cruza con los scripts de draft
-- **`cargar_lesiones`** y **`cargar_snaps`** — parte de lesiones y movimiento de
-  snaps. Contenido de miércoles y viernes, los dos días que más cuesta llenar
 - **`cargar_ngs`** — separación y cushion de receptor, RYOE, YAC sobre esperado
+- **`cargar_snaps`** — quién ganó y quién perdió sitio a lo largo de la
+  temporada. **Condición obligatoria: filtrar a QB/RB/WR/TE.** Sin filtrar, los
+  diez que más suben son linieros que entraron por lesión del titular, o sea el
+  parte de lesiones contado con otro número — y eso está descartado (ver abajo).
+
+  Filtrado sí cuenta algo propio. Comprobado sobre 2025 (media de las semanas
+  1-4 contra las 14-17): Dart 35→99 %, Bech 12→73 %, Tre Harris 22→65 %,
+  TeSlaa 19→61 %; y en el otro sentido Dyami Brown 61→10 %, Calvin Austin
+  74→31 %, Raymond 56→18 %. En Detroit el mismo movimiento se ve por los dos
+  lados: TeSlaa sube 43 puntos mientras Raymond baja 38.
+
+  Presentarlo como "quién se ganó un puesto", nunca como tabla de snaps.
+  Aviso: es contenido de nicho y roza el terreno fantasy.
 
 ---
 
@@ -122,6 +147,18 @@ en vivo antes de montar contenido fijo encima.
   pieza nueva, comprobar que el dato no está ya en cualquier web generalista.
 
   Si algún día se recupera, el código está en el historial: `git show 6e461c9`.
+
+- **Parte de lesiones** (ago-2026) — mismo criterio que la clasificación: lo
+  publican los propios equipos cada miércoles y está en cualquier web. Un
+  visual nuestro solo lo repetiría más tarde y más bonito. El cargador
+  `cargar_lesiones` se conserva por si algún día hace falta como *contexto* de
+  otro análisis ("este equipo cayó con 4 titulares fuera"), pero no como pieza
+  propia.
+
+- **Total QBR de ESPN** (ago-2026) — lo publica ESPN, literalmente. Además es
+  una métrica cerrada de otra casa: no podemos explicar cómo se calcula ni
+  defenderla si alguien la discute. `cargar_qbr` se conserva por si sirve para
+  contrastar con nuestro EPA+CPOE, no para publicarla tal cual.
 
 - **`vegas_wp` como feature de Manning Bot** — redundante con `home_impl_prob`
   (correlación 0.996). Ver arriba.
