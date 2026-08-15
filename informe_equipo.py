@@ -12,6 +12,10 @@ Rediseño jul-2026 — "team card" presentable:
     de la defensa
   - Columna derecha: debilidades, identidad y un bloque PRESION que reune
     el KPI, el % y el origen (mini-campo con las cuatro flechas)
+  - DONDE DOMINA / SUFRE tiene candidatos OCULTOS que no se dibujan en ninguna
+    seccion (zona roja, 3er/4o down, explosivas, turnovers, play-action,
+    three-and-out, presion y huecos): solo salen si el equipo es extremo, para
+    que el resumen aporte algo que no esta ya a la vista
 Datos: nflverse PBP + NGS participation (coberturas, personal, presión).
 """
 
@@ -268,7 +272,107 @@ def kpis(side):
 
 
 # ── CLAVES AUTOMÁTICAS ────────────────────────────────────────────────────────
-def claves(secs, n_top=3):
+def presion_como_clave(es_off):
+    """La presión, como candidato a DOMINA/SUFRE.
+
+    Estaba en el pool cuando era una sección de la columna izquierda; al
+    moverla al bloque de la derecha se quedó fuera sin querer. Si el punto
+    fuerte de un equipo es generar presión, tiene que poder salir arriba.
+    """
+    try:
+        serie, _ = presion_por_equipo(es_off)
+        rank, nt, val = team_rank(serie, team, ascending=es_off)
+        if rank is None or pd.isna(val):
+            return None
+        return dict(label="Presión sufrida" if es_off else "Presión generada",
+                    cat="presion", epa=float(val), lg=float(serie.mean()),
+                    rank=rank, n_teams=nt, n=MIN_SNAPS, uso=100.0,
+                    seccion="PRESIÓN", es_pct=True)
+    except Exception:
+        return None
+
+
+def metricas_extra(es_off):
+    """Candidatos OCULTOS para DONDE DOMINA / DONDE SUFRE.
+
+    No se dibujan en ninguna sección: solo aparecen arriba si el equipo es
+    extremo en ellas. La idea es que la tarjeta pueda decir algo que no está
+    ya a la vista — antes DOMINA/SUFRE era un resumen de la columna izquierda
+    y por tanto no aportaba información nueva.
+
+    Son las métricas de equipo de otros scripts del catálogo (zona roja,
+    3er/4º down, explosivas, turnovers, play-action, three-and-out), todas
+    calculables con el PBP que el informe ya tiene cargado.
+    """
+    col = "posteam" if es_off else "defteam"
+    p   = all_plays
+    fuera = []
+
+    def añadir(label, serie, mejor_alto, n_serie=None, min_n=25):
+        """mejor_alto=True → rank 1 al valor más alto."""
+        s = serie.dropna()
+        if n_serie is not None:
+            s = s[n_serie.reindex(s.index).fillna(0) >= min_n]
+        if team not in s.index or len(s) < 8:
+            return
+        orden = s.sort_values(ascending=not mejor_alto)
+        fuera.append(dict(
+            label=label, cat=label, epa=float(s.loc[team]),
+            lg=float(s.mean()), rank=list(orden.index).index(team) + 1,
+            n_teams=len(orden),
+            n=int(n_serie.get(team, 0)) if n_serie is not None else MIN_SNAPS,
+            uso=100.0, es_pct=label.endswith("%")))
+
+    # Zona roja
+    rz = p[p["yardline_100"].le(20)]
+    añadir("EPA en zona roja", rz.groupby(col)["epa"].mean(), es_off,
+           rz.groupby(col).size())
+
+    # 3er down y 4º down
+    for down, etiqueta, minimo in ((3, "3er down %", 40), (4, "4º down %", 12)):
+        d = p[p["down"] == down]
+        conv = pd.to_numeric(d.get(f"{'third' if down==3 else 'fourth'}_down_converted"),
+                             errors="coerce")
+        if conv is None or conv.isna().all():
+            continue
+        d = d.assign(_c=conv.fillna(0))
+        añadir(etiqueta, d.groupby(col)["_c"].mean() * 100, es_off,
+               d.groupby(col).size(), min_n=minimo)
+
+    # Jugadas explosivas (pase 15+, carrera 10+)
+    y = pd.to_numeric(p["yards_gained"], errors="coerce")
+    exp = ((p["play_type"].eq("pass") & y.ge(15)) |
+           (p["play_type"].eq("run") & y.ge(10)))
+    añadir("Explosivas %", p.assign(_e=exp).groupby(col)["_e"].mean() * 100,
+           es_off, p.groupby(col).size(), min_n=200)
+
+    # Turnovers: EPA de intercepciones y balones sueltos perdidos
+    to = p[(pd.to_numeric(p["interception"], errors="coerce").fillna(0) == 1) |
+           (pd.to_numeric(p["fumble_lost"], errors="coerce").fillna(0) == 1)]
+    if len(to):
+        añadir("EPA en turnovers", to.groupby(col)["epa"].sum(), es_off,
+               to.groupby(col).size(), min_n=8)
+
+    # Play-action (solo lado ofensivo: es una decisión propia)
+    if es_off and "is_play_action" in p.columns:
+        pa = p[pd.to_numeric(p["is_play_action"], errors="coerce").fillna(0) == 1]
+        añadir("EPA con play-action", pa.groupby(col)["epa"].mean(), True,
+               pa.groupby(col).size(), min_n=60)
+
+    # Three-and-out: series que acaban sin primer down
+    if "fixed_drive" in p.columns:
+        d = p.dropna(subset=["fixed_drive"])
+        por_drive = d.groupby([col, "game_id", "fixed_drive"]).agg(
+            jugadas=("epa", "size"),
+            primeros=("first_down", lambda s: pd.to_numeric(s, errors="coerce").fillna(0).sum()))
+        tres = (por_drive["primeros"] == 0) & (por_drive["jugadas"] <= 3)
+        añadir("Three-and-out %", tres.groupby(level=0).mean() * 100,
+               not es_off, por_drive.groupby(level=0).size(), min_n=80)
+
+    return fuera
+
+
+def claves(secs, extra=(), n_top=3):
     """(fortalezas, debilidades) por ranking, entre facetas con uso suficiente.
     Umbral por fracción del nº REAL de equipos con muestra en esa faceta
     (un rank 5 de 9 equipos no es ni élite ni cola)."""
@@ -277,12 +381,41 @@ def claves(secs, n_top=3):
         for it in items:
             if it["uso"] >= MIN_USO and it["n"] >= MIN_SNAPS:
                 pool.append(dict(it, seccion=titulo))
+    for it in extra:
+        pool.append(dict(it, seccion=it.get("seccion", "EXTRA")))
+
     corte = lambda nt: int(np.ceil(nt * 0.25))
-    fort = sorted([p for p in pool if p["rank"] <= corte(p["n_teams"])],
-                  key=lambda d: d["rank"] / d["n_teams"])[:n_top]
-    debs = sorted([p for p in pool
-                   if p["rank"] >= p["n_teams"] - corte(p["n_teams"]) + 1],
-                  key=lambda d: -d["rank"] / d["n_teams"])[:n_top]
+
+    def top(cands, key):
+        """Uno por sección mientras haya variedad, y si no se completa con los
+        siguientes mejores.
+
+        El tope existe porque los huecos son 7 celdas y los extras 6 métricas:
+        sin él una sola familia se comía las 3 plazas. Pero aplicado a rajatabla
+        dejaba tarjetas con una sola clave (o ninguna) cuando los candidatos se
+        concentraban en pocas secciones, que es peor que repetir familia.
+        """
+        ordenados = sorted(cands, key=key)
+        vistas, out = set(), []
+        for c in ordenados:
+            if c["seccion"] in vistas:
+                continue
+            vistas.add(c["seccion"])
+            out.append(c)
+            if len(out) == n_top:
+                return out
+        for c in ordenados:                      # relleno sin repetir faceta
+            if c not in out:
+                out.append(c)
+                if len(out) == n_top:
+                    break
+        return out
+
+    fort = top([p for p in pool if p["rank"] <= corte(p["n_teams"])],
+               key=lambda d: d["rank"] / d["n_teams"])
+    debs = top([p for p in pool
+                if p["rank"] >= p["n_teams"] - corte(p["n_teams"]) + 1],
+               key=lambda d: -d["rank"] / d["n_teams"])
     return fort, debs
 
 
@@ -729,10 +862,23 @@ def dibujar_presion(ax, side, y0, y1, card):
 
 
 def draw_informe(side, outfile):
+    es_off = side == "off"
     secs = secciones(side)
     kpi  = kpis(side)
-    fort, debs = claves(secs)
-    es_off = side == "off"
+    # Candidatos que NO estan en la columna izquierda pero si en la tarjeta:
+    # presion (se fue al bloque de la derecha) y carrera por hueco (franja).
+    # Sin esto, la tarjeta mostraba dos cosas que su propio resumen no veia.
+    extra = metricas_extra(es_off)
+    huecos = carrera_por_hueco(es_off) or {}
+    etiqs_h = GAP_CORTO if es_off else GAP_DEF_LABEL
+    for h, d in huecos.items():
+        if d:
+            extra.append(dict(d, label=f"Carrera {etiqs_h[h].replace(chr(10), ' ')}",
+                              cat=h, uso=100.0, seccion="HUECOS"))
+    pres = presion_como_clave(es_off)
+    if pres:
+        extra.append(pres)
+    fort, debs = claves(secs, extra)
 
     fig, ax = plt.subplots(figsize=(15, 11), facecolor=BG)
     fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
@@ -787,14 +933,21 @@ def draw_informe(side, outfile):
         ancho = 35.4 / max(len(fort), 1)
         for i, it in enumerate(fort):
             cx = 63.2 + ancho * (i + 0.5)
-            ax.text(cx, Y0_BANDA + 4.3, it["label"][:16], ha="center", va="center",
-                    fontsize=8.5, fontweight="bold", color=FG, zorder=3)
+            # Sin truncar a 16: "Carrera Exterior izq" perdía el lado, que es
+            # justo lo que distingue el dato. Se encoge la fuente si hace falta.
+            etq = it["label"]
+            fs  = 8.5 if len(etq) <= 17 else (7.6 if len(etq) <= 22 else 6.9)
+            ax.text(cx, Y0_BANDA + 4.3, etq, ha="center", va="center",
+                    fontsize=fs, fontweight="bold", color=FG, zorder=3)
             ax.add_patch(plt.Circle((cx - 3.4, Y0_BANDA + 1.8), 1.15,
                                     color=rank_color(it["rank"], it["n_teams"]), zorder=4))
             ax.text(cx - 3.4, Y0_BANDA + 1.8, f"{it['rank']}", ha="center",
                     va="center", fontsize=7, fontweight="bold", color="#0a0e13", zorder=5)
+            es_extra = it["seccion"] in ("EXTRA", "HUECOS", "PRESIÓN")
+            unidad = "%" if it.get("es_pct") else " EPA"
             ax.text(cx - 1.6, Y0_BANDA + 1.8,
-                    f"{it['epa']:+.2f} EPA · {it['uso']:.0f}%",
+                    f"{it['epa']:+.2f}{unidad}" if es_extra
+                    else f"{it['epa']:+.2f} EPA · {it['uso']:.0f}%",
                     ha="left", va="center", fontsize=6.8, color="#9aa3b5", zorder=3)
 
     # ── Columna izquierda: pistas de ranking ──────────────────────────────────
@@ -869,6 +1022,9 @@ def draw_informe(side, outfile):
         verbo_uso = "uso" if it["seccion"].startswith(("PERSONAL OFENSIVO PROPIO",
                                                        "PERSONAL DEFENSIVO PROPIO",
                                                        "COBERTURAS QUE JUEGA")) else "visto"
+        # Los candidatos ocultos no tienen "% de uso": son métricas de equipo,
+        # no facetas situacionales. Mostrar "100% visto" en ellas era relleno.
+        es_extra = it["seccion"] in ("EXTRA", "HUECOS", "PRESIÓN")
         ax.text(64.6, yy, f"{it['label']}", ha="left", va="center",
                 fontsize=9, fontweight="bold", color=FG, zorder=3)
         ax.add_patch(plt.Circle((96.2, yy), 1.15, color=rank_color(it["rank"], it["n_teams"]),
@@ -878,9 +1034,12 @@ def draw_informe(side, outfile):
         if it["n_teams"] < 30:
             ax.text(96.2, yy - 2.0, f"de {it['n_teams']}", ha="center",
                     va="center", fontsize=5.5, color="#777777", zorder=5)
-        ax.text(64.6, yy - 1.6,
-                f"{it['epa']:+.2f} EPA (liga {it['lg']:+.2f})  ·  "
-                f"{it['uso']:.0f}% {verbo_uso}  ·  n={it['n']}",
+        unidad = "%" if it.get("es_pct") else " EPA"
+        detalle = (f"{it['epa']:+.2f}{unidad} (liga {it['lg']:+.2f})  ·  n={it['n']}"
+                   if es_extra else
+                   f"{it['epa']:+.2f} EPA (liga {it['lg']:+.2f})  ·  "
+                   f"{it['uso']:.0f}% {verbo_uso}  ·  n={it['n']}")
+        ax.text(64.6, yy - 1.6, detalle,
                 ha="left", va="center", fontsize=6.8, color="#9aa3b5", zorder=3)
 
     # Alturas dinámicas: DOMINA/SUFRE ocupan solo lo que necesitan sus items;
