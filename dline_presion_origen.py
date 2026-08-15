@@ -336,13 +336,14 @@ def draw_diagrama(team):
         ax.text(px, py + dy, f"{nombre}{extra}", ha="center", va="bottom",
                 color=FG, fontsize=10, fontweight="bold", zorder=10,
                 path_effects=halo)
-        # El % y las presiones en el color del origen; la comparacion con la
-        # liga aparte, en verde o gris segun este por encima o por debajo
-        delta = pct - media_liga[o]
+        # El % y las presiones en el color del origen; la REFERENCIA de la liga
+        # aparte, en verde o gris segun se supere o no. Se muestra el valor de
+        # la liga y no la diferencia: un "+27 vs liga" obliga a una resta mental
+        # y no dice que son puntos porcentuales.
         base_txt = f"{pct:.0f}%  ·  {npres:.0f} pres.   "
         ax.text(px, py + dy - 0.34, base_txt, ha="right", va="bottom",
                 color=col, fontsize=8.5, zorder=10, path_effects=halo)
-        ax.text(px, py + dy - 0.34, f"   {delta:+.0f} vs liga",
+        ax.text(px, py + dy - 0.34, f"   liga {media_liga[o]:.0f}%",
                 ha="left", va="bottom", fontsize=8.5, zorder=10,
                 color="#06d6a0" if fuerte else "#767E90",
                 fontweight="bold" if fuerte else "normal",

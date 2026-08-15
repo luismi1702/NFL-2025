@@ -524,15 +524,18 @@ def dibujar_presion(ax, side, y0, y1, card):
         an   = 0.34 + lw * 0.07
         ax.add_patch(plt.Polygon([tip, base + perp * an, base - perp * an],
                                  color=col, zorder=6))
-        # Etiqueta sobre el origen: nombre, % y comparación con la liga
-        d = pct - lg
+        # Etiqueta sobre el origen: nombre, % y REFERENCIA de la liga.
+        # Se muestra el valor de la liga, no la diferencia: un "-4 liga" no
+        # dice la unidad (son puntos porcentuales), no da la referencia y se
+        # lee tan fácil como "la liga es -4". El color ya indica si supera la
+        # media, así que la resta no aporta nada.
         ax.text(px, py + 3.4, ORIGEN_LABEL[o], ha="center", va="center",
                 fontsize=6.8, fontweight="bold", color=FG, zorder=9)
         ax.text(px, py + 1.9, f"{pct:.0f}%", ha="center", va="center",
                 fontsize=9.5, fontweight="bold", color=col, zorder=9)
-        ax.text(px, py + 0.6, f"{d:+.0f} liga", ha="center", va="center",
+        ax.text(px, py + 0.6, f"liga {lg:.0f}%", ha="center", va="center",
                 fontsize=6, zorder=9,
-                color="#06d6a0" if d >= 0 else "#767E90")
+                color="#06d6a0" if pct >= lg else "#767E90")
 
     nota = ("origen: atribución de sacks y QB hits"
             if es_off else "origen: presiones reales (PFR)")
