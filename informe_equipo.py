@@ -12,10 +12,11 @@ Rediseño jul-2026 — "team card" presentable:
     de la defensa
   - Columna derecha: debilidades, identidad y un bloque PRESION que reune
     el KPI, el % y el origen (mini-campo con las cuatro flechas)
-  - DONDE DOMINA / SUFRE tiene candidatos OCULTOS que no se dibujan en ninguna
-    seccion (zona roja, 3er/4o down, explosivas, turnovers, play-action,
-    three-and-out, presion y huecos): solo salen si el equipo es extremo, para
-    que el resumen aporte algo que no esta ya a la vista
+  - DONDE DOMINA / SUFRE tiene 19 candidatos OCULTOS que no se dibujan en
+    ninguna seccion: solo salen si el equipo es extremo, para que el resumen
+    aporte algo que no esta ya a la vista. Requisito para entrar: que el
+    ranking signifique MEJOR o PEOR — PROE o el uso de personal no valen,
+    porque ahi ser primero no es bueno, es distinto (eso va en IDENTIDAD)
 Datos: nflverse PBP + NGS participation (coberturas, personal, presión).
 """
 
@@ -186,12 +187,14 @@ merged = pbp.merge(part, on=["game_id", "play_id"], how="left")
 # FTN charting (play-action; solo 2022+) para la identidad de play-calling
 try:
     ftn, _ = cargar_ftn(SEASON)
-    ftn = ftn[["nflverse_game_id", "nflverse_play_id", "is_play_action"]].rename(
+    ftn = ftn[["nflverse_game_id", "nflverse_play_id", "is_play_action",
+               "n_blitzers"]].rename(
         columns={"nflverse_game_id": "game_id", "nflverse_play_id": "play_id"})
     merged = merged.merge(ftn, on=["game_id", "play_id"], how="left")
 except Exception as e:
     print(f"  Aviso: FTN no disponible ({e}) — sin play-action%")
     merged["is_play_action"] = np.nan
+    merged["n_blitzers"]     = np.nan
 
 all_plays = merged[
     merged["play_type"].isin(["pass", "run"]) & merged["epa"].notna()
@@ -359,6 +362,83 @@ def metricas_extra(es_off):
         añadir("EPA con play-action", pa.groupby(col)["epa"].mean(), True,
                pa.groupby(col).size(), min_n=60)
 
+    # EPA ajustado por la calidad del rival (misma fórmula que
+    # RankingEPAadjustado: restar la media del oponente a cada jugada).
+    # Un equipo 8º en bruto y 3º ajustado tiene una historia que hoy no sale.
+    rival = "defteam" if es_off else "posteam"
+    media_rival = p.groupby(rival)["epa"].mean()
+    aj = p["epa"] - p[rival].map(media_rival)
+    añadir("EPA ajustado por rival", p.assign(_a=aj).groupby(col)["_a"].mean(),
+           es_off, p.groupby(col).size(), min_n=200)
+
+    # Clutch: 4º cuarto y prórroga con el partido a 7 puntos o menos
+    cl = p[(pd.to_numeric(p["qtr"], errors="coerce") >= 4) &
+           (pd.to_numeric(p["score_differential"], errors="coerce").abs() <= 7)]
+    añadir("EPA en clutch", cl.groupby(col)["epa"].mean(), es_off,
+           cl.groupby(col).size(), min_n=60)
+
+    # Tendencia: últimas 4 jornadas contra el resto. Es la métrica más útil EN
+    # temporada — responde "¿va de menos a más?", que no se ve en el acumulado.
+    if "week" in p.columns:
+        w = pd.to_numeric(p["week"], errors="coerce")
+        ult = int(w.max()) if w.notna().any() else 0
+        if ult >= 8:
+            fin = p[w > ult - 4]
+            ini = p[w <= ult - 4]
+            delta = (fin.groupby(col)["epa"].mean() - ini.groupby(col)["epa"].mean())
+            añadir("Tendencia últimas 4", delta, es_off,
+                   fin.groupby(col).size(), min_n=100)
+
+    # Success rate: % de jugadas con EPA positivo. Otra lente que el EPA medio
+    # — un equipo puede tener buen EPA por cuatro explosivas y ser irregular.
+    añadir("Success rate %", p.assign(_s=p["epa"] > 0).groupby(col)["_s"].mean() * 100,
+           es_off, p.groupby(col).size(), min_n=200)
+
+    # EPA en 1er down: marca el ritmo de toda la serie
+    d1 = p[p["down"] == 1]
+    añadir("EPA en 1er down", d1.groupby(col)["epa"].mean(), es_off,
+           d1.groupby(col).size(), min_n=120)
+
+    # Distancia media a superar en 3er down (consecuencia de lo anterior)
+    d3 = p[p["down"] == 3]
+    añadir("Distancia en 3er down", d3.groupby(col)["ydstogo"].mean(), not es_off,
+           d3.groupby(col).size(), min_n=40)
+
+    # Sack rate sobre dropbacks
+    if "qb_dropback" in p.columns:
+        dr = p[pd.to_numeric(p["qb_dropback"], errors="coerce").fillna(0) == 1]
+        añadir("Sack rate %",
+               dr.assign(_k=pd.to_numeric(dr["sack"], errors="coerce").fillna(0))
+                 .groupby(col)["_k"].mean() * 100,
+               not es_off, dr.groupby(col).size(), min_n=150)
+
+    # Penalizaciones: yardas por jugada (en defensa, las que comete el rival)
+    if "penalty_yards" in p.columns and "penalty_team" in p.columns:
+        py = pd.to_numeric(p["penalty_yards"], errors="coerce").fillna(0)
+        propias = p["penalty_team"] == p[col]
+        añadir("Yds de penalización/jugada",
+               p.assign(_p=py.where(propias, 0)).groupby(col)["_p"].mean(),
+               False, p.groupby(col).size(), min_n=200)
+
+    # Red zone TD%: el resultado concreto, distinto del EPA en zona roja
+    if "touchdown" in p.columns:
+        rz_td = rz.assign(_t=pd.to_numeric(rz["touchdown"], errors="coerce").fillna(0))
+        añadir("TD% en zona roja", rz_td.groupby(col)["_t"].mean() * 100, es_off,
+               rz.groupby(col).size(), min_n=40)
+
+    # Two-minute: últimos 2 minutos de cada mitad
+    if "half_seconds_remaining" in p.columns:
+        tm = p[pd.to_numeric(p["half_seconds_remaining"], errors="coerce") <= 120]
+        añadir("EPA en two-minute", tm.groupby(col)["epa"].mean(), es_off,
+               tm.groupby(col).size(), min_n=50)
+
+    # Contra blitz (5+ rushers, de FTN charting)
+    if "n_blitzers" in p.columns:
+        bl = p[pd.to_numeric(p["n_blitzers"], errors="coerce").fillna(0) >= 1]
+        añadir("EPA contra blitz" if es_off else "EPA con blitz",
+               bl.groupby(col)["epa"].mean(), es_off,
+               bl.groupby(col).size(), min_n=60)
+
     # Three-and-out: series que acaban sin primer down
     if "fixed_drive" in p.columns:
         d = p.dropna(subset=["fixed_drive"])
@@ -368,6 +448,13 @@ def metricas_extra(es_off):
         tres = (por_drive["primeros"] == 0) & (por_drive["jugadas"] <= 3)
         añadir("Three-and-out %", tres.groupby(level=0).mean() * 100,
                not es_off, por_drive.groupby(level=0).size(), min_n=80)
+
+        # Drives que acaban en puntos: el resultado que de verdad importa
+        if "drive_ended_with_score" in d.columns:
+            pts = d.groupby([col, "game_id", "fixed_drive"])["drive_ended_with_score"].max()
+            pts = pd.to_numeric(pts, errors="coerce").fillna(0)
+            añadir("Drives con puntos %", pts.groupby(level=0).mean() * 100,
+                   es_off, por_drive.groupby(level=0).size(), min_n=80)
 
     return fuera
 
