@@ -75,7 +75,6 @@
 ## Semanales / temporada
 | Script | Descripción |
 |--------|-------------|
-| clasificacion.py | Cuadro de playoffs: 7 sembrados por conferencia + los que estan en la pelea, con los desempates oficiales de la NFL (directo, divisional, comunes, conferencia, fuerza de victorias). Uso: `python clasificacion.py [--season N] [--week N]` |
 | DatoSemana.py | Outlier estadístico de la semana (z-score robusto) |
 | MVPsSemana.py | Candidatos MVP de la semana |
 | MVPsSeason.py | Seguimiento MVP de la temporada |

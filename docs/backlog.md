@@ -51,11 +51,6 @@ nueva.
 
 ## Scripts nuevos
 
-### `clasificacion.py` — clasificación y carrera de playoffs
-De la semana 10 en adelante es el grueso de la conversación y no hay nada.
-`schedules` ya está cacheado y trae todo. **Es la única pieza del backlog que
-no depende de datos nuevos: se puede escribir hoy.** Objetivo: semana 8.
-
 ### Equipos especiales
 Ni un script para kickers, punters ni retornadores. Fase entera sin cubrir y
 sin competencia en español. Ver columnas del PBP arriba.
@@ -110,6 +105,23 @@ en vivo antes de montar contenido fijo encima.
 ---
 
 ## Descartado
+
+- **Clasificación / cuadro de playoffs** — construido y borrado el mismo día
+  (ago-2026, commit `6e461c9`, revertido). Funcionaba: dos paneles AFC/NFC con
+  los desempates oficiales de la NFL implementados y verificados a mano.
+
+  **Motivo del descarte, de Luis:** *"eso no me parece relevante, quien quiera
+  verlo entra a cualquier página y lo ve"*. Y tiene razón — la clasificación es
+  el dato más disponible que existe. Republicarla no aporta nada que el lector
+  no tenga a un clic, y el valor de la cuenta está en lo que NO se encuentra en
+  otro sitio.
+
+  **Lección para futuras propuestas:** que un hueco del catálogo sea grande y
+  fácil de llenar no lo convierte en contenido que merezca la pena. El criterio
+  no es "¿falta esto?" sino "¿lo tiene alguien más?". Antes de proponer una
+  pieza nueva, comprobar que el dato no está ya en cualquier web generalista.
+
+  Si algún día se recupera, el código está en el historial: `git show 6e461c9`.
 
 - **`vegas_wp` como feature de Manning Bot** — redundante con `home_impl_prob`
   (correlación 0.996). Ver arriba.
