@@ -81,6 +81,7 @@ NGS_URL       = _REL + "nextgen_stats/ngs_{tipo}.parquet"
 QBR_URL       = _REL + "espn_data/qbr_{nivel}_level.parquet"
 CONTRATOS_URL = _REL + "contracts/historical_contracts.parquet"
 EQUIPOS_URL   = _REL + "teams/teams_colors_logos.parquet"
+ROSTER_URL    = _REL + "rosters/roster_{season}.parquet"
 
 _sched_info = None   # (temporada, última semana REG jugada) — 1 descarga por ejecución
 _aviso_dado = False  # el aviso de frescura se imprime una sola vez por ejecución
@@ -461,6 +462,13 @@ def cargar_qbr(nivel="week", season=None, refrescar=False):
     if season is None:
         season = temporada_actual()
     return df[df["season"] == season].copy(), season
+
+
+def cargar_rosters(season=None, refrescar=False):
+    """Roster de la temporada. Trae `depth_chart_position`, que es la unica
+    fuente fiable para separar edge de interior: nflverse llama LB a Parsons y
+    PFR le llama DL, pero el depth chart dice OLB."""
+    return _cargar_auxiliar(season, refrescar, "roster", ROSTER_URL, "roster")
 
 
 def cargar_equipos(refrescar=False):

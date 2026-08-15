@@ -71,12 +71,6 @@ nueva.
 Ni un script para kickers, punters ni retornadores. Fase entera sin cubrir y
 sin competencia en español. Ver columnas del PBP arriba.
 
-### `dline_presion_origen.py`
-Aparcado en jul-2026 para no hacer una v1 a medias sin datos de presión. Ese
-motivo ya no aplica del todo: `cargar_pfr("def")` trae `prss`, `hrry` y `qbkd`
-por jugador. El ranking de jugadores ya no sería proxy; la mitad de equipo (por
-dónde se genera la presión) sigue siendo atribución.
-
 ### PNG para MVPsSemana y MVPsSeason
 Los dos calculan candidatos y solo los imprimen por consola. El cálculo ya está
 hecho; falta dibujar. Abre además DPOY, novato del año y entrenador.
