@@ -126,6 +126,27 @@ scripts. `python estado_datos.py` lo reporta.
 Si no aparece: cobertura y personal se quedan sin fuente gratuita, y PFF pasa
 de lujo a plan B.
 
+**Qué pasa exactamente si falta** (verificado ago-2026 ejecutando los scripts
+con la carga de participación forzada a fallar):
+
+- *Funcionan degradados, con aviso* — `oline_presion`, `oline_presion_origen`,
+  `qb_presion`, `qb_overview`, `comparador_qbs`, `resumen_partido`. Solo usaban
+  participación para la presión y tiran del proxy `qb_hit + sack`: pierden los
+  hurries, así que la presión sale infravalorada, pero el PNG sale.
+- *Paran con mensaje claro, sin gráfico* — `coberturas`,
+  `ataque_por_personal_ofensivo`, `ataque_vs_personal_defensivo`,
+  `defensa_vs_personal_ofensivo`, `red_zone_personal`, `matchup_intel`,
+  `informe_equipo`. Necesitan personal o cobertura, que no tienen alternativa.
+- *Los otros ~48 scripts no se enteran*: van contra PBP, stats_player,
+  ftn_charting, PFR, NGS o snaps, todos con cron.
+
+**Decisión (ago-2026): no construir la degradación parcial de `informe_equipo`
+por adelantado.** Podría dibujarse sin las secciones de personal y cobertura
+(los 3 KPIs, la franja de huecos, el bloque de presión y casi todos los
+candidatos ocultos no dependen de participación), pero una tarjeta a medias es
+peor tarjeta y el problema puede no llegar a darse. Se espera a ver qué pasa en
+la semana 2 y, si no se actualiza, se busca vía entonces.
+
 ### `injuries`
 El fichero se mantuvo toda la temporada 2025, pero el workflow localizado no
 registra ejecuciones desde ago-2025 — probablemente cambió de repo. Confirmar
