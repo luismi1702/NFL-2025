@@ -359,17 +359,24 @@ if __name__ == "__main__":
         except ValueError:
             raise SystemExit("Semana inválida.")
 
-        # Intentar detectar partidos desde el PBP (semanas ya jugadas)
+        # Partidos desde el calendario oficial, que incluye los NO jugados.
+        # Detectarlos desde el PBP era una trampa: el sabado por la noche la
+        # semana N solo tiene el TNF en el PBP, y el hilo de previas salia
+        # con un unico partido en vez de con la jornada entera.
         matchups = []
-        week_pbp = df[df["week"] == week_num] if "week" in df.columns else pd.DataFrame()
-        if not week_pbp.empty and "home_team" in df.columns and "away_team" in df.columns:
-            games = week_pbp[["game_id","home_team","away_team"]].drop_duplicates("game_id")
-            for _, row in games.iterrows():
+        try:
+            from pbp_loader import cargar_calendario
+            cal, _ = cargar_calendario(SEASON)
+            g = cal[(cal["game_type"] == "REG") & (pd.to_numeric(cal["week"], errors="coerce") == week_num)]
+            for _, row in g.iterrows():
                 away = str(row["away_team"]).strip().upper()
                 home = str(row["home_team"]).strip().upper()
-                if away not in ("NAN","") and home not in ("NAN",""):
+                if away not in ("NAN", "") and home not in ("NAN", ""):
                     matchups.append((away, home))
-            print(f"  Partidos detectados desde PBP.")
+            if matchups:
+                print("  Partidos detectados desde el calendario (schedules).")
+        except Exception as e:
+            print(f"  Aviso: calendario no disponible ({type(e).__name__}) — probando ESPN")
 
         # Fallback: ESPN scoreboard API (semanas futuras o sin datos en PBP)
         if not matchups:

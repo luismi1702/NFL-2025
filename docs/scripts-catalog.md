@@ -11,6 +11,7 @@
 | estado_datos.py | Semaforo de fuentes: que hay publicado, hasta que semana llega y cuanto retraso lleva. Uso: `python estado_datos.py [--season N]`. Lanzar cada martes antes de producir |
 | generar_caches.py | Regenera los caches por año (fullmetrics, epa_type, situational, explosive, rz_def, newmetrics + QBs en player_stats). Uso: `python generar_caches.py 2026 [--force]` |
 | server.py | Backend mínimo para ejecutar scripts desde el navegador (http://localhost:8765) |
+| semana_auto.py | Batch del calendario de posts (docs/calendario-posts.md). Uso: `python semana_auto.py --dia martes|domingo`. Programado en Task Scheduler (martes 8:00, sabado 23:00); log en salidas/auto_log.txt |
 
 ## QBs
 | Script | Descripción |

@@ -2,6 +2,29 @@
 
 ---
 
+## [2026-08-21] — Calendario de posts y nivel 1 de automatizacion
+
+**Qué se hizo:**
+- **Calendario semanal decidido** (docs/calendario-posts.md): martes dato +
+  resumen, miercoles power rankings + MVPs, jueves bot con balance publico y
+  gancho del TNF, domingo por la mañana el HILO de la jornada con una previa
+  por partido, tematica quincenal. Viernes y sabado sin publicar
+- **`semana_auto.py` nuevo**: batch de generacion (la maquina genera, Luis
+  revisa y publica — la verificacion triple no se automatiza). Dos tareas de
+  Windows registradas: martes 8:00 y sabado 23:00, con StartWhenAvailable.
+  Log en salidas/auto_log.txt; un paso caido no arrastra al resto
+- **Previas.py: deteccion de partidos desde el calendario** (cargar_calendario)
+  en modo jornada — desde el PBP era una trampa: el sabado la semana N solo
+  tiene el TNF y el hilo salia con un solo partido. Verificado: 16 partidos,
+  16 PNGs + PDF
+- Verificado el batch completo con la semana 18 de 2025; los pasos del bot
+  avisan correctamente de que 2026 no ha empezado
+- Decision de marca: pronosticos del bot PUBLICOS con balance honesto
+
+**Archivos modificados:** semana_auto.py (nuevo), Previas.py, docs/calendario-posts.md (nuevo), .gitignore, docs/scripts-catalog.md
+
+---
+
 ## [2026-08-21] — Tres mejoras de tarjetas: origen cruzado, WP con línea y pies honestos
 
 **Qué se hizo:**

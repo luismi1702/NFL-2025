@@ -22,3 +22,6 @@ salidas/
 # Personal - nunca commitear
 docs/superpowers/
 _preview/
+
+# PDF combinado de previas (regenerable con Previas.py modo jornada)
+/previas_semana_*.pdf
