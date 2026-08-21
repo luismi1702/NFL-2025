@@ -2,6 +2,29 @@
 
 ---
 
+## [2026-08-21] — Tres mejoras de tarjetas: origen cruzado, WP con línea y pies honestos
+
+**Qué se hizo:**
+- **matchup_intel: sección nueva ORIGEN DE LA PRESIÓN** — el cruce del backlog:
+  por dónde genera presión la defensa (PFR real) contra por dónde la cede el
+  ataque (atribución sacks+hits), por 100 dropbacks con media de liga y rank
+  por origen. Badge RIESGO/EXPLOIT con umbral de desvío conjunto ±2,5. Fuera
+  del Top-3 (unidades distintas al EPA). Los números cuadran con los informes
+  de equipo y con los dos scripts de origen
+- **resumen_partido: la curva de WP usa `vegas_home_wp`** (y `vegas_wpa` para
+  el Top-3), con fallback a la neutral. El favorito arranca en su probabilidad
+  pregame, no en 50 %; el título dice qué versión dibuja
+- **informe_equipo: pie del bloque PRESIÓN honesto por cara** — en defensa las
+  flechas suman el KPI (misma fuente PFR, "n=158 presiones"); en ataque son
+  atribución sacks+hits que NO suma el KPI de arriba y ahora lo dice
+  ("n=98 sacks+hits"). Cierra el pendiente del n= ambiguo
+- **informe_equipo: media de liga en las claves de hueco** (commit anterior
+  d667087) — un +0.06 interior con liga en -0.04 ya se explica solo
+
+**Archivos modificados:** matchup_intel.py, resumen_partido.py, informe_equipo.py, docs/backlog.md
+
+---
+
 ## [2026-08-21] — Manning Bot v6: alcanza al mercado (68,9 % vs 68,2 %)
 
 La bateria de experimentos de la mañana encontro dos palancas que suman, y

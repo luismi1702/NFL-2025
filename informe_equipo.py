@@ -981,11 +981,18 @@ def dibujar_presion(ax, side, y0, y1, card):
                 fontsize=6, zorder=9,
                 color="#06d6a0" if pct >= lg else "#767E90")
 
-    nota = ("atribución de sacks y QB hits"
-            if es_off else "presiones reales (PFR)")
-    ax.text(64.6, y0 + 0.9,
-            f"presiones por 100 dropbacks — las cuatro suman el total  ·  "
-            f"{nota}  ·  n={datos['n']}",
+    # Cada cara cuenta cosas distintas y el pie debe decirlo: en defensa las
+    # flechas son presiones PFR y SUMAN el KPI; en ataque son atribución de
+    # sacks+QB hits del PBP (los hurries no traen autor), o sea otra fuente
+    # que NO suma el KPI de arriba. El pie compartido decia "suman el total"
+    # y "n=" en las dos caras como si fueran lo mismo, y no lo son.
+    if es_off:
+        pie = (f"atribución de sacks y QB hits por 100 dropbacks — sin hurries, "
+               f"no suma el KPI  ·  n={datos['n']} sacks+hits")
+    else:
+        pie = (f"presiones por 100 dropbacks — las cuatro suman el total  ·  "
+               f"presiones reales (PFR)  ·  n={datos['n']} presiones")
+    ax.text(64.6, y0 + 0.9, pie,
             ha="left", va="center", fontsize=6.3, color="#666666",
             fontstyle="italic", zorder=3)
 

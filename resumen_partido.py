@@ -99,7 +99,8 @@ to_num(df, ["epa", "wpa", "week", "yards_gained", "complete_pass",
             "incomplete_pass", "interception", "sack", "pass_touchdown",
             "rush_touchdown", "fumble_lost", "third_down_converted",
             "third_down_failed", "yardline_100", "fixed_drive",
-            "game_seconds_remaining", "home_wp", "air_yards"])
+            "game_seconds_remaining", "home_wp", "air_yards",
+            "vegas_home_wp", "vegas_wpa"])
 
 # Presión real FTN (was_pressure) para la faceta de presión de las claves
 try:
@@ -158,7 +159,7 @@ passer_col   = pick_col(game_df, "passer", "passer_player_name")
 rusher_col   = pick_col(game_df, "rusher", "rusher_player_name")
 receiver_col = pick_col(game_df, "receiver", "receiver_player_name")
 desc_col     = pick_col(game_df, "desc", "play_description")
-wpa_col      = pick_col(game_df, "wpa")
+wpa_col      = pick_col(game_df, "vegas_wpa", "wpa")
 qtr_col      = pick_col(game_df, "qtr")
 
 # ── STATS PER TEAM ─────────────────────────────────────────────────────────────
@@ -244,7 +245,11 @@ for team in [team_a, team_b]:
     }
 
 # ── TOP 3 PLAYS BY |WPA| ───────────────────────────────────────────────────────
-wp_col = pick_col(game_df, "home_wp", "wp")
+# vegas_home_wp incorpora la linea pregame: un favorito de -7 ARRANCA en ~70%
+# en vez de en 50%, asi que una remontada del underdog se ve como lo que es.
+# Verificado sobre 2025: difiere >10 puntos de home_wp en el 36,5% de las
+# jugadas. Fallback a la neutral para temporadas sin linea.
+wp_col = pick_col(game_df, "vegas_home_wp", "home_wp", "wp")
 
 top3_plays = []
 if wpa_col:
@@ -415,7 +420,8 @@ for team, side, anchor_x in zip(teams_order, col_sides, col_anchor):
 home_g = game_df[home_col].dropna().iloc[0] if home_col else team_a
 away_g = team_b if home_g == team_a else team_a
 
-ax.text(5.0, 3.42, f"WIN PROBABILITY  ·  línea = {home_g}  ·  ● = Top-3 jugadas por |WPA|",
+_wp_nota = "con la línea de apuestas" if wp_col == "vegas_home_wp" else "sin línea pregame"
+ax.text(5.0, 3.42, f"WIN PROBABILITY {_wp_nota}  ·  curva = {home_g}  ·  ● = Top-3 jugadas por |WPA|",
         ha="center", va="center", fontsize=8, color="#888888",
         fontweight="bold", zorder=2)
 

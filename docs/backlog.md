@@ -55,10 +55,11 @@ Donde **sí** vale:
    pierde contra una línea de apuestas. Y como diagnóstico interno vale doble:
    cualquier cambio futuro del modelo se mide contra este 37,5 %, que es la
    línea base que hay que superar para que el bot aporte algo propio.
-2. **Curva de WP de `resumen_partido`.** Hoy usa `wp`, que ignora quién era
-   favorito. `vegas_wp` lo incorpora. Verificado sobre 2025: difieren **más de
-   10 puntos porcentuales en el 36,5 % de las jugadas** — no es cosmético.
-   Para contar una remontada, la versión con línea cuenta mejor la historia.
+2. **Curva de WP de `resumen_partido` — CONSTRUIDO (ago-2026).** Usa
+   `vegas_home_wp` (y `vegas_wpa` para el Top-3), con fallback a la neutral si
+   la temporada no tiene línea. Un favorito de -7 arranca en ~70 % y la
+   remontada del underdog se ve como lo que es. El título dice qué versión
+   dibuja.
 
 ---
 
@@ -123,14 +124,17 @@ nueva.
 ## Scripts nuevos
 
 ### Cruzar dline_presion_origen con oline_presion_origen en matchup_intel
-Tenemos las dos mitades: por dónde presiona cada defensa y por dónde cede cada
-línea ofensiva. Cruzarlas antes de un partido da el mismatch más directo que se
-puede contar — "Green Bay mete el 77% de su presión por fuera y este ataque es
-justo donde más cede". No necesita datos nuevos: los dos scripts ya calculan
-sus tablas.
+**CONSTRUIDO (ago-2026):** sección "ORIGEN DE LA PRESIÓN" al pie de la tarjeta
+de matchup_intel. Por cada origen (interior/exterior/blitz LB/blitz DB), lo
+que cede el ataque contra lo que genera la defensa, ambos en presiones por 100
+dropbacks con su media de liga y rank. Badge RIESGO/EXPLOIT cuando el desvío
+conjunto supera ±2,5. Va fuera del Top-3 del resumen porque sus unidades no
+son EPA. Caso de estreno: PIT protege top-7 por fuera (9,6 vs 12,1) y aun así
+sale RIESGO porque GB genera 20,8 por fuera, el doble de la liga.
 
-Limitación conocida: el cruce es por origen (interior/exterior/blitz), no por
-lado ni por hueco — eso no existe en datos públicos (ver pff-wishlist item 9).
+Limitación conocida (sigue): el cruce es por origen, no por lado ni por hueco
+— eso no existe en datos públicos (ver pff-wishlist item 9). Y las fuentes
+difieren por cara: PFR real en defensa, atribución sacks+hits en ataque.
 
 ### Equipos especiales
 Ni un script para kickers, punters ni retornadores. Fase entera sin cubrir y

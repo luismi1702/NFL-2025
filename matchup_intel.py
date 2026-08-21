@@ -265,6 +265,200 @@ def draw_section(ax, rows, team_atk, team_def, rk_atk, rk_def, section_title):
         ax.axvline(xv, color=GRID, linewidth=0.6, alpha=0.35, zorder=2, linestyle="--")
 
 
+
+# ── ORIGEN DE LA PRESIÓN — cruce O-line × D-line ──────────────────────────────
+# Por dónde genera presión la defensa (PFR, presiones reales) contra por dónde
+# la cede este ataque (atribución de sacks+QB hits del PBP: los hurries no
+# traen autor en datos públicos). Fuentes distintas por lado, las MISMAS que
+# usan dline_presion_origen y oline_presion_origen — los números cuadran con
+# los gráficos grandes. Clasificación edge/interior por depth chart + peso,
+# idéntica a esos scripts.
+ORIGENES     = ["INT", "EXT", "LB", "DB"]
+ORIGEN_LABEL = {"INT": "Interior", "EXT": "Exterior",
+                "LB": "Blitz LB", "DB": "Blitz DB"}
+_MAPA_DEPTH = {
+    "DT": "INT", "NT": "INT",
+    "DE": "EXT", "OLB": "EXT", "EDGE": "EXT", "RUSH": "EXT",
+    "JACK": "EXT", "LEO": "EXT",
+    "LB": "LB", "ILB": "LB", "MLB": "LB", "WLB": "LB", "SLB": "LB",
+    "MIKE": "LB", "WILL": "LB", "SAM": "LB",
+    "CB": "DB", "DB": "DB", "S": "DB", "FS": "DB", "SS": "DB", "NB": "DB",
+}
+_MAPA_POS = {"DT": "INT", "NT": "INT", "DE": "EXT", "OLB": "EXT", "EDGE": "EXT",
+             "LB": "LB", "ILB": "LB", "MLB": "LB",
+             "CB": "DB", "S": "DB", "FS": "DB", "SS": "DB", "DB": "DB"}
+PESO_INTERIOR = 280          # un DE de 3-4 juega por dentro
+UMBRAL_ORIGEN = 2.5          # presiones/100 db de desvío conjunto para marcar
+
+
+def _clasificar_rusher(depth, pos, peso=None):
+    d = depth.upper() if isinstance(depth, str) else ""
+    if d == "DE" and peso and float(peso) >= PESO_INTERIOR:
+        return "INT"
+    if d in _MAPA_DEPTH:
+        return _MAPA_DEPTH[d]
+    if isinstance(pos, str) and pos.upper() in _MAPA_POS:
+        return _MAPA_POS[pos.upper()]
+    return None
+
+
+def _clave_nombre(n):
+    n = str(n).lower().replace(".", " ").replace("'", "").replace("-", " ")
+    partes = [x for x in n.split() if x not in ("jr", "sr", "ii", "iii", "iv", "v")]
+    if not partes:
+        return ""
+    return partes[0] if len(partes) == 1 else partes[0][0] + " " + partes[-1]
+
+
+def _tasas_origen():
+    """(cedidas por cada ataque, generadas por cada defensa): DataFrames
+    equipo × origen en presiones por 100 dropbacks."""
+    from pbp_loader import cargar_pfr, cargar_rosters
+    dropback = pbp[pd.to_numeric(pbp["qb_dropback"], errors="coerce") == 1]
+    drop_of  = dropback.groupby("posteam").size()
+    drop_df  = dropback.groupby("defteam").size()
+
+    ros, _ = cargar_rosters(SEASON)
+    por_nombre, por_id = {}, {}
+    for _, r in ros.iterrows():
+        cl = _clasificar_rusher(r.get("depth_chart_position"),
+                                r.get("position"), r.get("weight"))
+        if not cl:
+            continue
+        por_nombre.setdefault(_clave_nombre(r.get("full_name")), cl)
+        gid = r.get("gsis_id")
+        if not pd.isna(gid):
+            por_id[gid] = cl
+
+    # Defensa: presiones reales de PFR clasificadas por origen
+    pfr, _ = cargar_pfr("def", SEASON)
+    pfr = pfr[pfr["tm"] != "3TM"].copy()
+    pfr["prss"]   = pd.to_numeric(pfr["prss"], errors="coerce").fillna(0)
+    pfr["origen"] = pfr["player"].map(_clave_nombre).map(por_nombre)
+    gen = (pfr.dropna(subset=["origen"])
+              .groupby(["tm", "origen"])["prss"].sum()
+              .unstack(fill_value=0).reindex(columns=ORIGENES, fill_value=0))
+    gen = gen.div(drop_df, axis=0).dropna(how="all") * 100
+
+    # Ataque: autores de sacks y QB hits contra cada ofensiva
+    filas = []
+    for cid in ("sack_player_id", "qb_hit_1_player_id", "qb_hit_2_player_id",
+                "half_sack_1_player_id", "half_sack_2_player_id"):
+        if cid not in pbp.columns:
+            continue
+        sub = pbp[pbp[cid].notna()][[cid, "posteam"]].copy()
+        sub.columns = ["pid", "equipo"]
+        filas.append(sub)
+    ev = pd.concat(filas, ignore_index=True)
+    ev["origen"] = ev["pid"].map(por_id)
+    ced = (ev.dropna(subset=["origen", "equipo"])
+             .groupby(["equipo", "origen"]).size()
+             .unstack(fill_value=0).reindex(columns=ORIGENES, fill_value=0))
+    ced = ced.div(drop_of, axis=0).dropna(how="all") * 100
+    return ced, gen
+
+
+def origen_cruce():
+    """Filas del cruce para team_atk vs team_def, o None si faltan fuentes."""
+    try:
+        ced, gen = _tasas_origen()
+        if team_atk not in ced.index or team_def not in gen.index:
+            return None
+        filas = []
+        for o in ORIGENES:
+            rk_a = int((ced[o] <= ced.loc[team_atk, o]).sum())   # menos cedida = mejor
+            rk_d = int((gen[o] >= gen.loc[team_def, o]).sum())   # más generada = mejor
+            filas.append(dict(
+                origen=o, label=ORIGEN_LABEL[o],
+                atk=float(ced.loc[team_atk, o]), lg_atk=float(ced[o].mean()),
+                deff=float(gen.loc[team_def, o]), lg_def=float(gen[o].mean()),
+                rk_atk=rk_a, rk_def=rk_d, n_teams=len(ced),
+            ))
+        return filas
+    except Exception as e:
+        print(f"  Aviso: sin cruce de origen de presión ({type(e).__name__}: {str(e)[:60]})")
+        return None
+
+
+def draw_seccion_origen(ax, filas):
+    """Sección con la gramática de la tarjeta (barras desde el centro, badge),
+    pero en presiones/100 dropbacks: NO comparte escala con las de EPA.
+    RIESGO = el ataque cede por encima de la media justo donde esta defensa
+    genera por encima de la media; EXPLOIT, lo contrario."""
+    n = len(filas)
+    ROW_H, TITLE_H, NOTE_H = 1.0, 0.55, 0.45
+    total_h = n * ROW_H + TITLE_H + NOTE_H
+
+    v_abs = max(max(abs(f["atk"] - f["lg_atk"]), abs(f["deff"] - f["lg_def"]))
+                for f in filas)
+    v_abs = max(v_abs, UMBRAL_ORIGEN)
+    v_lim = v_abs * 2.2
+    CENTER_HALF = v_lim * 0.32
+    norm = Normalize(vmin=-v_abs, vmax=v_abs)
+
+    ax.set_xlim(-v_lim, v_lim)
+    ax.set_ylim(-0.5 - NOTE_H, n * ROW_H - 0.5 + TITLE_H)
+    ax.axis("off")
+
+    title_y = n * ROW_H - 0.5 + TITLE_H / 2
+    ax.add_patch(plt.Rectangle((-v_lim, n * ROW_H - 0.5), v_lim * 2, TITLE_H,
+                                color="#1e2535", zorder=1))
+    ax.text(0, title_y, "ORIGEN DE LA PRESIÓN",
+            ha="center", va="center", color=FG,
+            fontsize=10, fontweight="bold", zorder=2)
+    ax.text(-v_lim * 0.7, title_y, f"◀  {team_atk}  cede vs media",
+            ha="center", va="center", color="#777", fontsize=7, zorder=2)
+    ax.text( v_lim * 0.7, title_y, f"genera vs media  {team_def}  ▶",
+            ha="center", va="center", color="#777", fontsize=7, zorder=2)
+
+    for i, f in enumerate(filas):
+        y = n - i - 1
+        d_atk = f["atk"]  - f["lg_atk"]     # >0 = cede más que la media
+        d_def = f["deff"] - f["lg_def"]     # >0 = genera más que la media
+        score = d_atk + d_def
+        mm = ("RIESGO" if score >= UMBRAL_ORIGEN else
+              "EXPLOIT" if score <= -UMBRAL_ORIGEN else "NEUTRO")
+
+        bg = BG_EXPLOIT if mm == "EXPLOIT" else (BG_RISK if mm == "RIESGO" else BG_NEUTRAL)
+        ax.add_patch(plt.Rectangle((-v_lim, y - 0.5), v_lim * 2, ROW_H,
+                                    color=bg, zorder=1))
+        if i < n - 1:
+            ax.axhline(y - 0.5, color=GRID, linewidth=0.4, alpha=0.25, zorder=2)
+
+        # Barra atacante: desvío de lo que cede (rojo = cede más que la media)
+        bar = abs(np.clip(d_atk, -v_abs, v_abs))
+        ax.barh(y, bar, height=0.52, left=-(CENTER_HALF + bar),
+                color=RYG_r(norm(d_atk)), zorder=3, edgecolor="none", alpha=0.95)
+        ax.text(-(CENTER_HALF + bar) - v_lim * 0.04, y,
+                f"{f['atk']:.1f} (liga {f['lg_atk']:.1f})  #{f['rk_atk']}",
+                ha="right", va="center", color=FG, fontsize=8, fontweight="bold", zorder=5)
+
+        # Barra defensora: desvío de lo que genera (verde = genera más)
+        bar = abs(np.clip(d_def, -v_abs, v_abs))
+        ax.barh(y, bar, height=0.52, left=CENTER_HALF,
+                color=RYG(norm(d_def)), zorder=3, edgecolor="none", alpha=0.95)
+        ax.text(CENTER_HALF + bar + v_lim * 0.04, y,
+                f"#{f['rk_def']}  {f['deff']:.1f} (liga {f['lg_def']:.1f})",
+                ha="left", va="center", color=FG, fontsize=8, fontweight="bold", zorder=5)
+
+        ax.text(0, y + 0.18, f["label"], ha="center", va="center",
+                color=FG, fontsize=9, fontweight="bold", zorder=5)
+        b_col = COL_EXPLOIT if mm == "EXPLOIT" else (COL_RISK if mm == "RIESGO" else COL_NEUTRAL)
+        b_bg  = BG_EXPLOIT  if mm == "EXPLOIT" else (BG_RISK  if mm == "RIESGO" else "#1a2030")
+        ax.text(0, y - 0.22, mm, ha="center", va="center",
+                color=b_col, fontsize=9, fontweight="bold", zorder=5,
+                bbox=dict(boxstyle="round,pad=0.28", facecolor=b_bg,
+                          edgecolor=b_col, linewidth=1.5, alpha=0.95))
+
+    for xv in (-CENTER_HALF, CENTER_HALF):
+        ax.axvline(xv, color=GRID, linewidth=0.6, alpha=0.35, zorder=2, linestyle="--")
+    ax.text(0, -0.5 - NOTE_H * 0.55,
+            "presiones por 100 dropbacks — ataque: atribución de sacks y QB hits (sin hurries)  ·  "
+            "defensa: presiones reales (PFR)  ·  barra = desvío sobre la media de liga",
+            ha="center", va="center", fontsize=6.3, color="#666666",
+            fontstyle="italic", zorder=3)
+
+
 # ── INPUTS ─────────────────────────────────────────────────────────────────────
 team_atk = input("Equipo atacante (ej: SF): ").strip().upper()
 team_def = input("Equipo defensor (ej: KC): ").strip().upper()
@@ -321,6 +515,10 @@ rk_def_pkg = league_ranks(all_plays, "defteam", "off_pkg",               OFF_PKG
 rk_def_cov = league_ranks(all_plays, "defteam", "defense_coverage_type", COV_ORDER,     ascending=True).get(team_def, {})
 rk_def_mz  = league_ranks(all_plays, "defteam", "man_zone",              MZ_ORDER,      ascending=True).get(team_def, {})
 rk_def_pr  = league_ranks(all_plays, "defteam", "pressure",              PRES_ORDER,    ascending=True).get(team_def, {})
+
+# Cruce de origen de la presión (PFR + rosters); si falta la fuente, la
+# tarjeta sale sin esa sección y lo dice por consola
+filas_origen = origen_cruce()
 
 
 # ── BUILD ROWS ────────────────────────────────────────────────────────────────
@@ -405,12 +603,12 @@ N_SEC = len(SECTIONS)
 TITLE_H = 0.6
 # Altura de cada sección = filas + cabecera
 HR_sec = [len(r) + TITLE_H for r, _, _, _ in SECTIONS]
-# Fila 0 = header figura
-HR = [1.8] + HR_sec
+# Fila 0 = header figura; al final, el cruce de origen si hay datos
+HR = [1.8] + HR_sec + ([len(filas_origen) + TITLE_H + 0.45] if filas_origen else [])
 
 fig = plt.figure(figsize=(15, 0.95 * sum(HR)), facecolor=BG)
 gs  = gridspec.GridSpec(
-    N_SEC + 1, 1,
+    N_SEC + 1 + (1 if filas_origen else 0), 1,
     figure=fig,
     height_ratios=HR,
     hspace=0.18,
@@ -470,6 +668,15 @@ for s_idx, (rows, rk_a, rk_d, title) in enumerate(SECTIONS):
     ax.set_facecolor(BG)
     for sp in ax.spines.values(): sp.set_edgecolor(GRID)
     draw_section(ax, rows, team_atk, team_def, rk_a, rk_d, title)
+
+# El cruce va FUERA del bucle y del Top-3: sus unidades son presiones/100
+# dropbacks, no EPA, y mezclarlo en el ranking del resumen corrompería la
+# comparación de scores
+if filas_origen:
+    ax = fig.add_subplot(gs[N_SEC + 1])
+    ax.set_facecolor(BG)
+    for sp in ax.spines.values(): sp.set_edgecolor(GRID)
+    draw_seccion_origen(ax, filas_origen)
 
 # ── PIE ───────────────────────────────────────────────────────────────────────
 fig.text(0.5, 0.012,
