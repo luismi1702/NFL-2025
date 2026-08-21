@@ -41,6 +41,31 @@ demas. Si nflverse esta caido, estado_datos.txt lo grita: NO publicar sin leerlo
   pbp_participation_2026 (comprobar en sem 2 con estado_datos).
 - Semana del kickoff: publicar el hilo pendiente docs/hilo_deberes_2026.md.
 
+## Nivel 2 — borradores automaticos (ago-2026, EN MARCHA)
+
+El batch del martes termina lanzando Claude Code headless (`claude -p`) con
+permisos limitados a `Read/Glob/Grep/Write/WebSearch`: lee lo generado, verifica
+nombres y hechos en web y escribe `salidas/{año}/w{NN}/borradores_posts.md` con
+dos alternativas por post y su nota de verificacion. No publica nada.
+
+- El prompt vive en `borradores_prompt.md`, en la raiz: editarlo ahi cambia el
+  comportamiento sin tocar codigo.
+- Cada corrida consume uso del plan de Claude (una sesion corta a la semana).
+- `borradores_stdout.log` guarda la salida completa por si la sesion se desvia.
+- Verificado con la semana 18 de 2025: escribio martes, miercoles y MVPs con
+  fuentes web enlazadas, y se NEGO a redactar el post del jueves porque los
+  TXT del bot no traian balance ni picks (2026 sin empezar) en vez de
+  inventarlo. Ese es el comportamiento que se le pide.
+- **Los borradores son borradores**: la verificacion triple del CLAUDE.md
+  sigue siendo de Luis antes de publicar.
+
+### Pendiente de decidir: hashtags de temporada
+
+Los ejemplos de `docs/post-ejemplos.md` son de epoca de draft
+(`#NFLDraft #Equipo`) y no valen para posts semanales. Sin regla, cada corrida
+improvisa (la primera puso `#NFL #Bucs`, `#NFL #PowerRankings`). Cuando se
+decida la convencion, añadirla como regla al prompt.
+
 ## Nivel 3 pendiente (publicador de cola aprobada)
 
 API de X pay-per-use ($0.015/post, sin tier gratis desde feb-2026). Solo

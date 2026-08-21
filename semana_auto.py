@@ -60,6 +60,45 @@ def paso(nombre, args, stdin_text=None, captura=None, timeout=1200):
         return False
 
 
+def borradores(txt_dir, W):
+    """Redaccion de borradores con `claude -p` (sin publicar nada)."""
+    import shutil
+    from datetime import date
+    exe = shutil.which("claude")
+    if not exe:
+        log("-> borradores: claude CLI no encontrado — paso omitido")
+        return False
+    plantilla = io.open(os.path.join(RAIZ, "borradores_prompt.md"),
+                        encoding="utf-8").read()
+    prompt = (plantilla.replace("{DIR}", txt_dir.replace(os.sep, "/"))
+                       .replace("{W}", str(W))
+                       .replace("{FECHA}", str(date.today())))
+    # Si queda un borrador de una corrida anterior de esta misma semana, fuera:
+    # su mera existencia contaria como exito aunque claude no escribiera nada
+    destino = os.path.join(txt_dir, "borradores_posts.md")
+    if os.path.exists(destino):
+        os.remove(destino)
+    log("-> borradores: claude -p (Read/Glob/Grep/Write/WebSearch)")
+    try:
+        r = subprocess.run(
+            [exe, "-p", prompt,
+             "--allowedTools", "Read", "Glob", "Grep", "Write", "WebSearch"],
+            cwd=RAIZ, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=1800)
+        if r.returncode == 0 and os.path.exists(destino):
+            log(f"   OK -> {destino}")
+            return True
+        cola = (r.stderr or r.stdout or "").strip().splitlines()[-3:]
+        log(f"   FALLO (exit {r.returncode}): " + " | ".join(cola))
+        return False
+    except subprocess.TimeoutExpired:
+        log("   FALLO: timeout de 1800s")
+        return False
+    except Exception as e:
+        log(f"   FALLO: {type(e).__name__}: {e}")
+        return False
+
+
 def main():
     ap = argparse.ArgumentParser(description="Batch semanal de generacion de PNGs")
     ap.add_argument("--dia", choices=["martes", "domingo"], required=True)
@@ -82,9 +121,11 @@ def main():
         ok.append(paso("estado de datos", ["estado_datos.py"],
                        captura=os.path.join(txt_dir, "estado_datos.txt")))
         # MARTES: dato de la semana (el resumen del partido lo eliges tu)
-        ok.append(paso("dato de la semana", ["DatoSemana.py", "--week", str(W)]))
+        ok.append(paso("dato de la semana", ["DatoSemana.py", "--week", str(W)],
+                       captura=os.path.join(txt_dir, "dato_semana.txt")))
         # MIERCOLES: power rankings + MVPs de la jornada (TXT para el post)
-        ok.append(paso("power rankings", ["power_rankings.py", "--week", str(W)]))
+        ok.append(paso("power rankings", ["power_rankings.py", "--week", str(W)],
+                       captura=os.path.join(txt_dir, "power_rankings.txt")))
         ok.append(paso("MVPs de la jornada", ["MVPsSemana.py", "--week", str(W)],
                        stdin_text="s\n",
                        captura=os.path.join(txt_dir, "mvps_semana.txt")))
@@ -95,6 +136,10 @@ def main():
         ok.append(paso("bot: picks proxima jornada",
                        ["Manning_bot.py", "--no-retrain"],
                        captura=os.path.join(txt_dir, "bot_picks.txt")))
+        # NIVEL 2: Claude Code headless redacta los borradores a partir de lo
+        # generado. Solo puede leer, buscar en web y escribir; la publicacion
+        # sigue siendo de Luis (verificacion triple del CLAUDE.md)
+        ok.append(borradores(txt_dir, W))
 
     else:  # domingo (se lanza el sabado por la noche)
         # Previas de TODA la proxima jornada para el hilo del domingo.
