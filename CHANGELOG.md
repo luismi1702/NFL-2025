@@ -2,6 +2,83 @@
 
 ---
 
+## [2026-08-21] — Manning Bot v6: alcanza al mercado (68,9 % vs 68,2 %)
+
+La bateria de experimentos de la mañana encontro dos palancas que suman, y
+juntas cierran el hueco con la linea de apuestas que la v5 nunca cerro.
+
+**Qué se hizo:**
+- **Regresion del margen de puntos** (XGBRegressor+Ridge → probabilidad via
+  normal) promediada con el clasificador de siempre. El 27-24 enseña mas que
+  el gano/perdio: +1,7 pts ella sola
+- **7 features de estabilidad**: success rate (of/def), EPA en situacion
+  neutral (wp 5-95 %, fuera garbage time), EPA de pase en downs 1-2 (of/def)
+  y EPA de equipos especiales — fase que el bot ignoraba. +1,7 pts solas
+- **Resultado walk-forward 2022-2025**: 68,9 % vs 68,2 % del mercado (v5:
+  65,7 %), ganandole en 3 de 4 temporadas; en discrepancias pasa de acertar
+  el 37,5 % al 54,5 % (n=77, no venderlo como ventaja sistematica). Robusto a
+  la semilla (68,2-69,0 %). El Brier global sigue una pizca peor (0,2112 vs
+  0,2083); en 2024 tambien lo gana
+- Descartado con numeros: calibracion isotonica, mezcla bot+mercado, poda de
+  features y el parte de lesiones de QB (el bot ya sabe quien titula:
+  schedules trae home_qb_id/away_qb_id). Detalle en docs/backlog.md
+- **Bug pre-temporada arreglado**: la reconstruccion de game logs intentaba
+  descargar el PBP de la temporada a predecir, que antes del kickoff no
+  existe (404). Ahora se omite si no hay partidos jugados
+- Caches pbp_{season}.parquet migrados desde los pbp_full locales (las 4
+  columnas nuevas sin re-descargar nada)
+- Modelo reentrenado y guardado (`ModeloManningV6`, 39 features). Ojo: los
+  .pkl de v5 no cargan con el codigo v6 — reentrenar en vez de cargar
+
+**Archivos modificados:** Manning_bot.py, docs/backlog.md, docs/scripts-catalog.md, manning_bot_model.pkl, lab/manning_exp_bateria.py (nuevo)
+
+---
+
+## [2026-08-21] — Manning Bot reentrenado y medido contra el mercado
+
+**Qué se hizo:**
+- **Modelo reentrenado con 2015-2025** (antes iba hasta 2024). Walk-forward
+  medio 0,655 de acierto; `home_impl_prob` sigue siendo la feature dominante
+  (0,118, casi el triple que la siguiente). `manning_bot_model.meta` ya no
+  avisa de caducidad
+- **`--bench` nuevo: el bot contra la línea de apuestas.** Walk-forward
+  2022-2025, 953 partidos. **El bot pierde**: 65,7 % vs 68,2 % de aciertos y
+  peor Brier en las cuatro temporadas. Discrepa del mercado en el 10,1 % de
+  los partidos y ahí acierta solo el **37,5 %** — la discrepancia es ruido, no
+  ventaja. No se publica como "bot vs Vegas" ganador; queda como línea base
+  interna que cualquier mejora del modelo tiene que superar
+- No hizo falta `vegas_wp` para esto: el moneyline de schedules cubre el 100 %
+  de los partidos desde 2015 y es la misma información
+- **Flags para correr sin teclado**: `--retrain` / `--no-retrain` / `--week N`
+  / `--bench`. Antes el script paraba en dos `input()` y no se podía programar
+- **Bug latente arreglado en `load_pbp`**: el caché `pbp_{season}.parquet` se
+  daba por bueno solo por existir. En disco había ficheros de una versión
+  anterior con 5 columnas en vez de 19, así que la primera reconstrucción de
+  game logs habría reventado con un `KeyError`. Ahora se valida el esquema y
+  se vuelve a descargar si faltan columnas
+
+- **Experimentos de mejora, medidos contra la línea base** (scripts en `lab/`,
+  probs walk-forward reutilizables en `lab/manning_probs_wf.parquet`):
+  - Diagnóstico: el hueco con el mercado está TODO en semanas 5-17 (65,7 % vs
+    68,8 %); en semanas 1-4 y 18 empata. Es información de alineación, no matemática
+  - Calibración isotónica: empeora el Brier. Descartada
+  - Mezcla bot+mercado: el mejor peso da +0,5 pts (ruido) con peor Brier. Descartada
+  - `d_qb_out` (titular Out/Doubtful del parte de lesiones): señal real (el
+    equipo sin titular gana el 31,3 %) pero cubre solo el 1,3 % de team-weeks
+    (los IR no salen en el parte semanal) y el modelo empeora. No entra en producción
+  - Pista abierta: en las 7 discrepancias fuertes (>60 % confianza) el bot
+    acertó el 57 % — muestra mínima, vigilar en 2026
+
+**Archivos modificados:** Manning_bot.py, docs/backlog.md, manning_bot_model.pkl, manning_bot_model.meta, lab/manning_experimentos.py (nuevo), lab/manning_exp_qb_out.py (nuevo)
+
+**Pendiente:**
+- Sigue vivo: comprobar `pbp_participation_2026` en la semana 2 con `python estado_datos.py`
+- Sigue vivo: confirmar en vivo que `injuries` se actualiza
+- Sigue vivo: lanzar `python generar_caches.py 2026` tras la semana 4
+- Sigue vivo: el `n=` del bloque de presión del informe significa cosas distintas en cada cara con la misma etiqueta
+
+---
+
 ## [2026-08-16] — Espejo defensivo de la presión y rediseño del informe de equipo
 
 **Qué se hizo:**

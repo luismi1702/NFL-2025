@@ -28,7 +28,7 @@ corte que lo convierta en historia.
 ## Manning Bot
 
 ### `vegas_wp` como banco de pruebas — NO como feature
-**Estado:** verificado ago-2026, pendiente de construir.
+**Estado:** el punto 1 ya está construido (`--bench`, ago-2026); queda el 2.
 
 Como **feature del modelo es redundante**: el `vegas_home_wp` de la primera
 jugada correlaciona **0.996** con la probabilidad implícita del spread, y el
@@ -38,14 +38,69 @@ mismo número y solo diluiría la importancia de las features.
 
 Donde **sí** vale:
 
-1. **Bot vs mercado.** Comparar la predicción de Manning Bot con la
-   `vegas_home_wp` pregame. Los partidos donde más discrepan son los
-   interesantes: es diagnóstico del modelo y post a la vez. Si el bot acierta
-   sistemáticamente donde discrepa, eso es la noticia; si no, también.
+1. **Bot vs mercado — CONSTRUIDO (ago-2026), `python Manning_bot.py --bench`.**
+   No hizo falta `vegas_wp`: el mercado ya está en el modelo como
+   `home_impl_prob` (moneyline, cobertura del 100 % desde 2015), que es la
+   misma información sin descargar nada.
+
+   **Resultado, walk-forward 2022-2025 (953 partidos): el bot NO le gana al
+   mercado.** 65,7 % de aciertos contra 68,2 %, y peor Brier (0,2154 vs
+   0,2083) en las cuatro temporadas. Se separa del mercado en 96 partidos
+   (10,1 %) y ahí acierta el **37,5 %** — o sea que cuando discrepa suele
+   equivocarse. La discrepancia es ruido, no ventaja.
+
+   **Consecuencia editorial:** no se puede publicar "el bot contra Las Vegas"
+   como si fuera una ventaja, porque no la hay. Lo que sí es publicable es el
+   dato honesto: un modelo con 30 features y once temporadas de histórico
+   pierde contra una línea de apuestas. Y como diagnóstico interno vale doble:
+   cualquier cambio futuro del modelo se mide contra este 37,5 %, que es la
+   línea base que hay que superar para que el bot aporte algo propio.
 2. **Curva de WP de `resumen_partido`.** Hoy usa `wp`, que ignora quién era
    favorito. `vegas_wp` lo incorpora. Verificado sobre 2025: difieren **más de
    10 puntos porcentuales en el 36,5 % de las jugadas** — no es cosmético.
    Para contar una remontada, la versión con línea cuenta mejor la historia.
+
+---
+
+### Mejorar la precision de Manning Bot — experimentos ago-2026
+**Estado: RESUELTO. El resultado es la v6, que empata/supera al mercado:
+68,9 % vs 68,2 % walk-forward 2022-2025, ganandole en 3 de 4 temporadas.**
+Scripts de la bateria en `lab/manning_exp_bateria.py` (y
+`manning_experimentos.py`, `manning_exp_qb_out.py`); las probs walk-forward
+quedan en `lab/manning_probs_wf*.parquet` para futuras iteraciones.
+
+Lo que funciono (las dos palancas suman +3,4 pts sobre la v5, del 65,5 %):
+
+- **Regresion del margen de puntos** ademas del clasificador (+1,7 sola). El
+  27-24 ensena mas que el gano/perdio; XGBRegressor+Ridge convertido a
+  probabilidad con una normal, promediado con el clasificador de siempre.
+- **Features de estabilidad** (+1,7 solas): success rate, EPA en situacion
+  neutral (wp 5-95 %, fuera garbage time), EPA de pase en downs 1-2 y EPA de
+  equipos especiales — fase que la v5 ignoraba por completo.
+- Robusto a la semilla (68,2-69,0 % con seeds 7/42/777) y consistente por
+  temporada. En discrepancias con el mercado (8,1 % de partidos) acierta el
+  54,5 % — la v5 acertaba el 37,5 %. Muestra chica (77), no venderlo como
+  ventaja sistematica; el Brier global sigue una pizca peor (0,2112 vs 0,2083).
+
+Probado y descartado, con numeros:
+
+- **Calibracion isotonica**: Brier empeora. El bot ya estaba bien calibrado;
+  su problema era el objetivo y las features, no la escala.
+- **Mezcla bot+mercado**: +0,5 pts ≈ ruido y peor Brier. Disfrazar al mercado.
+- **Poda de features** (-8 menos importantes): 65,7 %, nada.
+- **`d_qb_out` (titular Out/Doubtful del parte de lesiones)**: la señal existe
+  (el equipo sin titular gana el 31,3 %) pero el parte solo cubre el 1,3 % de
+  team-weeks (los IR no salen) y el bot YA sabe quien titula: `schedules` trae
+  `home_qb_id`/`away_qb_id` y el QB rolling cruza por ahi. Global 65,5→65,4 %.
+  Caveat: injuries_2020 y 2023 dieron 504 ese dia.
+
+Diagnostico que guio todo (sigue valido): la v5 empataba con el mercado en
+semanas 1-4 y 18 y perdia TODO el hueco en semanas 5-17; la v6 ahi da 69,6 %
+vs 68,8 % del mercado.
+
+Pendiente si algun dia se quiere mas: entrenar desde 2010 (moneyline al 100 %
+hasta ahi, solo faltan los PBP 2010-2014), tuning de hiperparametros con CV
+temporal, restricciones monotonicas en XGBoost.
 
 ---
 

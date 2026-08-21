@@ -1,6 +1,10 @@
-# Manning_bot.py  v5
+# Manning_bot.py  v6
 # Predictor de resultados NFL con Machine Learning — datos nflverse
 # Mejoras v5: SOS (Strength of Schedule via Elo opponent quality), MIN_GAMES=2
+# Mejoras v6: ensemble clasificador + regresion de margen, y features de
+# estabilidad (success rate, EPA neutral, EPA downs 1-2, equipos especiales).
+# Verificado en lab/manning_exp_bateria.py: 69,0% walk-forward 2022-2025
+# contra 65,5% de v5 — paridad con la linea de apuestas (68,0%).
 
 import os
 import socket
@@ -13,7 +17,7 @@ import xgboost as xgb
 from pathlib import Path
 from sklearn.metrics import accuracy_score, log_loss, brier_score_loss
 from sklearn.ensemble import VotingClassifier, RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -45,6 +49,8 @@ NEEDED_PBP_COLS = [
     "interception", "fumble_lost",
     "third_down_converted", "third_down_failed",
     "sack", "cpoe", "yardline_100",
+    # v6 — features de estabilidad
+    "success", "wp", "down", "special_teams_play",
 ]
 
 TEAM_MAP = {"OAK": "LV", "SD": "LAC", "STL": "LA", "JAC": "JAX"}
@@ -62,6 +68,9 @@ FEATURE_COLS = [
     "d_third_conv", "d_def_third_conv",
     "d_turnover_diff", "d_sack_rate_off", "d_sack_rate_def",
     "d_rz_epa", "d_cpoe",           # NUEVO: CPOE differential
+    # v6 — estabilidad: success rate, EPA neutral, downs tempranos, especiales
+    "d_succ_off", "d_succ_def", "d_neutral_off_epa", "d_neutral_def_epa",
+    "d_early_pass_off", "d_early_pass_def", "d_st_epa",
     # Schedule
     "d_win_pct", "d_pts_for", "d_pts_against", "d_pythag",
     # Forma reciente
@@ -86,10 +95,24 @@ FEATURE_COLS = [
 # ══════════════════════════════════════════════════════════════════════════════
 
 def load_pbp(season: int) -> pd.DataFrame:
+    """PBP con las columnas que necesita el bot, cacheado en pbp_cache/.
+
+    El cache se valida por esquema, no solo por existencia: en el disco hay
+    ficheros pbp_{season}.parquet escritos por versiones antiguas con otro
+    juego de columnas, y devolverlos tal cual reventaba build_game_logs con un
+    KeyError. Si faltan columnas se vuelve a descargar.
+    """
     CACHE_DIR.mkdir(exist_ok=True)
     cache = CACHE_DIR / f"pbp_{season}.parquet"
     if cache.exists():
-        return pd.read_parquet(cache)
+        import pyarrow.parquet as pq
+        cols = set(pq.read_schema(cache).names)
+        faltan = [c for c in NEEDED_PBP_COLS if c not in cols]
+        if not faltan:
+            return pd.read_parquet(cache)
+        print(f"  Cache PBP {season} obsoleto (faltan {len(faltan)} columnas) — "
+              f"se vuelve a descargar")
+        cache.unlink()
     url = PBP_URL.format(season=season)
     print(f"  Descargando PBP {season}...")
     df = pd.read_csv(url, low_memory=False, compression="infer",
@@ -178,7 +201,8 @@ def coerce(df, cols):
 def build_game_logs(pbp: pd.DataFrame) -> pd.DataFrame:
     pbp = coerce(pbp, ["epa", "pass_attempt", "rush_attempt", "complete_pass",
                         "interception", "fumble_lost", "third_down_converted",
-                        "third_down_failed", "sack", "cpoe", "yardline_100"])
+                        "third_down_failed", "sack", "cpoe", "yardline_100",
+                        "success", "wp", "down", "special_teams_play"])
     plays = pbp[pbp["season_type"] == "REG"].copy()
     plays["posteam"] = plays["posteam"].replace(TEAM_MAP)
     plays["defteam"]  = plays["defteam"].replace(TEAM_MAP)
@@ -215,7 +239,31 @@ def build_game_logs(pbp: pd.DataFrame) -> pd.DataFrame:
             "turnovers_def":  (d["interception"].sum() + d["fumble_lost"].sum()) if len(d) > 0 else 0,
             "sack_rate_def":  d_pass["sack"].sum() / max(1, len(d_pass)) if len(d_pass) > 0 else np.nan,
         })
-    return pd.DataFrame(rows)
+    logs = pd.DataFrame(rows)
+
+    # ── v6: metricas de estabilidad (vectorizadas) ────────────────────────
+    # El EPA medio es ruidoso (turnovers, jugadas largas); estas versiones
+    # predicen mejor el futuro: success rate, EPA en situacion neutral
+    # (wp 5-95%, fuera el garbage time), EPA de pase en downs 1-2 y equipos
+    # especiales (fase entera que v5 ignoraba).
+    neutral = pr[(pr["wp"] >= 0.05) & (pr["wp"] <= 0.95)]
+    early_p = pr[(pr["play_type"] == "pass") & (pr["down"].isin([1, 2]))]
+    st      = plays[plays["special_teams_play"] == 1]
+
+    def _m(df, key, col, name):
+        return df.groupby(["season", "week", key])[col].mean().rename(name)
+
+    off = pd.concat([_m(pr, "posteam", "success", "succ_off"),
+                     _m(neutral, "posteam", "epa", "neutral_off_epa"),
+                     _m(early_p, "posteam", "epa", "early_pass_off"),
+                     _m(st, "posteam", "epa", "st_epa")], axis=1)
+    deff = pd.concat([_m(pr, "defteam", "success", "succ_def"),
+                      _m(neutral, "defteam", "epa", "neutral_def_epa"),
+                      _m(early_p, "defteam", "epa", "early_pass_def")], axis=1)
+    deff.index.names = off.index.names
+    extras = (off.join(deff, how="outer").reset_index()
+                 .rename(columns={"posteam": "team"}))
+    return logs.merge(extras, on=["season", "week", "team"], how="left")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -394,6 +442,9 @@ PBP_STAT_COLS = [
     "turnovers_off", "sack_rate_off", "cpoe",
     "def_epa", "def_pass_epa", "def_rush_epa", "def_third_conv",
     "turnovers_def", "sack_rate_def",
+    # v6 — estabilidad
+    "succ_off", "succ_def", "neutral_off_epa", "neutral_def_epa",
+    "early_pass_off", "early_pass_def", "st_epa",
 ]
 SCHED_STAT_COLS = ["win", "pts_for", "pts_against"]
 
@@ -580,6 +631,9 @@ def build_features(schedules, rolling, sched_rolling,
     df["d_sack_rate_def"]  = df["h_sack_rate_def"]   - df["a_sack_rate_def"]
     df["d_rz_epa"]         = df["h_rz_epa"]          - df["a_rz_epa"]
     df["d_cpoe"]           = df["h_cpoe"].fillna(0)  - df["a_cpoe"].fillna(0)
+    for _c in ("succ_off", "succ_def", "neutral_off_epa", "neutral_def_epa",
+               "early_pass_off", "early_pass_def", "st_epa"):
+        df[f"d_{_c}"] = df[f"h_{_c}"].fillna(0) - df[f"a_{_c}"].fillna(0)
 
     # ── Diferenciales Schedule ────────────────────────────────────────────
     df["d_win_pct"]     = df["h_sr_win"]         - df["a_sr_win"]
@@ -626,7 +680,40 @@ def build_features(schedules, rolling, sched_rolling,
 # FASE 5 — ENTRENAMIENTO (Ensemble)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def train_model(X: pd.DataFrame, y: pd.Series):
+class ModeloManningV6:
+    """Ensemble de dos enfoques promediados:
+    - clasificador (Voting XGB+LR+RF, el v5 de siempre)
+    - regresion del margen de puntos (XGB+Ridge), convertida a probabilidad
+      con una normal cuyo sigma sale de los residuos de entrenamiento.
+    El margen ensena mas que el gano/perdio (27-24 no es 38-10) y los dos
+    enfoques se equivocan distinto: su promedio gana a cualquiera por separado
+    (verificado walk-forward en lab/manning_exp_bateria.py)."""
+
+    def fit(self, X, y, margen):
+        self.clf = _clasificador()
+        self.clf.fit(X, y)
+        self.reg = xgb.XGBRegressor(
+            n_estimators=500, max_depth=3, learning_rate=0.03,
+            subsample=0.80, colsample_bytree=0.70, min_child_weight=5,
+            gamma=1.0, reg_alpha=0.1, reg_lambda=2.0,
+            random_state=42, n_jobs=-1, verbosity=0)
+        self.rid = Pipeline([("scaler", StandardScaler()),
+                             ("ridge", Ridge(alpha=10.0))])
+        self.reg.fit(X, margen)
+        self.rid.fit(X, margen)
+        pred_tr = (self.reg.predict(X) + self.rid.predict(X)) / 2
+        self.sigma = float(np.std(margen - pred_tr, ddof=1))
+        return self
+
+    def predict_proba(self, X):
+        from scipy.stats import norm
+        p_clf = self.clf.predict_proba(X)[:, 1]
+        p_mar = norm.cdf((self.reg.predict(X) + self.rid.predict(X)) / 2 / self.sigma)
+        p = (p_clf + p_mar) / 2
+        return np.column_stack([1 - p, p])
+
+
+def _clasificador():
     xgb_clf = xgb.XGBClassifier(
         n_estimators=500, max_depth=3, learning_rate=0.03,
         subsample=0.80, colsample_bytree=0.70,
@@ -643,12 +730,14 @@ def train_model(X: pd.DataFrame, y: pd.Series):
         n_estimators=400, max_depth=4, min_samples_leaf=10,
         random_state=42, n_jobs=-1,
     )
-    ensemble = VotingClassifier(
+    return VotingClassifier(
         estimators=[("xgb", xgb_clf), ("lr", lr_clf), ("rf", rf_clf)],
         voting="soft", weights=[3, 1, 2],
     )
-    ensemble.fit(X, y)
-    return ensemble
+
+
+def train_model(X: pd.DataFrame, y: pd.Series, margen: pd.Series):
+    return ModeloManningV6().fit(X, y, margen)
 
 
 def evaluate(model, X_val, y_val, label="Val"):
@@ -665,8 +754,116 @@ def evaluate(model, X_val, y_val, label="Val"):
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 
+def bench_vs_mercado(X_all, y_all, seas_all, m_all, n=4):
+    """Banco de pruebas: el bot contra la linea de apuestas, walk-forward.
+
+    No es un feature ni un visual: es el diagnostico honesto del modelo. El
+    mercado ya esta dentro del bot como `home_impl_prob` (la feature mas
+    importante con diferencia), asi que la pregunta util no es "cuanto acierta"
+    sino "cuando se separa del mercado, quien tiene razon". Se entrena siempre
+    con las temporadas previas a la que se evalua, nunca con ella.
+    """
+    print()
+    print("=" * 72)
+    print("  BANCO DE PRUEBAS — MANNING BOT vs MERCADO (moneyline)")
+    print("=" * 72)
+
+    filas = []
+    for val_yr, train_yrs in folds_walk_forward(SEASONS_TRAIN, n=n):
+        mask_tr = seas_all.isin(train_yrs)
+        mask_vl = seas_all == val_yr
+        modelo  = train_model(X_all[mask_tr], y_all[mask_tr], m_all[mask_tr])
+
+        p_bot = modelo.predict_proba(X_all[mask_vl])[:, 1]
+        p_mkt = X_all.loc[mask_vl, "home_impl_prob"].to_numpy()
+        y_val = y_all[mask_vl].to_numpy()
+
+        # Sin moneyline el mercado queda en 0.5 exacto: no es una opinion, es
+        # un hueco. Se excluye de la comparacion en vez de contarlo como fallo.
+        con_linea = p_mkt != 0.5
+        if not con_linea.any():
+            print(f"  {val_yr}: sin moneyline en los datos, se salta")
+            continue
+        p_bot, p_mkt, y_val = p_bot[con_linea], p_mkt[con_linea], y_val[con_linea]
+
+        pick_bot = (p_bot >= 0.5).astype(int)
+        pick_mkt = (p_mkt >= 0.5).astype(int)
+        discrepan = pick_bot != pick_mkt
+
+        filas.append({
+            "season": val_yr,
+            "n": len(y_val),
+            "acc_bot": (pick_bot == y_val).mean(),
+            "acc_mkt": (pick_mkt == y_val).mean(),
+            "brier_bot": brier_score_loss(y_val, p_bot),
+            "brier_mkt": brier_score_loss(y_val, p_mkt),
+            "n_disc": int(discrepan.sum()),
+            "acc_bot_disc": (pick_bot[discrepan] == y_val[discrepan]).mean()
+                            if discrepan.any() else np.nan,
+        })
+
+    if not filas:
+        print("  Sin temporadas evaluables.")
+        return None
+
+    b = pd.DataFrame(filas)
+    print()
+    print(f"  {'AÑO':<6}{'N':>5}{'BOT':>8}{'MERCADO':>9}{'BRIER B':>9}{'BRIER M':>9}"
+          f"{'DISCREP':>9}{'BOT ahi':>9}")
+    print("  " + "-" * 62)
+    for _, r in b.iterrows():
+        ad = "  n/d" if pd.isna(r['acc_bot_disc']) else f"{r['acc_bot_disc']*100:5.1f}%"
+        print(f"  {int(r['season']):<6}{int(r['n']):>5}{r['acc_bot']*100:>7.1f}%"
+              f"{r['acc_mkt']*100:>8.1f}%{r['brier_bot']:>9.4f}{r['brier_mkt']:>9.4f}"
+              f"{int(r['n_disc']):>9}{ad:>9}")
+
+    tot_disc  = b["n_disc"].sum()
+    tot_n     = b["n"].sum()
+    # Media ponderada por partidos, no media de medias: las temporadas con mas
+    # discrepancias pesan mas en el veredicto.
+    acc_disc  = float((b["acc_bot_disc"].fillna(0) * b["n_disc"]).sum() / tot_disc) \
+                if tot_disc else float("nan")
+    print("  " + "-" * 62)
+    print(f"  Global   {tot_n:>4}{b['acc_bot'].mean()*100:>7.1f}%"
+          f"{b['acc_mkt'].mean()*100:>8.1f}%"
+          f"{b['brier_bot'].mean():>9.4f}{b['brier_mkt'].mean():>9.4f}"
+          f"{tot_disc:>9}{acc_disc*100:>8.1f}%")
+    print()
+    print(f"  El bot se separa del mercado en {tot_disc}/{tot_n} partidos "
+          f"({tot_disc/tot_n*100:.1f}%).")
+    if acc_disc == acc_disc:
+        veredicto = ("el bot gana esos duelos" if acc_disc > 0.5 else
+                     "el mercado gana esos duelos" if acc_disc < 0.5 else
+                     "empate tecnico")
+        print(f"  Ahi acierta el {acc_disc*100:.1f}% — {veredicto}.")
+        print("  (Por debajo de 50% la discrepancia es ruido, no ventaja:")
+        print("   seguir al mercado seria mejor politica en esos partidos.)")
+    print()
+    return b
+
+
+def _args():
+    """Flags para poder correr sin teclado (cron, reentrenamiento programado)."""
+    import argparse
+    ap = argparse.ArgumentParser(description="Manning Bot — predictor NFL")
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--retrain", action="store_true",
+                   help="reentrena sin preguntar y guarda el modelo")
+    g.add_argument("--no-retrain", action="store_true",
+                   help="usa el modelo guardado sin preguntar")
+    ap.add_argument("--week", type=int, default=None,
+                    help="semana a pronosticar (por defecto, la proxima)")
+    ap.add_argument("--bench", action="store_true",
+                    help="compara el bot contra la linea de apuestas y sale")
+    return ap.parse_args()
+
+
 if __name__ == "__main__":
     import pickle
+
+    ARGS = _args()
+    INTERACTIVO = not (ARGS.retrain or ARGS.no_retrain or ARGS.week is not None
+                       or ARGS.bench)
 
     # 1. Schedules
     schedules = load_schedules()
@@ -675,13 +872,28 @@ if __name__ == "__main__":
 
     # 2. PBP game logs (con cache)
     all_logs_cache = CACHE_DIR / "game_logs_all.parquet"
+    logs_ok = False
     if all_logs_cache.exists():
+        import pyarrow.parquet as pq
+        logs_ok = "st_epa" in pq.read_schema(all_logs_cache).names
+        if not logs_ok:
+            print("Cache de game logs sin las columnas v6 — se reconstruye...")
+            all_logs_cache.unlink()
+    if logs_ok:
         print("Cargando game logs desde cache...")
         game_logs = pd.read_parquet(all_logs_cache)
     else:
         print("Construyendo game logs (primera vez, ~5-10 min)...")
+        # La temporada a predecir solo tiene PBP si ya ha empezado; antes del
+        # kickoff su fichero no existe en nflverse (404) y no hay nada que leer
+        _sp = schedules[(schedules["game_type"] == "REG") &
+                        (schedules["season"] == SEASON_PRED)]
+        pred_empezada = pd.to_numeric(_sp["home_score"], errors="coerce").notna().any()
+        temporadas = SEASONS_TRAIN + ([SEASON_PRED] if pred_empezada else [])
+        if not pred_empezada:
+            print(f"  ({SEASON_PRED} aun sin partidos — se omite su PBP)")
         dfs = []
-        for season in SEASONS_TRAIN + [SEASON_PRED]:
+        for season in temporadas:
             pbp  = load_pbp(season)
             logs = build_game_logs(pbp)
             dfs.append(logs)
@@ -726,7 +938,12 @@ if __name__ == "__main__":
 
     X_all     = train_df[FEATURE_COLS].fillna(0)
     y_all     = train_df["home_win"]
+    m_all     = pd.to_numeric(train_df["result"], errors="coerce")
     seas_all  = train_df["season"]
+
+    if ARGS.bench:
+        bench_vs_mercado(X_all, y_all, seas_all, m_all)
+        raise SystemExit(0)
 
     # 5. Entrenamiento
     if os.path.exists(MODEL_FILE):
@@ -737,9 +954,13 @@ if __name__ == "__main__":
             print(f"\n  AVISO: '{MODEL_FILE}' se entreno hasta {caduco}, pero ya hay "
                   f"datos hasta {SEASONS_TRAIN[-1]}.")
             print( "  Conviene reentrenar antes de publicar pronosticos.")
-        sugerencia = "S/n" if caduco else "s/N"
-        resp = input(f"\nYa existe '{MODEL_FILE}'. Reentrenar? ({sugerencia}): ").strip().lower()
-        retrain = (resp == "s") or (caduco and resp == "")
+        if ARGS.retrain or ARGS.no_retrain:
+            retrain = ARGS.retrain
+            print(f"  (--{'retrain' if retrain else 'no-retrain'})")
+        else:
+            sugerencia = "S/n" if caduco else "s/N"
+            resp = input(f"\nYa existe '{MODEL_FILE}'. Reentrenar? ({sugerencia}): ").strip().lower()
+            retrain = (resp == "s") or (caduco and resp == "")
     else:
         retrain = True
 
@@ -751,15 +972,15 @@ if __name__ == "__main__":
         for val_yr, train_yrs in folds:
             mask_tr = seas_all.isin(train_yrs)
             mask_vl = seas_all == val_yr
-            m_tmp   = train_model(X_all[mask_tr], y_all[mask_tr])
+            m_tmp   = train_model(X_all[mask_tr], y_all[mask_tr], m_all[mask_tr])
             acc, _, _ = evaluate(m_tmp, X_all[mask_vl], y_all[mask_vl], label=str(val_yr))
             wf_accs.append(acc)
         print(f"  Walk-forward mean Acc: {np.mean(wf_accs):.3f}")
 
         # Modelo final: entrenado con TODAS las temporadas de entrenamiento
-        print(f"\nEntrenando Manning Bot v4 final "
+        print(f"\nEntrenando Manning Bot v6 final "
               f"(todos los datos {SEASONS_TRAIN[0]}-{SEASONS_TRAIN[-1]})...")
-        model = train_model(X_all, y_all)
+        model = train_model(X_all, y_all, m_all)
         with open(MODEL_FILE, "wb") as f:
             pickle.dump(model, f)
         _guardar_meta()
@@ -775,7 +996,7 @@ if __name__ == "__main__":
                  label=f"{ref_desde}-{SEASONS_TRAIN[-1]} (ref)")
 
     # 6. Feature importance (XGBoost del ensemble)
-    fi = pd.Series(model.named_estimators_["xgb"].feature_importances_,
+    fi = pd.Series(model.clf.named_estimators_["xgb"].feature_importances_,
                    index=FEATURE_COLS)
     print("\nTop features (XGBoost):")
     for feat, imp in fi.sort_values(ascending=False).head(14).items():
@@ -812,8 +1033,15 @@ if __name__ == "__main__":
             f"empezado.\n  Vuelve cuando se haya jugado la primera jornada.\n")
 
     rango = f"{min(available)}-{max(available)}"
-    semana_str = input(f"\nQue semana? ({rango}, Enter = {por_defecto}): ").strip()
-    semana     = int(semana_str) if semana_str.isdigit() else por_defecto
+    if ARGS.week is not None:
+        semana = ARGS.week
+        print(f"\nSemana pedida por --week: {semana}")
+    elif INTERACTIVO:
+        semana_str = input(f"\nQue semana? ({rango}, Enter = {por_defecto}): ").strip()
+        semana     = int(semana_str) if semana_str.isdigit() else por_defecto
+    else:
+        semana = por_defecto
+        print(f"\nSemana: {semana} (por defecto, sin preguntar)")
 
     games_semana = pred_df[pred_df["week"].astype(int) == semana].copy()
     if games_semana.empty:
@@ -840,7 +1068,7 @@ if __name__ == "__main__":
             games_semana["correct"] = None
 
         print(f"\n{'='*75}")
-        print(f"  MANNING BOT v5 -- NFL {SEASON_PRED}  |  Semana {semana}")
+        print(f"  MANNING BOT v6 -- NFL {SEASON_PRED}  |  Semana {semana}")
         print(f"{'='*75}")
         print(f"  {'PARTIDO':<28}  {'PRED':>5}  {'P.HOME':>7}  {'P.AWAY':>7}  {'REAL':>5}  OK")
         print(f"  {'-'*68}")
