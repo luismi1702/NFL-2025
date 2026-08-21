@@ -1079,9 +1079,18 @@ def draw_informe(side, outfile):
                         va="center", fontsize=5.5, color="#777777", zorder=5)
             es_extra = it["seccion"] in ("EXTRA", "HUECOS", "PRESIÓN")
             unidad = "%" if it.get("es_pct") else " EPA"
-            ax.text(cx - 1.6, y0 + 1.8,
-                    f"{it['epa']:+.2f}{unidad}" if es_extra
-                    else f"{it['epa']:+.2f} EPA · {it['uso']:.0f}%",
+            # En los huecos el EPA solo no explica nada: la liga entera sangra
+            # por fuera (+0.08) y defiende bien por dentro (-0.04), asi que un
+            # +0.06 interior es peor fallo que un +0.18 exterior. Sin la media
+            # de liga al lado, el lector compara EPAs de contextos distintos
+            # (y con razon no le cuadra con los colores de la franja).
+            if it["seccion"] == "HUECOS" and it.get("lg") is not None:
+                txt = f"{it['epa']:+.2f} · liga {it['lg']:+.2f}"
+            elif es_extra:
+                txt = f"{it['epa']:+.2f}{unidad}"
+            else:
+                txt = f"{it['epa']:+.2f} EPA · {it['uso']:.0f}%"
+            ax.text(cx - 1.6, y0 + 1.8, txt,
                     ha="left", va="center", fontsize=6.8, color="#9aa3b5", zorder=3)
 
     banda_claves(Y0_BANDA, Y1_BANDA, "✓  DONDE DOMINA", "#06d6a0", fort,
