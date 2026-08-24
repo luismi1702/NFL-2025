@@ -19,7 +19,7 @@ como pendiente.
 | BAL Ravens | @RavensESP · @LaBandadaOscura · @RavensCriollo · @9MICHEL9 | hilo draft |
 | BUF Bills | @EstampidaBills · @PepeBrasin | hilo draft |
 | CAR Panthers | @PanthersSpain | hilo draft |
-| CHI Bears | *(pendiente — candidatos sin verificar: @Bears_ES, @SpainBears)* | no hubo tuit de CHI |
+| CHI Bears | @LaOseraFan | indicada por Luis (ago-2026) |
 | CIN Bengals | @jungla_es · @antoniomagon | hilo draft |
 | CLE Browns | @DawgPoundSpa · @Paco_Virues | hilo draft |
 | DAL Cowboys | @SpainCowboys | hilo draft |
@@ -49,12 +49,12 @@ como pendiente.
 
 ## Pendientes de decidir (Luis)
 
-- **CHI Bears** — no hubo tuit de Chicago en el hilo pese a anunciarse
-  ("Arrancamos hoy: BAL + CHI"). Candidatos encontrados en web, SIN verificar
-  que estén activos ni que sean de aficionados: `@Bears_ES` (se presenta como
-  cuenta oficial en España) y `@SpainBears`. Comprobar antes de usar.
-- **ATL Falcons** y **IND Colts** — sus tuits salieron sin mención. Buscar
-  cuenta o dejarlos sin etiquetar.
+- **ATL Falcons** y **IND Colts** — sus tuits del hilo salieron sin mención.
+  Buscar cuenta o dejarlos sin etiquetar.
+
+Resuelto: CHI Bears → `@LaOseraFan` (ago-2026). No hubo tuit de Chicago en el
+hilo del draft pese a anunciarse ("Arrancamos hoy: BAL + CHI"), de ahí que
+faltara.
 
 ## Reglas de uso
 
