@@ -16,7 +16,7 @@ como pendiente.
 |---|---|---|
 | ARI Cardinals | @cardinalsESP | hilo draft |
 | ATL Falcons | *(pendiente)* | sin mención en el hilo |
-| BAL Ravens | @RavensESP · @LaBandadaOscura · @RavensCriollo · @9MICHEL9 | hilo draft |
+| BAL Ravens | @RavensESP · @LaBandadaOscura · @RavensCriollo | hilo draft |
 | BUF Bills | @EstampidaBills · @PepeBrasin | hilo draft |
 | CAR Panthers | @PanthersSpain | hilo draft |
 | CHI Bears | @LaOseraFan | indicada por Luis (ago-2026) |
@@ -33,9 +33,9 @@ como pendiente.
 | LA Rams | @RamsSpain | hilo draft |
 | LAC Chargers | @BoltLand_cast | hilo draft |
 | LV Raiders | @Raiders_esp | hilo draft |
-| MIA Dolphins | @MundoDolphins · @HugoManero1 · @TomasTDN | hilo draft |
+| MIA Dolphins | @MundoDolphins · @HugoManero1 | hilo draft |
 | MIN Vikings | @vikings_es | hilo draft |
-| NE Patriots | @PatriotsMadrid · @PabloFR_ | hilo draft |
+| NE Patriots | @PatriotsMadrid | hilo draft |
 | NO Saints | @AbadiaSaints | hilo draft |
 | NYG Giants | @ZonaGigantes · @Rubenfvargas | hilo draft |
 | NYJ Jets | @NYJetsSpain | hilo draft |
