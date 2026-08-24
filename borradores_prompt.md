@@ -49,6 +49,10 @@ Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`
      fichero antes de escribir. **PROHIBIDO inventar o deducir un handle**:
      etiquetar a una cuenta equivocada es peor que no etiquetar.
    - Maximo 2-3 menciones por post.
+   - **Angulo negativo, sin mencion.** Si el post cuenta una caida, una mala
+     racha o un fracaso de ese equipo, van los hashtags pero NINGUNA mencion:
+     se etiqueta para que la aficion comparta, y nadie comparte el post que
+     certifica su hundimiento. Anotalo en la nota de verificacion.
    - Si el equipo aparece como *(pendiente)* en la tabla, escribe el post sin
      menciones y anotalo en la nota de verificacion
      ("CHI sin cuenta en la tabla — decidir").
@@ -59,23 +63,51 @@ Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`
 
 ## Qué entregar en `{DIR}/borradores_posts.md`
 
-```
+El formato de abajo es OBLIGATORIO y literal: un script (`cola_posts.py`) lo
+parsea despues para montar la pagina de copiar y pegar. Si te sales del
+formato, la pagina sale vacia.
+
+Reglas del formato:
+
+- Una seccion `## ` por post, con los titulos EXACTOS que se listan abajo.
+- Justo debajo del titulo, una linea `IMAGEN: nombre_del_png` con el nombre
+  del fichero (solo el nombre, sin ruta) que acompana a ese post. Si el post
+  va sin imagen, escribe `IMAGEN: ninguna`.
+- Cada alternativa se abre con `**[A]**` o `**[B]**` y su texto va DENTRO de
+  un bloque cercado con la etiqueta `post`. En el bloque va el texto del tuit
+  y NADA mas: sin comillas, sin conteo de caracteres, sin comentarios. Los
+  hashtags y menciones van dentro, que forman parte del tuit.
+- Tras los bloques, la linea `Verificación:` y sus vinetas, fuera del bloque.
+
+````
 # Borradores semana {W} — generado {FECHA} (REVISAR ANTES DE PUBLICAR)
 
 ## MARTES — Dato de la semana
-[borrador A]  (NNN chars)
-[borrador B]  (NNN chars)
-Verificación: ...
+IMAGEN: dato_semana_outlier_2026_w03.png
 
-## MIÉRCOLES — Power Rankings
-[A] [B] + verificación
-
-## MIÉRCOLES — MVPs de la jornada
-[A] [B] + verificación
-
-## JUEVES — Bot: balance + picks
-[A] [B] + verificación
+**[A]** (224 chars)
+```post
+Texto del tuit, tal cual se publica.
+#NFL | #Bucs | @Bucs_es
 ```
+
+**[B]** (238 chars)
+```post
+La otra alternativa, con un angulo distinto.
+#NFL | #Bucs | @Bucs_es
+```
+
+Verificación:
+- numero X sale de `dato_semana.txt`
+- resultado TB 16-14 CAR verificado en web (ESPN, enlace)
+````
+
+Las cuatro secciones, con estos titulos exactos:
+
+- `## MARTES — Dato de la semana`
+- `## MIÉRCOLES — Power Rankings`
+- `## MIÉRCOLES — MVPs de la jornada`
+- `## JUEVES — Bot: balance + picks`
 
 - Dos alternativas por post con ángulos distintos, no la misma frase retocada.
 - El post del jueves abre con el balance de la jornada anterior ("el bot fue
@@ -83,6 +115,7 @@ Verificación: ...
   los picks, úsalo de gancho.
 - La nota de verificación lista: números usados y su fichero de origen, y
   nombres/hechos verificados en web con la fuente.
-- Si algún fichero falta o está vacío, dilo en su sección y no inventes.
+- Si algún fichero falta o está vacío, dilo en su sección y no inventes: deja
+  la sección sin bloques `post` y explica por qué en la verificación.
 
 EMPIEZA AHORA: lee los ficheros listados, haz las verificaciones y escribe `{DIR}/borradores_posts.md`. No termines sin haberlo escrito.

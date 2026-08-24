@@ -65,13 +65,16 @@ plt.savefig("output.png", dpi=200, bbox_inches="tight", facecolor=BG)
 - SIEMPRE buscar web antes de escribir cualquier post � nunca asumir datos del modelo actualizados
 
 ## Posts X (@CuartayDato) � 280 chars m�ximo
-Estructura: [historia del equipo] ? [dato como revelaci�n] ? [pregunta ilusionante ??] ? [#NFLDraft #Equipo]
+Estructura (TEMPORADA, lo que se publica hoy): [gancho: historia, nombres propios] → [dato como revelación] → [cierre corto con opinión] → [#NFL | #Equipo | @cuentas]
+Estructura (DRAFT, solo en la ventana de abril): [historia del equipo] → [dato como revelación] → [pregunta ilusionante 🤔] → [#NFLDraft #Equipo]
 - No empezar con n�meros en bruto
 - No centrar en el QB salvo que el visual sea de QBs
-- Cierre siempre ilusionante � el draft vende ilusi�n
+- Cierre ilusionante: en draft es pregunta (el draft vende ilusión); en temporada, frase corta con opinión
 - No usar "jugadores de franquicia"
 - Tono humano, no robótico: el cierre ilusionante NO tiene por qué ser una pregunta. Prohibidas las preguntas retóricas de relleno ("¿Cuánto dura la era?", "¿Quién cierra la grieta?") — si el cierre no aporta, mejor terminar en el dato o en una frase corta con opinión
 - Terminología: "3er down"/"4º down", nunca "bajada". Equipos y ciudades en inglés (New England, no Nueva Inglaterra)
+- Menciones: SOLO de docs/cuentas-fans.md, nunca inventadas ni deducidas. Manda el tema del post, no el script del PNG. Máximo 2-3
+- Si el ángulo del post es NEGATIVO para el equipo, no se etiqueta a su afición: se etiqueta para que compartan, y nadie comparte lo que certifica su caída
 - Terminología de jugadas: "proteger al QB" / "mejorar la protección de pase" / "pass pro", NUNCA "proteger al pasador". "Forzar turnovers", NUNCA "robar balones"
 
 ## Docs (leer cuando se necesiten)

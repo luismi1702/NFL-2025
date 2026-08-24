@@ -59,12 +59,52 @@ dos alternativas por post y su nota de verificacion. No publica nada.
 - **Los borradores son borradores**: la verificacion triple del CLAUDE.md
   sigue siendo de Luis antes de publicar.
 
-### Pendiente de decidir: hashtags de temporada
+### Cierre de los posts: hashtags y menciones (decidido ago-2026)
 
 Los ejemplos de `docs/post-ejemplos.md` son de epoca de draft
-(`#NFLDraft #Equipo`) y no valen para posts semanales. Sin regla, cada corrida
-improvisa (la primera puso `#NFL #Bucs`, `#NFL #PowerRankings`). Cuando se
-decida la convencion, añadirla como regla al prompt.
+(`#NFLDraft #Equipo`) y no valen para posts semanales. La convencion de
+temporada ya esta fijada y vive como regla 9 del `borradores_prompt.md`:
+
+`#NFL | #Equipo | @cuenta1 @cuenta2`
+
+- `#Equipo` en INGLES y sin espacios: `#Bengals`, `#49ers`, `#NYGiants`.
+- Las menciones salen SOLO de `docs/cuentas-fans.md` — prohibido inventar o
+  deducir un handle. Maximo 2-3 por post.
+- Equipo marcado *(pendiente)* en la tabla: post sin menciones, anotado en la
+  nota de verificacion.
+- Piezas de liga (power rankings, MVPs, dato generico): hashtags si, menciones
+  NO.
+- Los caracteres se cuentan CON hashtags y menciones incluidos.
+
+Los borradores de la w18 de 2025 son anteriores a esta regla y usan el formato
+viejo (`#NFL #Bucs`, sin menciones): no sirven de muestra del formato actual.
+
+## Nivel 2.5 — cola de copiar y pegar (ago-2026, EN MARCHA)
+
+Decidido en vez de pagar la API de X: la maquina deja los posts listos y el
+unico trabajo manual es copiar, pegar y arrastrar la imagen.
+
+El batch del martes, tras escribir los borradores, lanza `cola_posts.py`, que
+parsea `borradores_posts.md` y escribe `cola_posts.html` en la misma carpeta de
+la semana. Se abre en el navegador (doble clic) y trae:
+
+- una tarjeta por alternativa (A y B copiables por separado, la eleccion sigue
+  siendo tuya),
+- el PNG que acompana al post ya visible en la tarjeta, con su nombre de
+  fichero para arrastrarlo desde la carpeta,
+- boton **Copiar** que se lleva el texto del tuit al portapapeles,
+- el conteo de caracteres RECALCULADO en Python (no el que declara el
+  redactor): en verde si cabe, en rojo si se pasa de 280,
+- los avisos arriba: el banner de datos sin verificar si `estado_datos.txt`
+  no estaba limpio, y la lista de secciones que el redactor dejo sin escribir.
+
+Para que esto se pueda parsear, el formato de `borradores_posts.md` es ahora un
+contrato fijo (seccion `## `, linea `IMAGEN:` y cada alternativa dentro de un
+bloque cercado ```post). Vive en `borradores_prompt.md`: si se toca ahi, hay
+que tocar el parser de `cola_posts.py`. Si el redactor se sale del formato, la
+pagina sale vacia y lo dice — no falla en silencio.
+
+Los borradores de la w18 de 2025 son del formato viejo: no generan tarjetas.
 
 ## Nivel 3 pendiente (publicador de cola aprobada)
 

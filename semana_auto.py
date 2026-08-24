@@ -139,7 +139,14 @@ def main():
         # NIVEL 2: Claude Code headless redacta los borradores a partir de lo
         # generado. Solo puede leer, buscar en web y escribir; la publicacion
         # sigue siendo de Luis (verificacion triple del CLAUDE.md)
-        ok.append(borradores(txt_dir, W))
+        hay_borradores = borradores(txt_dir, W)
+        ok.append(hay_borradores)
+        # NIVEL 2.5: pagina de copiar y pegar a partir de esos borradores.
+        # Sin borradores no hay nada que maquetar, asi que no cuenta como fallo.
+        if hay_borradores:
+            ok.append(paso("cola de posts (copiar y pegar)",
+                           ["cola_posts.py", "--season", str(SEASON),
+                            "--week", str(W)]))
 
     else:  # domingo (se lanza el sabado por la noche)
         # Previas de TODA la proxima jornada para el hilo del domingo.
