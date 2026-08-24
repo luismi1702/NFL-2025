@@ -37,6 +37,25 @@ Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`
    (nunca "proteger al pasador"); "forzar turnovers" (nunca "robar balones");
    nada de "jugadores de franquicia".
 7. No centrar el post en el QB salvo que el visual sea de QBs.
+8. **Gancho antes del dato.** Los posts que mejor rindieron abren con nombres
+   propios y una historia ("Burrow, Chase, Higgins, Sewell no... ese era
+   otro"), no con la estructura ni con la metodologia. El dato llega despues,
+   como revelacion.
+9. **Cierre: hashtags y menciones**, en este orden y formato:
+   `#NFL | #Equipo | @cuenta1 @cuenta2`
+   - `#Equipo` es el nombre en INGLES y sin espacios: `#Bengals`, `#49ers`,
+     `#NYGiants`, `#Commanders`.
+   - Las menciones salen SOLO de la tabla de `docs/cuentas-fans.md`. Lee ese
+     fichero antes de escribir. **PROHIBIDO inventar o deducir un handle**:
+     etiquetar a una cuenta equivocada es peor que no etiquetar.
+   - Maximo 2-3 menciones por post.
+   - Si el equipo aparece como *(pendiente)* en la tabla, escribe el post sin
+     menciones y anotalo en la nota de verificacion
+     ("CHI sin cuenta en la tabla — decidir").
+   - Solo se etiqueta en posts sobre UN equipo concreto. En piezas de liga
+     (power rankings, MVPs de la jornada, dato generico) van hashtags pero
+     NINGUNA mencion.
+   - Cuenta los caracteres CON hashtags y menciones incluidos.
 
 ## Qué entregar en `{DIR}/borradores_posts.md`
 
