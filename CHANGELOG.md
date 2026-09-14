@@ -54,9 +54,22 @@
   propios. Nacio con percentiles contra 2025 y Luis los mando quitar el mismo
   dia: ahora es cara a cara, la barra mide el valor y el color el signo (rojo =
   EPA negativo aunque gane la fila). De paso el script baja de ~40 s a 2 s
-- **Tres posts para el martes** en `salidas/2026/w01/posts_martes.md` (fichero
-  aparte a proposito: el batch borra `borradores_posts.md` antes de escribir).
-  Packers (ganaron 8 de 11 facetas y perdieron por 17), Ravens y Bills
+- **Batch del lunes**: `semana_auto.py --dia lunes` genera resumenes y fichas
+  tacticas de todos los partidos del domingo, bajo centro, `destacados.txt` y
+  tres borradores de posts de partido con `borradores_prompt_lunes.md` (nuevo),
+  mas su cola HTML. El Monday Night lo recoge el batch del martes. Falta crear
+  la tarea programada de Windows (el comando esta en `docs/calendario-posts.md`)
+- **`destacados.py` nuevo**: rastrea la jornada y ordena lo que merece post en
+  cuatro familias — extremos, contradicciones, cambios de identidad y jugadores
+  desatados. Es la fuente del redactor del lunes, que tiene PROHIBIDO leer
+  cifras de un PNG
+- **Corregido un dato falso antes de publicarlo**: el borrador del post de los
+  Packers decia "8 de las 11 facetas" y eran **6 de 11**. Se conto a ojo sobre
+  el PNG en vez de contra el script. Lo destapo `destacados.py`. Anotado en
+  `docs/decisiones.md` como aviso de metodo
+- **Cuatro posts para manana** en `salidas/2026/w01/posts_martes.md` (fichero
+  aparte a proposito: el batch borra `borradores_posts.md` antes de escribir):
+  Packers, Saints, Ravens y Bills
 - **Hallazgo propio**: el 33,3% bajo centro de Lamar Jackson ante Indianapolis
   es su maximo en 113 partidos desde 2018. Y el +0,229 EPA/jugada de Buffalo en
   Houston es el 3er mejor de los 58 partidos contra los Texans desde 2023 — la

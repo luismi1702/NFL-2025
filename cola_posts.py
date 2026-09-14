@@ -84,7 +84,8 @@ def construir(md, dir_semana, season, week):
     tarjetas, idx, vacias = [], 0, []
     for sec in secciones:
         if not sec["posts"]:
-            if sec["titulo"].lower().startswith(("martes", "mi", "jueves", "domingo")):
+            if sec["titulo"].lower().startswith(("lunes", "martes", "mi", "jueves",
+                                                 "domingo")):
                 vacias.append(sec["titulo"])
             continue
         for post in sec["posts"]:

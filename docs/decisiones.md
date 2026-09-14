@@ -625,3 +625,38 @@ temporada anterior entera, con lo que baja de ~40 s a 2 s. Límite asumido: el
 verde marca quién gana el duelo, no quién jugó bien — en un partido malo se
 pinta de verde un 21% en tercer down.
 
+---
+
+## [2026-09-14] — El lunes lo genera la máquina, y un aviso sobre contar a ojo
+
+**Decisión:** Se añade un tercer batch, `semana_auto.py --dia lunes` (lunes
+8:00): resúmenes y fichas tácticas de todos los partidos del domingo, bajo
+centro, `destacados.txt` y tres borradores de posts de partido escritos con
+`borradores_prompt_lunes.md`. El Monday Night no entra —se juega esa noche— y
+lo recoge el batch del martes, que no cambia.
+
+**Motivo:** Petición de Luis: *"que las fichas tácticas salgan solas los lunes y
+se me generen post automáticos sobre las cosas más destacadas"*. El lunes es el
+día con la jornada fresca y es cuando se publica el post de partido; hasta
+ahora todo eso era manual.
+
+**La pieza que faltaba era `destacados.py`.** El redactor no puede mirar un PNG:
+su regla número uno es que cada número salga de un fichero. Así que hacía falta
+algo que rastreara la jornada y ordenara los hallazgos en texto. Las cuatro
+familias las eligió Luis: extremos, contradicciones, identidad y jugadores.
+
+**Aviso escrito en sangre, del mismo día:** el primer borrador del post de los
+Packers decía que Green Bay "ganó 8 de las 11 facetas". Eran **6 de 11**. El
+número salió de contar a ojo sobre el PNG de la ficha, que es exactamente lo
+que la verificación en tres frentes del `CLAUDE.md` prohíbe: los números se
+comprueban contra el script, no contra la imagen. Lo destapó `destacados.py`
+al no listar ese partido entre las contradicciones. Por eso el redactor del
+lunes tiene prohibido leer cifras de un PNG, y así está escrito en su prompt.
+
+**Alternativas descartadas:** Mover las fichas al batch del martes → el post de
+partido se publica el lunes, llegaba tarde. Que el redactor leyera los PNG →
+es justo el error que acaba de costar un dato falso.
+
+**Coste:** una segunda corrida semanal de `claude -p`, o sea más consumo del
+plan. Asumido a cambio de no escribir los posts de partido a mano.
+

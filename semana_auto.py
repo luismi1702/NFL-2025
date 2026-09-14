@@ -2,9 +2,14 @@
 # La maquina GENERA; los posts los revisa y publica Luis (regla del proyecto:
 # verificacion triple antes de publicar — esto no publica nada).
 #
+#   python semana_auto.py --dia lunes     # manana siguiente a la jornada
 #   python semana_auto.py --dia martes    # tras la jornada (datos completos)
 #   python semana_auto.py --dia domingo   # sabado noche: previas de la jornada
 #
+# lunes   -> visuales de TODOS los partidos del domingo (resumenes + fichas
+#            tacticas + bajo centro), destacados.txt con lo que merece post y
+#            los borradores de esos posts. El Monday Night no esta: se juega esa
+#            noche y entra en el batch del martes.
 # martes  -> dato de la semana, power rankings, MVPs (TXT), bot: balance de la
 #            semana jugada + picks de la proxima (TXT). Para los posts de
 #            martes (dato+resumen), miercoles (PR+MVPs) y jueves (bot).
@@ -62,15 +67,19 @@ def paso(nombre, args, stdin_text=None, captura=None, timeout=1200):
         return False
 
 
-def borradores(txt_dir, W):
-    """Redaccion de borradores con `claude -p` (sin publicar nada)."""
+def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
+    """Redaccion de borradores con `claude -p` (sin publicar nada).
+
+    prompt_file: el lunes usa `borradores_prompt_lunes.md` (posts de partido a
+    partir de destacados.txt); el martes, el de siempre.
+    """
     import shutil
     from datetime import date
     exe = shutil.which("claude")
     if not exe:
         log("-> borradores: claude CLI no encontrado — paso omitido")
         return False
-    plantilla = io.open(os.path.join(RAIZ, "borradores_prompt.md"),
+    plantilla = io.open(os.path.join(RAIZ, prompt_file),
                         encoding="utf-8").read()
     prompt = (plantilla.replace("{DIR}", txt_dir.replace(os.sep, "/"))
                        .replace("{W}", str(W))
@@ -149,9 +158,54 @@ def resumenes(SEASON, W):
     return not fallos
 
 
+def fichas(SEASON, W):
+    """La ficha tactica de CADA partido de la jornada (cara a cara de facetas).
+
+    Misma mecanica que resumenes(): un partido caido no tumba a los demas.
+    """
+    from pbp_loader import cargar_pbp
+    try:
+        df, _ = cargar_pbp(SEASON, columns=["week", "game_id", "home_team",
+                                            "away_team"],
+                           solo_reg=False, avisar=False)
+    except Exception as e:
+        log(f"-> fichas: no se pudo leer el PBP ({type(e).__name__}) — omitido")
+        return False
+
+    jornada = df[df["week"] == W].drop_duplicates("game_id").sort_values("game_id")
+    if jornada.empty:
+        log(f"-> fichas: sin partidos con datos en la semana {W}")
+        return False
+
+    log(f"-> fichas tacticas: {len(jornada)} partidos de la semana {W}")
+    fallos = []
+    for fila in jornada.itertuples(index=False):
+        vis, loc = fila.away_team, fila.home_team
+        try:
+            r = subprocess.run(
+                [sys.executable, "ficha_tactica.py",
+                 "--season", str(SEASON), "--week", str(W)],
+                cwd=RAIZ, input=f"{vis}\n{loc}\n", capture_output=True,
+                text=True, encoding="utf-8", errors="replace", timeout=600)
+            if r.returncode == 0 and any(l.startswith("Guardado")
+                                         for l in (r.stdout or "").splitlines()):
+                log(f"   OK {vis}@{loc}")
+                continue
+            cola = (r.stderr or r.stdout or "").strip().splitlines()[-1:]
+            log(f"   FALLO {vis}@{loc}: " + " | ".join(cola))
+        except subprocess.TimeoutExpired:
+            log(f"   FALLO {vis}@{loc}: timeout de 600s")
+        except Exception as e:
+            log(f"   FALLO {vis}@{loc}: {type(e).__name__}: {e}")
+        fallos.append(f"{vis}@{loc}")
+
+    log(f"   {len(jornada) - len(fallos)}/{len(jornada)} fichas generadas")
+    return not fallos
+
+
 def main():
     ap = argparse.ArgumentParser(description="Batch semanal de generacion de PNGs")
-    ap.add_argument("--dia", choices=["martes", "domingo"], required=True)
+    ap.add_argument("--dia", choices=["lunes", "martes", "domingo"], required=True)
     args = ap.parse_args()
 
     # Semana jugada segun schedules (la fuente de verdad del proyecto)
@@ -166,7 +220,26 @@ def main():
     log(f"===== BATCH {args.dia.upper()} — NFL {SEASON}, semana jugada {W} =====")
     ok = []
 
-    if args.dia == "martes":
+    if args.dia == "lunes":
+        # LUNES: la jornada del domingo ya esta publicada. Visuales de todos los
+        # partidos, rastreo de lo destacado y borradores de posts de partido.
+        ok.append(paso("estado de datos", ["estado_datos.py"],
+                       captura=os.path.join(txt_dir, "estado_datos.txt")))
+        ok.append(resumenes(SEASON, W))
+        ok.append(fichas(SEASON, W))
+        ok.append(paso("bajo centro", ["under_center.py", "--season", str(SEASON),
+                                       "--week", str(W)]))
+        ok.append(paso("destacados de la jornada",
+                       ["destacados.py", "--season", str(SEASON), "--week", str(W)],
+                       captura=os.path.join(txt_dir, "destacados.txt")))
+        hay_borradores = borradores(txt_dir, W, "borradores_prompt_lunes.md")
+        ok.append(hay_borradores)
+        if hay_borradores:
+            ok.append(paso("cola de posts (copiar y pegar)",
+                           ["cola_posts.py", "--season", str(SEASON),
+                            "--week", str(W)]))
+
+    elif args.dia == "martes":
         # Semaforo de fuentes primero: si algo esta caido, que quede en el log
         ok.append(paso("estado de datos", ["estado_datos.py"],
                        captura=os.path.join(txt_dir, "estado_datos.txt")))

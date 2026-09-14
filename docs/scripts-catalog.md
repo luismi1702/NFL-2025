@@ -79,6 +79,7 @@
 ## Semanales / temporada
 | Script | Descripción |
 |--------|-------------|
+| destacados.py | Rastrea la jornada y ORDENA lo que merece post, en cuatro familias: extremos (mejor y peor de cada faceta), contradicciones (gano casi todo y perdio, gano jugando mal, coste de las perdidas), cambios de identidad (bajo centro, pase profundo vs su ano anterior) y jugadores desatados (EPA y cuota de objetivos). Solo consola/TXT, sin PNG. Es la fuente del redactor del lunes |
 | DatoSemana.py | Outlier estadístico de la semana (z-score robusto) |
 | MVPsSemana.py | Candidatos MVP de la semana |
 | MVPsSeason.py | Seguimiento MVP de la temporada |
