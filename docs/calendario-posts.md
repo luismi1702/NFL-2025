@@ -25,13 +25,13 @@ sigue siendo manual y no se automatiza.
 
 ## Tareas programadas (Windows Task Scheduler, con StartWhenAvailable)
 
-- **"NFL2025 batch lunes"** — lunes 8:00: `python semana_auto.py --dia lunes`
+- **"NFL2025 batch lunes"** — lunes **10:00**: `python semana_auto.py --dia lunes`
   → resumenes y fichas tacticas de TODOS los partidos del domingo, bajo centro,
   `destacados.txt` (rastreo de lo que merece post) y los borradores de 3 posts
   de partido con `borradores_prompt_lunes.md`, mas su cola HTML.
   El Monday Night NO esta: se juega esa noche y lo recoge el batch del martes.
-  Crear la tarea con:
-  `schtasks /Create /TN "NFL2025 batch lunes" /TR "python \"<ruta>\\semana_auto.py\" --dia lunes" /SC WEEKLY /D MON /ST 08:00`
+  A las 10:00 y no a las 8:00 porque el Sunday Night acaba sobre las 5:30 hora
+  espanola y nflverse puede tardar en publicarlo.
 - **"NFL2025 batch martes"** — martes 8:00: `python semana_auto.py --dia martes`
   → estado_datos.txt, dato PNG, power rankings PNG, mvps_semana.txt,
   bot_balance.txt, bot_picks.txt en `salidas/{año}/w{NN}/`

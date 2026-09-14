@@ -57,8 +57,11 @@
 - **Batch del lunes**: `semana_auto.py --dia lunes` genera resumenes y fichas
   tacticas de todos los partidos del domingo, bajo centro, `destacados.txt` y
   tres borradores de posts de partido con `borradores_prompt_lunes.md` (nuevo),
-  mas su cola HTML. El Monday Night lo recoge el batch del martes. Falta crear
-  la tarea programada de Windows (el comando esta en `docs/calendario-posts.md`)
+  mas su cola HTML. El Monday Night lo recoge el batch del martes. Tarea de
+  Windows "NFL2025 batch lunes" ya creada, clonada del XML de la del martes
+  (mismo Python, mismo directorio, StartWhenAvailable). A las **10:00**, no a
+  las 8:00: el Sunday Night acaba sobre las 5:30 hora espanola y nflverse puede
+  no haberlo publicado todavia
 - **`destacados.py` nuevo**: rastrea la jornada y ordena lo que merece post en
   cuatro familias — extremos, contradicciones, cambios de identidad y jugadores
   desatados. Es la fuente del redactor del lunes, que tiene PROHIBIDO leer
