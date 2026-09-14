@@ -73,8 +73,14 @@
 - **Cuatro posts para manana** en `salidas/2026/w01/posts_martes.md` (fichero
   aparte a proposito: el batch borra `borradores_posts.md` antes de escribir):
   Packers, Saints, Ravens y Bills
-- **Hallazgo propio**: el 33,3% bajo centro de Lamar Jackson ante Indianapolis
-  es su maximo en 113 partidos desde 2018. Y el +0,229 EPA/jugada de Buffalo en
+- **Hallazgo propio**: Baltimore jugo el 55,0% bajo centro ante Indianapolis
+  con Lamar de QB, su SEGUNDO registro desde 2018 (el maximo es 60,4% ante
+  Denver en la semana 9 de 2024, sobre 107 partidos). La afirmacion del boletin
+  de SumerSports de que fue el mayor de su carrera NO se sostiene con datos
+  publicos. Un primer borrador dijo "33,3%, record en 113 partidos": ese 33%
+  contaba solo sus pases y carreras, dejando fuera los acarreos de Henry, y
+  contradecia el 55% del grafico. Lo vio Luis antes de publicarlo.
+  Y el +0,229 EPA/jugada de Buffalo en
   Houston es el 3er mejor de los 58 partidos contra los Texans desde 2023 — la
   afirmacion ordinal del boletin aguanta con nuestro modelo aunque el decimal
   no coincida
