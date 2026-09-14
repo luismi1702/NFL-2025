@@ -134,6 +134,27 @@ def main():
                 problemas.append(
                     f"{etiqueta}: {d} semanas por detras de la liga ({critico})")
 
+        # La semana sola engaña dentro de una misma jornada: el jueves y el
+        # domingo son ambos "semana 1". En sep-2026 el PBP daba "al dia" con 2
+        # de los 15 partidos jugados. Donde haya game_id, se cuentan partidos.
+        if "game_id" in df.columns:
+            jugados = pl.partidos_jugados(season)
+            # Cada fuente escribe la temporada regular a su manera: el PBP pone
+            # "REG" y el QBR de ESPN "Regular". Filtrar por igualdad dejaba el
+            # QBR en cero partidos y lo marcaba como atrasado sin estarlo.
+            if "season_type" in df.columns:
+                reg = df[df["season_type"].astype(str).str.upper().str.startswith("REG")]
+            else:
+                reg = df
+            tengo = reg["game_id"].nunique()
+            if jugados and tengo < jugados:
+                faltan = jugados - tengo
+                estado, retraso = ROJO, f"-{faltan} part"
+                txt_sem = f"{tengo}/{jugados} p."
+                problemas.append(
+                    f"{etiqueta}: faltan {faltan} partidos de la jornada en curso "
+                    f"({tengo} de {jugados}) — {critico}")
+
         print(f"  {etiqueta:22} {estado:5} {txt_sem:9} {retraso:9} {critico}")
 
     print("  " + "-" * 76)

@@ -433,3 +433,119 @@ usuario vía pregunta directa antes de tocar el código.
 **Motivo:** Son productos distintos, no versiones. El prescriptivo es más escaneable en un hilo largo porque el patrón "Deberes:" se reconoce a partir del tercer tuit, y encaja mejor en agosto, con la temporada a tres semanas. El retrospectivo sigue siendo útil si en algún momento se quiere contar la temporada cerrada.
 
 **Alternativas descartadas:** Reescribir el de julio y perderlo → estaba auditado dato a dato, tirarlo era desperdiciar la verificación. Repartir el hilo en 17 días a 2 tuits/día hasta el arranque → Luis quiere hilo único; además, publicado en serie, cada tuit pierde el hilo narrativo y el tuit 1 tendría que anunciar una serie, no un hilo.
+
+---
+
+## [2026-08-24] — Copiar y pegar en vez de publicador automático
+
+**Decisión:** No se construye el nivel 3 (publicador contra la API de X). En su
+lugar, `cola_posts.py` deja los posts de la semana listos en una página HTML con
+botón Copiar y el PNG a la vista; publicar sigue siendo copiar, pegar y arrastrar.
+
+**Motivo:** La API de X es pay-per-use desde feb-2026 ($0.015/post, sin tier
+gratis) y no aporta nada que el trabajo manual no dé: la verificación triple
+antes de publicar es de Luis igualmente, o sea que el cuello de botella nunca
+fue el clic de publicar, era buscar el texto y el PNG entre ~140 ficheros.
+
+**Alternativas descartadas:** API de X → se paga por algo que no quita trabajo
+real. TXT plano con separadores → hay que seleccionar a mano. Carpeta
+`publicar/` con un fichero por post → empareja texto e imagen pero no ahorra el
+copiado. Botón "Copiar imagen" → usa `navigator.clipboard.write`, que no existe
+al abrir el HTML con doble clic (`file://`), justo el modo de uso previsto.
+
+---
+
+## [2026-08-24] — El formato de los borradores es un contrato, no prosa
+
+**Decisión:** `borradores_prompt.md` obliga al redactor a un formato fijo
+(sección `## `, línea `IMAGEN:`, cada alternativa dentro de un bloque cercado
+`post`). `cola_posts.py` lo parsea con eso; si el redactor se desvía, la página
+sale vacía y lo dice por consola en vez de fallar en silencio.
+
+**Motivo:** El markdown libre de la primera versión no se podía parsear con
+fiabilidad, y un parser que adivina produce tarjetas a medias — lo peor posible
+en algo que existe para publicar sin releer.
+
+**Alternativas descartadas:** Que el propio `claude -p` escriba el HTML → gasta
+tokens en maquetar, es irrepetible entre corridas y no se puede verificar de
+antemano. Parsear el markdown libre con heurísticas → falla en silencio.
+
+**Coste:** El prompt y el parser quedan atados: tocar uno obliga a tocar el
+otro. Anotado en `docs/calendario-posts.md`.
+
+---
+
+## [2026-08-24] — Ángulo negativo, sin mención
+
+**Decisión:** Si un post cuenta la caída, la mala racha o el fracaso de un
+equipo, van los hashtags pero ninguna mención a su afición.
+
+**Motivo:** Las menciones existen como palanca de alcance — se etiqueta para que
+la afición comparta. Nadie comparte el post que certifica su hundimiento, así
+que la mención no solo no suma: se lee como pulla.
+
+**Alcance:** Regla general en `CLAUDE.md`, `borradores_prompt.md` (regla 9),
+`docs/cuentas-fans.md` y `docs/post-ejemplos.md`. **Excepción decidida por Luis:**
+el hilo "Deberes 2026" se etiqueta entero, negativos incluidos, porque el hilo
+es prescriptivo de cabo a rabo; queda escrito en la cabecera del propio hilo.
+
+---
+
+## [2026-09-11] — Al arrancar la temporada, la norma es el año anterior
+
+**Decisión:** Las "Claves del partido" de `resumen_partido.py` comparan el
+partido con el resto de la temporada, pero si el equipo lleva menos de 3
+partidos (semanas 1-3) la norma pasa a ser la temporada regular anterior
+completa. El PNG lo rotula en el subtítulo ("vs su temporada 2025") y en el pie
+("plantillas cambian"), y cada línea mantiene su `n`.
+
+**Motivo:** En la semana 1 el "resto de la temporada" está vacío y los dos PNGs
+salían enteros con "Sin desviaciones con muestra suficiente" — el peor
+resultado posible en la pieza que el calendario manda publicar el martes. La
+alternativa de no comparar deja el visual sin la mitad de su contenido justo en
+la semana con más audiencia del año.
+
+**Coste aceptado:** entre años cambian plantillas y entrenadores, así que la
+desviación mezcla "hicieron algo distinto" con "ya no son el mismo equipo".
+Por eso el año va rotulado en la imagen y no escondido en el código: el lector
+ve contra qué se compara. En el partido SEA-NE la norma de Seattle es de un
+equipo que aún tenía a Darnold de titular.
+
+**Alternativas descartadas:** Comparar con la media de la liga → mide algo
+distinto (bueno/malo, no "distinto a lo suyo"), que es justo lo que el resto de
+la pieza ya cuenta. Dejar el hueco vacío hasta la semana 4 → tres semanas sin
+segundo PNG. Bajar el mínimo de jugadas de la norma → con un partido la
+"norma" es ruido presentado como costumbre.
+
+**Alcance:** En la misma sesión, `resumen_partido.py` acepta siglas
+alternativas (`LAR`→`LA`, `JAC`, `WSH`, `LVR`…) porque desde la galería web
+`LAR` moría con "No se encontro el partido"; el error lista ahora los partidos
+disponibles de la semana.
+
+---
+
+## [2026-09-14] — Los resúmenes se nombran por orden de kickoff
+
+**Decisión:** Los PNGs de `resumen_partido.py` pasan a llamarse
+`NN_resumen_VIS_vs_LOC_{año}_wNN.png`, donde NN es el orden de kickoff de la
+jornada según el calendario (01 = partido inaugural del miércoles, 15 = Sunday
+Night) y los equipos van siempre visitante_vs_local. Lo resuelve
+`orden_partido(season, week, *equipos)` en `pbp_loader`; si el calendario no se
+puede consultar, se cae al nombre de siempre en vez de fallar.
+
+**Motivo:** Con 16 partidos por jornada son 32 PNGs sueltos en la carpeta de la
+semana, y el orden alfabético los baraja: el Monday Night podía salir el
+primero. Luis lo pidió explícitamente — que la carpeta se lea como se jugó la
+jornada, con los dos PNGs de cada partido juntos. El orden fijo
+visitante/local arregla de paso que el nombre dependiera de en qué orden se
+tecleaban las siglas: convivían `resumen_LA_vs_SF` y `resumen_SF_vs_LA` del
+mismo partido, o sea dos ficheros para un solo análisis.
+
+**Alternativas descartadas:** Una subcarpeta por partido → agrupa mejor, pero
+obliga a entrar y salir de 16 carpetas para arrastrar imágenes a X, que es el
+trabajo manual que el nivel 2.5 existe para recortar. Prefijo con día y hora
+(`dom1300_…`) → más informativo pero más largo, y el número ya da el orden.
+
+**Alcance:** Solo `resumen_partido.py`, que es el único script con un PNG por
+partido. `salida()` no se toca: el prefijo lo construye quien llama.
+

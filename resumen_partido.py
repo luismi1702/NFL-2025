@@ -8,7 +8,8 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp, salida, season_cli, week_cli, sello
+from pbp_loader import (cargar_pbp, salida, season_cli, week_cli, sello,
+                        orden_partido)
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
@@ -86,8 +87,18 @@ def top_player_epa(game_df, play_types, player_col, excluir=None):
     return (best, grp[best])
 
 # ── INPUT ──────────────────────────────────────────────────────────────────────
-team_a = input("Equipo local/visitante A (siglas): ").strip().upper()
-team_b = input("Equipo B (siglas): ").strip().upper()
+# Siglas habituales que nflverse escribe distinto (Rams = "LA", no "LAR")
+ALIAS = {"LAR": "LA", "JAC": "JAX", "WSH": "WAS", "LVR": "LV", "OAK": "LV",
+         "SD": "LAC", "STL": "LA", "GNB": "GB", "KAN": "KC", "NWE": "NE",
+         "NOR": "NO", "SFO": "SF", "TAM": "TB"}
+
+def leer_equipo(prompt):
+    # lstrip del BOM: PowerShell lo antepone al redirigir texto por stdin
+    sigla = input(prompt).strip().lstrip("﻿").upper()
+    return ALIAS.get(sigla, sigla)
+
+team_a = leer_equipo("Equipo local/visitante A (siglas): ")
+team_b = leer_equipo("Equipo B (siglas): ")
 week   = week_cli() or int(input("Semana: ").strip())
 
 # ── DATA ───────────────────────────────────────────────────────────────────────
@@ -150,7 +161,10 @@ if game_df.empty:
     game_df = week_df[mask_fb].copy()
 
 if game_df.empty:
-    raise SystemExit(f"No se encontro el partido {team_a} vs {team_b} en semana {week}.")
+    jugados = sorted({f"{a} @ {h}" for a, h in
+                      week_df[["away_team", "home_team"]].dropna().itertuples(index=False)})
+    raise SystemExit(f"No se encontro el partido {team_a} vs {team_b} en semana {week}.\n"
+                     f"Partidos disponibles: {', '.join(jugados)}")
 
 print(f"Jugadas del partido encontradas: {len(game_df):,}")
 
@@ -483,7 +497,17 @@ fig.text(0.01, 0.006, f"Fuente: nflverse-data  ·  {sello(SEASON)}",
 fig.text(0.99, 0.006, "@CuartayDato",
          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
 
-outfile = salida(f"resumen_{team_a}_vs_{team_b}_{SEASON}.png", SEASON, week)
+# El nombre lleva delante el orden de kickoff (01 = partido inaugural) y los
+# equipos como visitante_vs_local, para que la carpeta de la semana se lea como
+# se jugo la jornada y no segun el orden en que se tecleen las siglas.
+_orden = orden_partido(SEASON, week, team_a, team_b)
+if _orden:
+    _idx, _visit, _local = _orden
+    MOTE = f"{_idx:02d}_resumen_{_visit}_vs_{_local}"
+else:
+    MOTE = f"resumen_{team_a}_vs_{team_b}"
+
+outfile = salida(f"{MOTE}_{SEASON}.png", SEASON, week)
 fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Guardado: {outfile}")
@@ -548,15 +572,39 @@ def facetas(sub):
 
 gid_actual = game_df[game_id_col].iloc[0] if game_id_col else None
 
+# Norma = resto de partidos de la temporada. Con menos de MIN_PARTIDOS_NORMA
+# (semanas 1-3) no hay muestra: se usa la temporada regular anterior entera y
+# el PNG lo rotula, porque entre años cambian plantillas y entrenadores.
+MIN_PARTIDOS_NORMA = 3
+_df_prev = None
+
+
+def _temporada_previa():
+    global _df_prev
+    if _df_prev is None:
+        _df_prev, _ = cargar_pbp(SEASON - 1)
+        to_num(_df_prev, ["epa", "yards_gained", "third_down_converted",
+                          "third_down_failed", "yardline_100", "air_yards"])
+    return _df_prev
+
+
+def norma(col, team):
+    """(jugadas de la norma, etiqueta) para posteam/defteam == team."""
+    sub = df[df[col] == team]
+    if gid_actual is not None:
+        sub = sub[sub[game_id_col] != gid_actual]
+    if sub[game_id_col].nunique() >= MIN_PARTIDOS_NORMA:
+        return sub, "temporada"
+    prev = _temporada_previa()
+    return prev[prev[col] == team], str(SEASON - 1)
+
 
 def claves_equipo(team, rival):
-    """Top-4 desviaciones del partido vs la norma de temporada del equipo."""
+    """Top-4 desviaciones del partido vs la norma del equipo."""
     g_fac = facetas(game_df[game_df["posteam"] == team])
-    resto = df[df["posteam"] == team]
-    rdefn = df[df["defteam"] == rival]
-    if gid_actual is not None:
-        resto = resto[resto[game_id_col] != gid_actual]
-        rdefn = rdefn[rdefn[game_id_col] != gid_actual]
+    resto, t_lab = norma("posteam", team)
+    rdefn, _     = norma("defteam", rival)
+    normas_usadas.add(t_lab)
     t_fac = facetas(resto)
     r_fac = facetas(rdefn)
 
@@ -570,7 +618,7 @@ def claves_equipo(team, rival):
         if gn < min_n or tn < 25 or pd.isna(gv) or pd.isna(tv):
             continue
         delta  = gv - tv
-        out.append(dict(faceta=fac, gv=gv, tv=tv, rv=rv, n=gn, delta=delta,
+        out.append(dict(faceta=fac, gv=gv, tv=tv, rv=rv, n=gn, delta=delta, lab=t_lab,
                         score=abs(delta) / escala,
                         mejora=(delta * (1 if hb else -1)) > 0, fmt=fmt))
     out.sort(key=lambda d: -d["score"])
@@ -587,8 +635,16 @@ def _fd(d, fmt):
     return f"{d:+.2f} EPA" if fmt == "epa" else f"{d:+.0f} pp"
 
 
+normas_usadas = set()
 claves = {team_a: claves_equipo(team_a, team_b),
           team_b: claves_equipo(team_b, team_a)}
+if normas_usadas == {"temporada"}:
+    sub_norma  = "su norma de temporada"
+    pie_norma  = "norma = resto de partidos de la temporada"
+else:
+    sub_norma  = f"su temporada {SEASON - 1}"
+    pie_norma  = (f"norma = temporada regular {SEASON - 1} (aun no hay "
+                  f"{MIN_PARTIDOS_NORMA} partidos en {SEASON}; plantillas cambian)")
 
 # ── PNG CLAVES ────────────────────────────────────────────────────────────────
 fig2, ax2 = plt.subplots(figsize=(10, 7.0), facecolor=BG)
@@ -602,7 +658,7 @@ ax2.add_patch(plt.Rectangle((0, 6.55), 10, 0.95, color="#151924", zorder=0))
 ax2.text(5.0, 7.10, f"CLAVES DEL PARTIDO  ·  {titulo}",
          ha="center", va="center", fontsize=15, fontweight="bold", color=FG, zorder=1)
 ax2.text(5.0, 6.76,
-         f"Semana {week} | NFL {SEASON}  ·  las mayores desviaciones de cada equipo vs su norma de temporada",
+         f"Semana {week} | NFL {SEASON}  ·  las mayores desviaciones de cada equipo vs {sub_norma}",
          ha="center", va="center", fontsize=9, color="#888888", fontstyle="italic", zorder=1)
 
 ax2.add_patch(plt.Rectangle((0.15, 0.95), 4.40, 5.35, color="#151924",
@@ -639,25 +695,27 @@ for team, rival, anchor_x, cx in [(team_a, team_b, 0.55, 2.35),
                                      color="#252c3b", zorder=2))
         ax2.add_patch(plt.Rectangle((anchor_x + 0.10, y0 - 0.36), bar_len, 0.13,
                                      color=col, zorder=3))
-        ax2.text(anchor_x + 1.78, y0 - 0.295, f"{_fd(c['delta'], c['fmt'])} vs su norma",
+        vs_txt = "vs su norma" if c["lab"] == "temporada" else f"vs su {c['lab']}"
+        ax2.text(anchor_x + 1.78, y0 - 0.295, f"{_fd(c['delta'], c['fmt'])} {vs_txt}",
                  ha="left", va="center", fontsize=8.5, fontweight="bold",
                  color=col, zorder=3)
 
         verbo = "generar" if c["faceta"] == "Presión sufrida" else "ceder"
         ax2.text(anchor_x + 0.10, y0 - 0.66,
                  f"partido {_fv(c['gv'], c['fmt'])} (n={c['n']})  ·  "
-                 f"temporada {_fv(c['tv'], c['fmt'])}  ·  "
+                 f"{c['lab']} {_fv(c['tv'], c['fmt'])}  ·  "
                  f"{rival} solía {verbo} {_fv(c['rv'], c['fmt'])}",
                  ha="left", va="center", fontsize=7.0, color="#9aa3b5", zorder=3)
 
 fig2.text(0.01, 0.006,
-          f"Fuente: nflverse-data  ·  {sello(SEASON)}  ·  norma = resto de partidos de la temporada",
+          f"Fuente: nflverse-data  ·  {sello(SEASON)}  ·  {pie_norma}",
           ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
 fig2.text(0.99, 0.006, "@CuartayDato",
           ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85,
           fontstyle="italic")
 
-outfile2 = salida(f"resumen_claves_{team_a}_vs_{team_b}_{SEASON}.png", SEASON, week)
+outfile2 = salida(f"{MOTE.replace('resumen_', 'resumen_claves_', 1)}_{SEASON}.png",
+                  SEASON, week)
 fig2.savefig(outfile2, dpi=DPI, facecolor=BG, bbox_inches="tight")
 plt.close(fig2)
 print(f"Guardado: {outfile2}")

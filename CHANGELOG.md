@@ -2,6 +2,146 @@
 
 ---
 
+## [2026-09-14] — El cache servía jornadas a medias
+
+**Qué se hizo:**
+- **Bug encontrado el lunes de la semana 1**: el cache del PBP tenía 2 partidos
+  (miercoles y jueves) y `estado_datos.py` decía "al dia". La liga llevaba 15.
+  La causa: solo se re-descargaba si el calendario mostraba una semana
+  POSTERIOR a la del cache, y el jueves y el domingo son la misma semana
+- `_info_schedules()` devuelve ahora un tercer valor, los partidos REG jugados,
+  y `cargar_pbp` se refresca si le faltan partidos aunque la semana coincida.
+  Nuevo helper `partidos_jugados(season)`
+- Mismo arreglo en `_cargar_auxiliar` (tenía el punto ciego equivalente: solo
+  refrescaba con el cache a 3+ días). `stats_team` tenia 2 partidos con 15
+  publicados. El chequeo por partidos exige 6 h de antigüedad para no
+  re-descargar en bucle una fuente retrasada de origen
+- `estado_datos.py` cuenta partidos además de semanas en las fuentes con
+  `game_id`, y normaliza `season_type` ("REG" en el PBP, "Regular" en el QBR de
+  ESPN — la comparación estricta daba un falso "faltan 15 partidos")
+- Verificado: cache falseado a 2 partidos → se re-descarga solo y quedan 15;
+  temporadas pasadas no disparan descargas; segunda llamada en 0,1 s
+- Generados los resúmenes de CHI 59-37 CAR (récord: 96 puntos, los más de una
+  semana 1) y DET 31-30 NO (prórroga), con 4 borradores de posts
+- Generados los 15 partidos de la jornada: 30 PNGs en `salidas/2026/w01/`
+- **Los resúmenes se nombran por orden de kickoff**: `NN_resumen_VIS_vs_LOC`,
+  con NN del calendario (01 el inaugural del miércoles, 15 el Sunday Night).
+  Helper nuevo `orden_partido(season, week, *equipos)` en `pbp_loader`, que
+  ademas devuelve visitante/local, asi que el nombre ya no depende del orden en
+  que se teclean las siglas (convivian `resumen_LA_vs_SF` y `resumen_SF_vs_LA`
+  del mismo partido). Los 30 ficheros de la w01 renombrados
+- **Los resumenes entran en el batch del martes**, y de TODOS los partidos:
+  paso nuevo `resumenes()` en `semana_auto.py`, entre el dato de la semana y
+  los power rankings. Generarlos no es editorial; elegir cual se publica si.
+  Un partido caido no tumba a los demas. Probado sobre la w01: 15/15 en ~3 min
+
+**Archivos modificados:** `pbp_loader.py`, `estado_datos.py`,
+`resumen_partido.py`, `semana_auto.py`, `docs/scripts-catalog.md`,
+`docs/calendario-posts.md`, `docs/decisiones.md`, `CHANGELOG.md`
+
+**Pendiente:**
+- PFR semanal, snap counts y QBR van genuinamente retrasados en nflverse (2 de
+  15 partidos tras forzar la descarga): repetir el jueves
+- Sigue sin decidir lo del QB destacado de la ficha (ahora los Saints muestran
+  a T.Shough -1.0 pese a sus 410 yardas)
+
+---
+
+## [2026-09-11] — Semana 1 de 2026: resúmenes de los dos primeros partidos
+
+**Qué se hizo:**
+- Generados los 4 PNGs de `resumen_partido.py` de la semana 1: SEA 13-10 NE
+  (Kickoff Game) y SF 27-7 LA (MCG de Melbourne, primer partido oficial en
+  Australia)
+- **`resumen_partido.py` acepta siglas alternativas**: `LAR`→`LA` (los Rams son
+  "LA" en nflverse), más `JAC`, `WSH`, `LVR`, `GNB`, `KAN`… Antes `LAR` moría con
+  "No se encontro el partido" desde la galería web. El error ahora lista los
+  partidos disponibles de esa semana
+- **Norma de las "Claves del partido" con respaldo**: con menos de 3 partidos en
+  la temporada en curso usa la regular anterior entera, rotulado en subtítulo y
+  pie. En semana 1 los dos PNGs salían vacíos ("Sin desviaciones con muestra
+  suficiente")
+- Borradores de 4 posts (uno positivo y otro negativo por partido), todos con
+  los números impresos en los PNGs. Descartada una primera ronda que era resumen
+  de lo ocurrido: sin dato propio no aporta nada frente a cualquier web
+- **Presiones de los 49ers: no hay dato público todavía.** Del PBP salen 8 golpes
+  al QB y 0 sacks en 28 dropbacks (4 de Odighizuwa); las presiones con *hurries*
+  necesitan charting (FTN sin publicar, PFR publicado pero vacío). Ni PFF ni
+  49ers Webzone ni SI dan el total
+
+**Archivos modificados:** `resumen_partido.py`, `CHANGELOG.md`,
+`docs/decisiones.md`, `docs/scripts-catalog.md`
+
+**Pendiente:**
+- La ficha del partido elige como QB destacado al de mejor EPA: en los Rams sale
+  "S.Bennett +0.2", que solo jugó el último drive, con Stafford (15/25, 155 yds)
+  en negativo. Propuesto cambiarlo al QB con más jugadas de pase; sin decidir
+- Repetir los resúmenes cuando FTN y PFR publiquen 2026: añaden la faceta de
+  presión, que ahora se cae de las claves
+- Sin publicar ninguno de los 4 posts
+
+---
+
+## [2026-08-26] — Primer contacto con un narrador de la NFL en España
+
+**Qué se hizo:**
+- Redactado y **enviado** el mail de presentación a Pepe (narrador de NFL en
+  español, aficionado de Buffalo). Objetivo: solo presentarse, sin pedir nada;
+  la oferta latente es un documento de previa/post-partido por encuentro
+- Como muestra van tres PNGs ya generados de `salidas/2025/w18/`:
+  `informe_ataque_BUF`, `informe_defensa_BUF` y `ataque_por_personal_ofensivo`
+- **Dato verificado** contra `ataque_por_personal_ofensivo_2025_w18.png`:
+  Buffalo fue el mejor de los 32 equipos con personal 13 (+0.394 EPA), por
+  delante de los Rams (+0.234). Corregido en el mail, que decía solo "más que
+  los Rams". Salvedad conocida: BUF lo usó 50 snaps y LAR 331
+- Otro hallazgo del informe de BUF, no usado en el mail pero sí anotado: nº1 de
+  la NFL en EPA/carrera y a la vez peor hueco de la liga por el lado del tackle
+  izquierdo (-0.40 EPA, #32)
+- Correcciones de estilo al borrador del usuario: "personal 13" en vez de
+  "posiciones de 3 TEs", comas, tildes y signos de apertura
+
+**Archivos modificados:** ninguno (el mail se escribió y envió fuera del repo)
+
+**Pendiente:**
+- Esperar respuesta. Si contesta, preparar una previa real de un partido
+- Los informes adjuntos son de la temporada 2025; sin comprobar si Buffalo movió
+  la línea ofensiva este offseason, cosa que cambiaría la lectura del hueco del LT
+
+---
+
+## [2026-08-24] — Cola de copiar y pegar, estilo alineado y cierres del hilo
+
+**Qué se hizo:**
+- **`cola_posts.py` nuevo (nivel 2.5)**: convierte `borradores_posts.md` en
+  `cola_posts.html` — tarjeta por alternativa, PNG visible, botón Copiar y
+  caracteres recontados en Python (cruce contra lo que declara el redactor).
+  Lo lanza el batch del martes tras los borradores. Descartada la API de X
+- **Formato de borradores como contrato**: `borradores_prompt.md` fija sección,
+  línea `IMAGEN:` y cada alternativa en un bloque cercado, para que el parser
+  no dependa de markdown libre. Si el redactor se sale, la página lo dice
+- Verificado con clics reales: copiar→pegar devuelve el texto exacto, y también
+  por el camino de `execCommand` que es el que corre al abrir con doble clic
+- **`docs/post-ejemplos.md` reescrito** como referencia de temporada, con tres
+  ejemplos buenos y uno flojo comentado; los de draft quedan aparte y marcados.
+  De paso, de cp1252 a UTF-8
+- **`CLAUDE.md`**: estructura de temporada separada de la de draft, que se
+  contradecían; línea de menciones; y restaurados 39 caracteres perdidos (U+FFFD)
+- **Regla nueva**: si el ángulo del post es negativo para el equipo, no se
+  etiqueta a su afición. Propagada a CLAUDE.md, el prompt, cuentas-fans y ejemplos
+- **Hilo "Deberes 2026" cerrado**: los 31 tuits con `#NFL | #Equipo | @cuentas`,
+  ninguno pasa de 280 (221-276), conteos recalculados. Sin tocar ningún dato
+- Limpieza de la tabla de cuentas: fuera @9MICHEL9, @TomasTDN y @PabloFR_
+
+**Archivos modificados:** cola_posts.py (nuevo), semana_auto.py, borradores_prompt.md, CLAUDE.md, docs/post-ejemplos.md, docs/calendario-posts.md, docs/cuentas-fans.md, docs/scripts-catalog.md, docs/hilo_deberes_2026.md
+
+**Pendiente:**
+- La primera corrida real del martes dirá si el redactor respeta el contrato de
+  formato — hasta la semana 1 de 2026 no hay con qué probarlo
+- ATL e IND siguen sin cuenta de aficionados: sus tuits del hilo van sin mención
+- El batch del sábado seguirá fallando cada semana hasta que haya datos de 2026
+
+---
+
 ## [2026-08-21] — Calendario de posts y nivel 1 de automatizacion
 
 **Qué se hizo:**

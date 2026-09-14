@@ -16,8 +16,9 @@ Funciones:
     temporada_actual()                                -> int
 
 Cache y frescura:
-    - PBP:  pbp_cache/pbp_full_{season}.parquet — re-descarga solo si schedules
-      muestra una jornada jugada posterior a la del cache.
+    - PBP:  pbp_cache/pbp_full_{season}.parquet — re-descarga si schedules
+      muestra una jornada posterior a la del cache O MAS PARTIDOS jugados que
+      los que hay dentro (el jueves y el domingo son la misma semana).
     - Stats/participación: re-descarga si el cache tiene >3 días y la temporada
       es la actual.
     - Sin internet: usa siempre el cache disponible, AVISANDO por consola.
@@ -83,12 +84,16 @@ CONTRATOS_URL = _REL + "contracts/historical_contracts.parquet"
 EQUIPOS_URL   = _REL + "teams/teams_colors_logos.parquet"
 ROSTER_URL    = _REL + "rosters/roster_{season}.parquet"
 
-_sched_info = None   # (temporada, última semana REG jugada) — 1 descarga por ejecución
+_sched_info = None   # (temporada, última semana REG jugada, partidos REG jugados)
 _aviso_dado = False  # el aviso de frescura se imprime una sola vez por ejecución
 
 
 def _info_schedules():
-    """(temporada actual, última semana REG jugada) o None si no se pudo consultar.
+    """(temporada, última semana REG jugada, partidos REG jugados) o None.
+
+    El conteo de partidos existe porque la semana NO basta: el jueves y el
+    domingo de una misma jornada son la misma semana, así que un cache bajado
+    tras el partido inaugural parecía al día con 2 de 16 partidos dentro.
 
     Cuando devuelve None NADIE puede saber si el cache está al día, así que
     todos los caminos que dependen de esto deben avisar (ver aviso_frescura).
@@ -99,12 +104,22 @@ def _info_schedules():
             sch = pd.read_csv(SCHED_URL, low_memory=False,
                               usecols=["season", "game_type", "week", "home_score"])
             reg = sch[(sch["game_type"] == "REG") & sch["home_score"].notna()]
+            cur = reg[reg["season"] == reg["season"].max()]
             _sched_info = (int(reg["season"].max()),
-                           int(reg[reg["season"] == reg["season"].max()]["week"].max()))
+                           int(cur["week"].max()),
+                           int(len(cur)))
         except Exception as e:
             _sched_info = False
             _aviso_sin_verificar(e)
     return _sched_info or None
+
+
+def partidos_jugados(season=None):
+    """Partidos REG jugados de `season` según el calendario, o None sin verificar."""
+    info = _info_schedules()
+    if not info or (season is not None and season != info[0]):
+        return None
+    return info[2]
 
 
 def _aviso_sin_verificar(e=None):
@@ -304,8 +319,13 @@ def cargar_pbp(season=None, columns=None, solo_reg=True, refrescar=False,
             _aviso_sin_verificar()          # cache servido a ciegas: hay que avisar
         elif info[0] == season:
             try:
-                max_cache = pd.read_parquet(cache, columns=["week"])["week"].max()
-                necesita = max_cache < info[1]
+                # Semana Y partidos: dentro de una misma jornada la semana no
+                # cambia, pero el numero de partidos publicados sí (jueves 1,
+                # domingo 15). Comparar solo la semana servia un cache a medias.
+                loc = pd.read_parquet(cache, columns=["week", "game_id", "season_type"])
+                reg = loc[loc["season_type"] == "REG"]
+                necesita = (reg["week"].max() < info[1] or
+                            reg["game_id"].nunique() < info[2])
             except Exception:
                 necesita = True
     if necesita:
@@ -335,9 +355,25 @@ def _cargar_auxiliar(season, refrescar, nombre_cache, url, etiqueta, es_csv=Fals
         info = _info_schedules()
         if info is None:
             _aviso_sin_verificar()          # cache servido a ciegas: hay que avisar
-        else:
-            viejo = (time.time() - os.path.getmtime(cache)) > 3 * 86400
-            necesita = bool(info[0] == season and viejo)
+        elif info[0] == season:
+            edad = time.time() - os.path.getmtime(cache)
+            necesita = edad > 3 * 86400
+            # Mismo punto ciego que el PBP: dentro de una misma jornada el cache
+            # no "envejece" pero la fuente sí crece (stats_team tenia 2 partidos
+            # en cache y 15 publicados). Si trae game_id y le faltan partidos,
+            # se refresca. El minimo de 6 h evita re-descargar en cada llamada
+            # una fuente que va retrasada de origen (PFR semanal, QBR).
+            if not necesita and edad > 6 * 3600:
+                try:
+                    loc = pd.read_parquet(cache)
+                    if "game_id" in loc.columns:
+                        if "season_type" in loc.columns:
+                            es_reg = (loc["season_type"].astype(str)
+                                      .str.upper().str.startswith("REG"))
+                            loc = loc[es_reg]
+                        necesita = loc["game_id"].nunique() < info[2]
+                except Exception:
+                    necesita = True
     if necesita:
         try:
             if es_csv:
@@ -500,6 +536,34 @@ def cargar_calendario(season=None, refrescar=False):
             print(f"  Aviso: no se pudo refrescar el calendario ({e}) — usando cache")
     df = pd.read_parquet(cache)
     return df[df["season"] == season].copy(), season
+
+
+def orden_partido(season, week, *equipos):
+    """(indice de kickoff, visitante, local) de un partido dentro de su jornada.
+
+    El indice existe para que la carpeta de salidas se lea como se jugo la
+    jornada: 01 es el partido inaugural del miercoles, 16 el Monday Night. Los
+    equipos vuelven como visitante/local, asi que el nombre del PNG no depende
+    del orden en que se tecleen las siglas.
+
+    Devuelve None si el calendario no se puede consultar o el partido no
+    aparece; quien llama se queda entonces con su nombre de siempre.
+    """
+    try:
+        sch, _ = cargar_calendario(season)
+        w = sch[(sch["game_type"] == "REG") & (sch["week"] == int(week))]
+    except Exception:
+        return None
+    if w.empty:
+        return None
+    por = [c for c in ("gameday", "gametime") if c in w.columns]
+    if por:
+        w = w.sort_values(por, kind="stable")
+    buscados = {str(e).upper() for e in equipos}
+    for i, fila in enumerate(w.itertuples(index=False), start=1):
+        if buscados <= {fila.away_team, fila.home_team}:
+            return i, fila.away_team, fila.home_team
+    return None
 
 
 def cargar_contratos(refrescar=False):

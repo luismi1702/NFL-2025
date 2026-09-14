@@ -79,6 +79,7 @@ Estructura (DRAFT, solo en la ventana de abril): [historia del equipo] → [dato
 
 ## Docs (leer cuando se necesiten)
 - Catálogo de scripts: docs/scripts-catalog.md
+- Calendario de posts y automatizacion (batch, borradores, cola de copiar y pegar): docs/calendario-posts.md
 - Cambios equipos NFL 2026: docs/nfl2026-changes.md
 - Ejemplos de posts: docs/post-ejemplos.md
 - Pendientes para cuando se suscriba a PFF+: docs/pff-wishlist.md

@@ -9,7 +9,7 @@ sigue siendo manual y no se automatiza.
 | Dia | Post | Fuente | Generacion |
 |---|---|---|---|
 | Martes | Dato de la semana (outlier) | DatoSemana | batch martes 8:00 |
-| Martes | Resumen del mejor partido (2 PNGs) | resumen_partido | MANUAL: Luis elige el partido |
+| Martes | Resumen del mejor partido (2 PNGs) | resumen_partido | batch martes: genera los de TODA la jornada; Luis elige cual publica |
 | Miercoles | Power Rankings | power_rankings | batch martes |
 | Miercoles | MVPs de la jornada | MVPsSemana (TXT, sin PNG) | batch martes |
 | Jueves | Bot: balance jornada anterior + picks (gancho: previa TNF) | Manning_bot --no-retrain | batch martes (2 TXT) |

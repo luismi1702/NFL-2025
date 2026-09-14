@@ -11,7 +11,9 @@
 # domingo -> previas de TODOS los partidos de la proxima jornada (PNGs + PDF)
 #            para el hilo del domingo por la manana.
 #
-# El resumen del mejor partido NO esta aqui: elegir el partido es editorial.
+# Los resumenes de partido SI estan aqui, y de TODOS los partidos: generarlos
+# no es editorial, elegir cual se publica si. Salen numerados por orden de
+# kickoff, asi que la carpeta de la semana se lee como se jugo la jornada.
 # Cada paso es independiente: si uno falla, los demas siguen y el log lo dice.
 
 import argparse
@@ -99,6 +101,54 @@ def borradores(txt_dir, W):
         return False
 
 
+def resumenes(SEASON, W):
+    """Los 2 PNGs de resumen de CADA partido de la jornada jugada.
+
+    Un partido caido no tumba a los demas: se anota en el log y el paso termina
+    diciendo cuantos salieron. Los nombres llevan delante el orden de kickoff
+    (ver orden_partido en pbp_loader), asi que no hace falta ordenarlos luego.
+    """
+    from pbp_loader import cargar_pbp
+    try:
+        df, _ = cargar_pbp(SEASON, columns=["week", "game_id", "home_team",
+                                            "away_team"],
+                           solo_reg=False, avisar=False)
+    except Exception as e:
+        log(f"-> resumenes: no se pudo leer el PBP ({type(e).__name__}) — omitido")
+        return False
+
+    jornada = df[df["week"] == W].drop_duplicates("game_id").sort_values("game_id")
+    if jornada.empty:
+        log(f"-> resumenes: sin partidos con datos en la semana {W}")
+        return False
+
+    log(f"-> resumenes de partido: {len(jornada)} partidos de la semana {W}")
+    fallos = []
+    for fila in jornada.itertuples(index=False):
+        vis, loc = fila.away_team, fila.home_team
+        try:
+            r = subprocess.run(
+                [sys.executable, "resumen_partido.py",
+                 "--season", str(SEASON), "--week", str(W)],
+                cwd=RAIZ, input=f"{vis}\n{loc}\n", capture_output=True,
+                text=True, encoding="utf-8", errors="replace", timeout=600)
+            hechos = [l for l in (r.stdout or "").splitlines()
+                      if l.startswith("Guardado")]
+            if r.returncode == 0 and len(hechos) == 2:
+                log(f"   OK {vis}@{loc}")
+                continue
+            cola = (r.stderr or r.stdout or "").strip().splitlines()[-1:]
+            log(f"   FALLO {vis}@{loc}: " + " | ".join(cola))
+        except subprocess.TimeoutExpired:
+            log(f"   FALLO {vis}@{loc}: timeout de 600s")
+        except Exception as e:
+            log(f"   FALLO {vis}@{loc}: {type(e).__name__}: {e}")
+        fallos.append(f"{vis}@{loc}")
+
+    log(f"   {len(jornada) - len(fallos)}/{len(jornada)} resumenes generados")
+    return not fallos
+
+
 def main():
     ap = argparse.ArgumentParser(description="Batch semanal de generacion de PNGs")
     ap.add_argument("--dia", choices=["martes", "domingo"], required=True)
@@ -120,9 +170,11 @@ def main():
         # Semaforo de fuentes primero: si algo esta caido, que quede en el log
         ok.append(paso("estado de datos", ["estado_datos.py"],
                        captura=os.path.join(txt_dir, "estado_datos.txt")))
-        # MARTES: dato de la semana (el resumen del partido lo eliges tu)
+        # MARTES: dato de la semana + los resumenes de TODA la jornada
+        # (cual se publica lo eliges tu; generarlos todos no cuesta decision)
         ok.append(paso("dato de la semana", ["DatoSemana.py", "--week", str(W)],
                        captura=os.path.join(txt_dir, "dato_semana.txt")))
+        ok.append(resumenes(SEASON, W))
         # MIERCOLES: power rankings + MVPs de la jornada (TXT para el post)
         ok.append(paso("power rankings", ["power_rankings.py", "--week", str(W)],
                        captura=os.path.join(txt_dir, "power_rankings.txt")))
