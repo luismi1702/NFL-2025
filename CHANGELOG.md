@@ -48,10 +48,12 @@
   de un boletin de SumerSports y esta contrastado contra sus cifras: coincide
   en los 10 equipos comprobados, 4 al decimal. Semana 1 de 2026: la liga pasa
   del 29,4% al 42,1% bajo centro y el EPA de esas jugadas de -0,005 a +0,017
-- **`ficha_tactica.py` nuevo**: 11 metricas de calidad con percentil contra los
-  544 partidos de equipo de 2025 + 3 de identidad sin percentil (bajo centro,
-  scrambles: no son mejores ni peores). Reproduce 17 de las 28 casillas de las
-  fichas de SumerSports con datos propios
+- **`ficha_tactica.py` nuevo**: 11 metricas de calidad + 3 de identidad (bajo
+  centro, scrambles), que van sin ganador porque no son mejores ni peores.
+  Reproduce 17 de las 28 casillas de las fichas de SumerSports con datos
+  propios. Nacio con percentiles contra 2025 y Luis los mando quitar el mismo
+  dia: ahora es cara a cara, la barra mide el valor y el color el signo (rojo =
+  EPA negativo aunque gane la fila). De paso el script baja de ~40 s a 2 s
 - **Contraste con el boletin de pago** (ver `docs/decisiones.md`): usan su
   propio modelo de EPA (el nuestro sale siempre mas alto, entre 0,009 y 0,080)
   y no documentan exportacion de datos. No se paga SumerPass; sigue el plan de

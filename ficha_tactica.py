@@ -38,7 +38,6 @@ ROJO   = "#d84a4a"
 NEUTRO = "#7f8796"
 LOGOS_DIR = "logos"
 DPI    = 200
-MIN_JUGADAS = 20      # un partido de equipo con menos no entra en la referencia
 
 ALIAS = {"LAR": "LA", "JAC": "JAX", "WSH": "WAS", "LVR": "LV", "OAK": "LV",
          "SD": "LAC", "STL": "LA", "GNB": "GB", "KAN": "KC", "NWE": "NE",
@@ -139,10 +138,6 @@ def fmt(v, f):
     return f"{v:+.2f}" if f == "epa" else f"{v:.0f}%"
 
 
-def color_pct(p):
-    if p is None or (isinstance(p, float) and np.isnan(p)):
-        return NEUTRO
-    return ROJO if p < 33 else (AMBAR if p < 67 else VERDE)
 
 
 # ── INPUT ──────────────────────────────────────────────────────────────────────
@@ -176,26 +171,19 @@ vals = {t: metricas(juego[juego["posteam"] == t]) for t in (team_a, team_b)}
 if any(v is None for v in vals.values()):
     raise SystemExit("Muestra insuficiente en el partido.")
 
-# Referencia: partidos de equipo de la temporada anterior (percentiles)
-print(f"Construyendo la referencia con la temporada {SEASON - 1}...")
-prev, _ = cargar_pbp(SEASON - 1, avisar=False)
-ref = []
-for (_, _), sub in prev.groupby(["game_id", "posteam"]):
-    m = metricas(sub)
-    if m and m["n"] >= MIN_JUGADAS:
-        ref.append(m)
-ref = pd.DataFrame(ref)
-print(f"  {len(ref)} partidos de equipo en la referencia")
+def mejor(clave, mas_alto_mejor):
+    """Que equipo gana esa fila, o None si empatan o es metrica de identidad.
 
-
-def percentil(clave, valor, mas_alto_mejor):
-    if mas_alto_mejor is None or clave not in ref.columns:
+    Sin percentiles, la unica comparacion honesta es la del propio partido:
+    un equipo contra el otro. Las metricas de identidad no se comparan, que
+    jugar mas bajo centro no es ganar nada.
+    """
+    if mas_alto_mejor is None:
         return None
-    serie = ref[clave].dropna()
-    if serie.empty or valor is None or np.isnan(valor):
+    a, b = vals[team_a][clave], vals[team_b][clave]
+    if a is None or b is None or np.isnan(a) or np.isnan(b) or a == b:
         return None
-    p = (serie < valor).mean() * 100
-    return p if mas_alto_mejor else 100 - p
+    return team_a if (a > b) == mas_alto_mejor else team_b
 
 
 # ── CONSOLA ────────────────────────────────────────────────────────────────────
@@ -204,11 +192,11 @@ print(f"  FICHA TACTICA: {away} {pts[away]:.0f} - {pts[home]:.0f} {home} | "
       f"semana {week} NFL {SEASON}")
 print(f"{'='*70}")
 for etiqueta, clave, f, hb, _sec in METRICAS:
+    gana = mejor(clave, hb)
     fila = f"  {etiqueta:24}"
     for t in (team_a, team_b):
-        p = percentil(clave, vals[t][clave], hb)
-        pc = f" (p{p:.0f})" if p is not None else ""
-        fila += f" | {t} {fmt(vals[t][clave], f):>7}{pc:>8}"
+        marca = " <" if gana == t else "  "
+        fila += f" | {t} {fmt(vals[t][clave], f):>7}{marca}"
     print(fila)
 
 # ── PNG ────────────────────────────────────────────────────────────────────────
@@ -234,7 +222,7 @@ ax.text(5.0, techo - 1.12, f"FICHA TACTICA  ·  semana {week} | NFL {SEASON}",
         ha="center", va="center", fontsize=10, color="#9aa3b5",
         fontstyle="italic", zorder=2)
 ax.text(5.0, techo - 1.55,
-        f"percentil (p) = contra los partidos de equipo de {SEASON - 1}",
+        "en verde, el equipo que gana cada faceta",
         ha="center", va="center", fontsize=8.5, color="#6b7280", zorder=2)
 
 for t, x in ((team_a, 1.15), (team_b, 8.85)):
@@ -260,30 +248,36 @@ for etiqueta, clave, f, hb, sec in METRICAS:
     ax.text(5.0, y, etiqueta, ha="center", va="center", fontsize=9.5,
             color="#cfd6e4", zorder=3)
 
+    gana = mejor(clave, hb)
     for t, signo in ((team_a, -1), (team_b, 1)):
         v = vals[t][clave]
-        p = percentil(clave, v, hb)
-        col = color_pct(p)
-        borde = 3.75 if signo < 0 else 6.25     # inicio de la barra
-        if p is not None:
-            largo = BAR_MAX * max(p, 3) / 100.0
-            ax.add_patch(plt.Rectangle((borde - largo if signo < 0 else borde, y - 0.16),
-                                       largo, 0.3, color=col, alpha=0.85, zorder=2))
-        # El valor va SIEMPRE por fuera de la barra: a la izquierda del todo en
-        # la columna izquierda y a la derecha del todo en la derecha. Alinearlo
-        # al reves hacia que las barras largas pisaran su propia cifra.
+        # El largo es la magnitud y el COLOR el signo: sin esto, el -0.80 en
+        # Red Zone de un equipo salia como la barra mas larga de la ficha, que
+        # es justo su peor casilla. Un EPA negativo va en rojo aunque gane la
+        # fila (puede ganarla siendo menos malo que el rival).
+        negativo = (f == "epa" and hb is not None and v is not None
+                    and not (isinstance(v, float) and np.isnan(v)) and v < 0)
+        col = ROJO if negativo else (VERDE if gana == t else NEUTRO)
+        borde = 3.75 if signo < 0 else 6.25
+        # El largo de la barra es el VALOR, no un percentil: los porcentajes
+        # sobre su escala natural (0-100) y el EPA sobre +-0.8, que cubre casi
+        # todo lo que se ve en un partido. Asi la barra no esconde un dato que
+        # el lector no puede ver.
+        if v is not None and not (isinstance(v, float) and np.isnan(v)):
+            frac = abs(v) / 100.0 if f == "pct" else min(abs(v), 0.8) / 0.8
+            largo = BAR_MAX * min(frac, 1.0)
+            if largo > 0.02:
+                ax.add_patch(plt.Rectangle(
+                    (borde - largo if signo < 0 else borde, y - 0.16),
+                    largo, 0.3, color=col, alpha=0.85, zorder=2))
         ax.text(borde - BAR_MAX - 0.12 if signo < 0 else borde + BAR_MAX + 0.12, y,
                 fmt(v, f), ha="right" if signo < 0 else "left", va="center",
-                fontsize=11, fontweight="bold", color=col, zorder=3)
-        if p is not None:
-            ax.text(borde - 1.35 if signo < 0 else borde + 1.35, y - 0.45,
-                    f"p{p:.0f}", ha="center", va="center", fontsize=7.5,
-                    color="#6b7280", zorder=3)
+                fontsize=12, fontweight="bold", color=col, zorder=3)
     y -= 1.0
 
 ax.text(0.35, 0.35, f"Fuente: nflverse-data  ·  {sello(SEASON)}  ·  "
                     f"{vals[team_a]['n']} y {vals[team_b]['n']} jugadas  ·  "
-                    f"identidad sin percentil: no es mejor ni peor",
+                    f"identidad sin ganador: no es mejor ni peor",
         ha="left", va="center", fontsize=7.5, color="#555555", fontstyle="italic")
 ax.text(9.65, 0.35, "@CuartayDato", ha="right", va="center", fontsize=9,
         color="#888888", alpha=0.8, fontstyle="italic")

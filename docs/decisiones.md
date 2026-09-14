@@ -609,9 +609,19 @@ Copiar sus números citando la fuente → rompe la verificación en tres frentes
 del `CLAUDE.md`, que exige poder reproducir cada cifra.
 
 **Consecuencia:** nacen `under_center.py` y `ficha_tactica.py`, que cubren con
-datos propios lo mejor de su producto. La ficha usa **percentiles contra los
-partidos de equipo de la temporada anterior** (544 en 2025) en vez de contra la
-temporada en curso, que en la semana 1 no existe; y las métricas de identidad
-(bajo centro, scrambles) van sin percentil ni color, por la regla de jul-2026:
-solo se juzga lo que tiene dirección.
+datos propios lo mejor de su producto. Las métricas de identidad (bajo centro,
+scrambles) van sin ganador ni color, por la regla de jul-2026: solo se juzga lo
+que tiene dirección.
+
+**Corrección del mismo día — fuera los percentiles:** la ficha nació copiando
+los percentiles de SumerSports (contra los 544 partidos de equipo de 2025) y
+Luis los mandó quitar. Se sustituyen por la comparación del propio partido, un
+equipo contra el otro, que es la única que el lector puede comprobar mirando la
+imagen. Tres efectos: la barra pasa a medir el VALOR (los % sobre 0-100 y el
+EPA sobre ±0,8) en vez de un percentil invisible; el color pasa a decir el
+signo (rojo = EPA negativo aunque gane la fila, porque si no el -0,80 en Red
+Zone salía como la barra más larga de la ficha); y el script deja de cargar la
+temporada anterior entera, con lo que baja de ~40 s a 2 s. Límite asumido: el
+verde marca quién gana el duelo, no quién jugó bien — en un partido malo se
+pinta de verde un 21% en tercer down.
 

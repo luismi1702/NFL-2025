@@ -83,7 +83,7 @@
 | MVPsSemana.py | Candidatos MVP de la semana |
 | MVPsSeason.py | Seguimiento MVP de la temporada |
 | resumen_partido.py | Resumen de partido: 2 PNGs — boxscore + curva Win Probability con Top-3 |WPA|, y "Claves del partido" (top-4 desviaciones de cada equipo vs su norma de temporada, con contexto del rival). Con menos de 3 partidos jugados (semanas 1-3) la norma es la temporada regular anterior, rotulado en el PNG. Acepta siglas alternativas (`LAR` = `LA`). Los PNGs salen como `NN_resumen_VIS_vs_LOC_{año}_wNN.png`, con NN = orden de kickoff de la jornada (01 = partido inaugural), via `orden_partido()` |
-| ficha_tactica.py | Ficha de partido cara a cara: 11 metricas de calidad con su PERCENTIL contra los partidos de equipo de la temporada anterior + 3 de identidad (bajo centro, scrambles) SIN percentil ni color. Complementa a resumen_partido: aquella cuenta desviaciones, esta cuenta nivel |
+| ficha_tactica.py | Ficha de partido cara a cara: 11 metricas de calidad (global, pase, carrera, situacional) + 3 de identidad (bajo centro, scrambles) que van sin ganador, porque no son mejores ni peores. Verde = gana esa faceta; rojo = EPA negativo, aunque gane. La barra mide el valor: los % sobre 0-100 y el EPA sobre +-0.8. Complementa a resumen_partido, que cuenta desviaciones |
 | season_arc.py | Trayectoria de rendimiento de un equipo a lo largo de la temporada |
 | Previas.py | Previews con rankings y matchups |
 | proe.py | Pass Rate Over Expectation (PROE) por equipo — pass rate real menos esperado (xpass) |
