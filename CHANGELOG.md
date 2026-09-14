@@ -54,6 +54,14 @@
   propios. Nacio con percentiles contra 2025 y Luis los mando quitar el mismo
   dia: ahora es cara a cara, la barra mide el valor y el color el signo (rojo =
   EPA negativo aunque gane la fila). De paso el script baja de ~40 s a 2 s
+- **Tres posts para el martes** en `salidas/2026/w01/posts_martes.md` (fichero
+  aparte a proposito: el batch borra `borradores_posts.md` antes de escribir).
+  Packers (ganaron 8 de 11 facetas y perdieron por 17), Ravens y Bills
+- **Hallazgo propio**: el 33,3% bajo centro de Lamar Jackson ante Indianapolis
+  es su maximo en 113 partidos desde 2018. Y el +0,229 EPA/jugada de Buffalo en
+  Houston es el 3er mejor de los 58 partidos contra los Texans desde 2023 — la
+  afirmacion ordinal del boletin aguanta con nuestro modelo aunque el decimal
+  no coincida
 - **Contraste con el boletin de pago** (ver `docs/decisiones.md`): usan su
   propio modelo de EPA (el nuestro sale siempre mas alto, entre 0,009 y 0,080)
   y no documentan exportacion de datos. No se paga SumerPass; sigue el plan de
