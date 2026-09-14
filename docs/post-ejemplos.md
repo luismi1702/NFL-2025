@@ -75,9 +75,12 @@ liga) pero habla de un solo equipo. En una pieza de liga contada equipo a
 equipo se etiqueta a ese equipo; si el texto recorre varios, hashtags y ninguna
 mención.
 
-**Cuando el ángulo es negativo para el equipo, no se etiqueta.** El ejemplo de
-KC va sin mención a propósito: la gracia de etiquetar es que la afición
-comparta, y nadie comparte el post que certifica su caída.
+**Se etiqueta siempre, gane o pierda el equipo** (decidido el 14-sep-2026;
+antes la regla era la contraria). El ejemplo de KC de aquí abajo es anterior al
+cambio y por eso va sin mención: hoy llevaría `@Chiefs_Esp @AitorManzano_`
+igualmente, aunque cuente una caída. La única excepción es el equipo marcado
+*(pendiente)* en la tabla, que no tiene cuenta conocida — y ahí no se inventa
+un handle.
 
 ## Época de draft (abril) — otro producto
 

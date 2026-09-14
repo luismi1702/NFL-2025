@@ -36,6 +36,7 @@
 | play_action.py | EPA/pase con play-action vs sin play-action por equipo (is_play_action de FTN charting, solo 2022+) |
 | series_success.py | Heatmap 32 equipos: % de series por resultado (serie = cadena de downs; TD/FG/1st/Punt/Fallo) |
 | tendencias_playcalling.py | Pass% y EPA por down × distancia, comparado vs media NFL |
+| under_center.py | Uso de formacion bajo centro (`shotgun`=0): serie de liga de las ultimas 5 temporadas en la misma semana + cambio de cada equipo respecto a su temporada anterior completa. Metrica de CONTEO, sin charting de pago. Uso: `python under_center.py [--season N --week N]` |
 
 ## Carrera
 | Script | Descripción |
@@ -82,6 +83,7 @@
 | MVPsSemana.py | Candidatos MVP de la semana |
 | MVPsSeason.py | Seguimiento MVP de la temporada |
 | resumen_partido.py | Resumen de partido: 2 PNGs — boxscore + curva Win Probability con Top-3 |WPA|, y "Claves del partido" (top-4 desviaciones de cada equipo vs su norma de temporada, con contexto del rival). Con menos de 3 partidos jugados (semanas 1-3) la norma es la temporada regular anterior, rotulado en el PNG. Acepta siglas alternativas (`LAR` = `LA`). Los PNGs salen como `NN_resumen_VIS_vs_LOC_{año}_wNN.png`, con NN = orden de kickoff de la jornada (01 = partido inaugural), via `orden_partido()` |
+| ficha_tactica.py | Ficha de partido cara a cara: 11 metricas de calidad con su PERCENTIL contra los partidos de equipo de la temporada anterior + 3 de identidad (bajo centro, scrambles) SIN percentil ni color. Complementa a resumen_partido: aquella cuenta desviaciones, esta cuenta nivel |
 | season_arc.py | Trayectoria de rendimiento de un equipo a lo largo de la temporada |
 | Previas.py | Previews con rankings y matchups |
 | proe.py | Pass Rate Over Expectation (PROE) por equipo — pass rate real menos esperado (xpass) |

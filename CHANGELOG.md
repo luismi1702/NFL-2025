@@ -35,9 +35,33 @@
   los power rankings. Generarlos no es editorial; elegir cual se publica si.
   Un partido caido no tumba a los demas. Probado sobre la w01: 15/15 en ~3 min
 
+- Redactados los 26 posts de la semana 1: uno por equipo de los 15 partidos
+  (ganador y perdedor), con los numeros validados contra el calculo que imprime
+  los PNGs y los 15 partidos verificados en web
+- **Derogada la regla "angulo negativo, sin mencion"**: se etiqueta siempre,
+  gane o pierda el equipo (decision de Luis). Tocados `CLAUDE.md`,
+  `borradores_prompt.md`, `docs/cuentas-fans.md` y `docs/post-ejemplos.md`;
+  la entrada de ago-2026 en decisiones queda marcada como derogada, no borrada
+
+- **`under_center.py` nuevo**: serie de liga de las ultimas 5 temporadas en la
+  misma semana + cambio de cada equipo respecto a su temporada anterior. Sale
+  de un boletin de SumerSports y esta contrastado contra sus cifras: coincide
+  en los 10 equipos comprobados, 4 al decimal. Semana 1 de 2026: la liga pasa
+  del 29,4% al 42,1% bajo centro y el EPA de esas jugadas de -0,005 a +0,017
+- **`ficha_tactica.py` nuevo**: 11 metricas de calidad con percentil contra los
+  544 partidos de equipo de 2025 + 3 de identidad sin percentil (bajo centro,
+  scrambles: no son mejores ni peores). Reproduce 17 de las 28 casillas de las
+  fichas de SumerSports con datos propios
+- **Contraste con el boletin de pago** (ver `docs/decisiones.md`): usan su
+  propio modelo de EPA (el nuestro sale siempre mas alto, entre 0,009 y 0,080)
+  y no documentan exportacion de datos. No se paga SumerPass; sigue el plan de
+  PFF+ anual, que ahora cuesta 99,99 $ y no los 79,99 $ de la wishlist
+
 **Archivos modificados:** `pbp_loader.py`, `estado_datos.py`,
-`resumen_partido.py`, `semana_auto.py`, `docs/scripts-catalog.md`,
-`docs/calendario-posts.md`, `docs/decisiones.md`, `CHANGELOG.md`
+`resumen_partido.py`, `semana_auto.py`, `under_center.py` (nuevo),
+`ficha_tactica.py` (nuevo), `borradores_prompt.md`, `CLAUDE.md`,
+`docs/scripts-catalog.md`, `docs/calendario-posts.md`, `docs/cuentas-fans.md`,
+`docs/post-ejemplos.md`, `docs/decisiones.md`, `CHANGELOG.md`
 
 **Pendiente:**
 - PFR semanal, snap counts y QBR van genuinamente retrasados en nflverse (2 de

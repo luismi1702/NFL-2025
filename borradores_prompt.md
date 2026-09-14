@@ -49,10 +49,9 @@ Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`
      fichero antes de escribir. **PROHIBIDO inventar o deducir un handle**:
      etiquetar a una cuenta equivocada es peor que no etiquetar.
    - Maximo 2-3 menciones por post.
-   - **Angulo negativo, sin mencion.** Si el post cuenta una caida, una mala
-     racha o un fracaso de ese equipo, van los hashtags pero NINGUNA mencion:
-     se etiqueta para que la aficion comparta, y nadie comparte el post que
-     certifica su hundimiento. Anotalo en la nota de verificacion.
+   - **Se etiqueta SIEMPRE, gane o pierda el equipo.** Tambien en los posts
+     que cuentan una derrota, una mala racha o un fracaso. (Hasta sep-2026 la
+     regla era la contraria; quedo derogada.)
    - Si el equipo aparece como *(pendiente)* en la tabla, escribe el post sin
      menciones y anotalo en la nota de verificacion
      ("CHI sin cuenta en la tabla — decidir").

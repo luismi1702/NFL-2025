@@ -62,10 +62,11 @@ faltara.
   (Ravens); con más, el tuit parece spam y X lo penaliza.
 - Van al final, tras los hashtags, como en el formato ya usado:
   `#NFL | #Bengals | @jungla_es @antoniomagon`
-- **Ángulo negativo, sin mención.** Si el post cuenta la caída, la mala racha
-  o el fracaso de ese equipo, van los hashtags pero ninguna mención. Se
-  etiqueta para que la afición comparta; nadie comparte el post que certifica
-  su hundimiento.
+- **Se etiqueta siempre, gane o pierda el equipo.** Tambien en los posts que
+  cuentan la derrota, la mala racha o el fracaso. Decidido por Luis el
+  14-sep-2026; deroga la regla contraria de ago-2026 (ver `docs/decisiones.md`).
+  Lo unico que sigue sin mencion es el equipo marcado *(pendiente)* en la
+  tabla, porque no tiene cuenta conocida y no se inventan handles.
 - **Solo en posts sobre ESE equipo.** En piezas de liga (power rankings, dato
   de la semana genérico) no se etiqueta a nadie.
 - El redactor automático NO inventa menciones: usa solo esta tabla y, si el

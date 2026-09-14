@@ -475,7 +475,10 @@ otro. Anotado en `docs/calendario-posts.md`.
 
 ---
 
-## [2026-08-24] — Ángulo negativo, sin mención
+## [2026-08-24] — Ángulo negativo, sin mención  ·  DEROGADA el 14-sep-2026
+
+> Sustituida por la entrada del 14-sep-2026: ahora se etiqueta siempre. Se
+> conserva para saber qué se pensaba antes y por qué cambió.
 
 **Decisión:** Si un post cuenta la caída, la mala racha o el fracaso de un
 equipo, van los hashtags pero ninguna mención a su afición.
@@ -548,4 +551,67 @@ trabajo manual que el nivel 2.5 existe para recortar. Prefijo con día y hora
 
 **Alcance:** Solo `resumen_partido.py`, que es el único script con un PNG por
 partido. `salida()` no se toca: el prefijo lo construye quien llama.
+
+---
+
+## [2026-09-14] — Se etiqueta siempre (deroga "ángulo negativo, sin mención")
+
+**Decisión:** Todo post sobre un equipo concreto lleva la mención a su afición,
+gane o pierda, también cuando cuenta la derrota o la mala racha. Queda una
+sola excepción: los equipos marcados *(pendiente)* en `docs/cuentas-fans.md`
+(hoy ATL e IND), que no tienen cuenta conocida — y ahí sigue en pie que no se
+inventan ni se deducen handles.
+
+**Motivo:** Petición directa de Luis: *"Quita esa norma, se etiqueta siempre"*.
+Es su cuenta y su criterio editorial. La regla de agosto nació de una hipótesis
+razonable —nadie comparte el post que certifica su hundimiento— pero nunca se
+midió: las visualizaciones que la justificaban comparaban tuits CON y SIN
+mención, no tuits positivos contra negativos.
+
+**Lo que se pierde:** el argumento de agosto sigue siendo plausible, así que
+conviene mirar el rendimiento de los posts negativos etiquetados de la semana 1
+antes de darlo por bueno del todo. Si una cuenta se queja, la decisión se
+revisa; con 32 aficiones el coste de equivocarse es reputacional, no de
+alcance.
+
+**Alcance:** `CLAUDE.md`, `borradores_prompt.md` (regla 9), `docs/cuentas-fans.md`,
+`docs/post-ejemplos.md` y la entrada del 24-ago-2026, marcada como derogada
+pero conservada: el registro existe para saber qué se pensaba antes.
+
+---
+
+## [2026-09-14] — Qué se copia de un boletín de pago y qué no
+
+**Decisión:** De la newsletter de SumerSports se toman **ideas y ángulos**, nunca
+cifras. Cualquier dato que se publique se recalcula con nuestro PBP; lo que no
+se pueda recalcular, o se cita como suyo o no se usa. No se paga SumerPass
+(100 $/año): se mantiene el plan de PFF+ anual.
+
+**Motivo:** Dos hallazgos al contrastar sus 14 fichas contra nuestros datos.
+Primero, **usan su propio modelo de EPA**: en los 18 ataques comparados el
+nuestro sale siempre más alto, entre 0,009 y 0,080. No es ruido, es otro
+modelo, así que mezclar sus cifras con las nuestras produciría un gráfico
+incoherente consigo mismo. Segundo, **no documentan exportación** de datos en
+ninguna parte de su web, y el flujo del proyecto es CSV → `pff_data/` →
+scripts. Sin exportación, 100 $/año compran lectura, no datos. PFF+ cuesta lo
+mismo (99,99 $, no los 79,99 $ que decía la wishlist) pero sí exporta CSV.
+
+**Lo que sí se replicó:** de las 28 casillas de sus fichas reproducimos 17 con
+nflverse. Ocho son imposibles sin charting (presión, YPRR, play action,
+personal, yardas antes del contacto, cobertura por defensor) y tres tienen
+definición divergente que no conviene imitar a ciegas: PASS OE (su modelo de
+pase esperado no es el `xpass` de nflverse), NEG% y MOF% (el nuestro sale justo
+el doble: ellos miden por posición del receptor, no por `pass_location`).
+
+**Alternativas descartadas:** Pagar el mensual de 20 $ para "ir mirando" → son
+240 $ por temporada, más caro que el anual y sin resolver la exportación.
+Copiar sus números citando la fuente → rompe la verificación en tres frentes
+del `CLAUDE.md`, que exige poder reproducir cada cifra.
+
+**Consecuencia:** nacen `under_center.py` y `ficha_tactica.py`, que cubren con
+datos propios lo mejor de su producto. La ficha usa **percentiles contra los
+partidos de equipo de la temporada anterior** (544 en 2025) en vez de contra la
+temporada en curso, que en la semana 1 no existe; y las métricas de identidad
+(bajo centro, scrambles) van sin percentil ni color, por la regla de jul-2026:
+solo se juzga lo que tiene dirección.
 

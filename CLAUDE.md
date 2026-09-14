@@ -74,7 +74,7 @@ Estructura (DRAFT, solo en la ventana de abril): [historia del equipo] → [dato
 - Tono humano, no robótico: el cierre ilusionante NO tiene por qué ser una pregunta. Prohibidas las preguntas retóricas de relleno ("¿Cuánto dura la era?", "¿Quién cierra la grieta?") — si el cierre no aporta, mejor terminar en el dato o en una frase corta con opinión
 - Terminología: "3er down"/"4º down", nunca "bajada". Equipos y ciudades en inglés (New England, no Nueva Inglaterra)
 - Menciones: SOLO de docs/cuentas-fans.md, nunca inventadas ni deducidas. Manda el tema del post, no el script del PNG. Máximo 2-3
-- Si el ángulo del post es NEGATIVO para el equipo, no se etiqueta a su afición: se etiqueta para que compartan, y nadie comparte lo que certifica su caída
+- Se etiqueta SIEMPRE a la afición del equipo del que va el post, gane o pierda. Única excepción: los equipos marcados *(pendiente)* en la tabla, que no tienen cuenta conocida
 - Terminología de jugadas: "proteger al QB" / "mejorar la protección de pase" / "pass pro", NUNCA "proteger al pasador". "Forzar turnovers", NUNCA "robar balones"
 
 ## Docs (leer cuando se necesiten)
