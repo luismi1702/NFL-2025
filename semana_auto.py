@@ -247,7 +247,10 @@ def main():
         # (cual se publica lo eliges tu; generarlos todos no cuesta decision)
         ok.append(paso("dato de la semana", ["DatoSemana.py", "--week", str(W)],
                        captura=os.path.join(txt_dir, "dato_semana.txt")))
+        # Se regeneran resumenes Y fichas: el lunes faltaba el Monday Night, que
+        # a estas horas ya esta publicado. Los demas partidos salen identicos.
         ok.append(resumenes(SEASON, W))
+        ok.append(fichas(SEASON, W))
         # MIERCOLES: power rankings + MVPs de la jornada (TXT para el post)
         ok.append(paso("power rankings", ["power_rankings.py", "--week", str(W)],
                        captura=os.path.join(txt_dir, "power_rankings.txt")))

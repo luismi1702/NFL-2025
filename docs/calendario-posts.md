@@ -1,16 +1,17 @@
 # Calendario semanal de posts — temporada 2026
 
-Decidido ago-2026. La maquina GENERA (semana_auto.py, dos tareas programadas
-de Windows); Luis revisa y publica — la verificacion triple del CLAUDE.md
-sigue siendo manual y no se automatiza.
+Decidido ago-2026, ampliado con el batch del lunes en sep-2026. La maquina
+GENERA (semana_auto.py, TRES tareas programadas de Windows); Luis revisa y
+publica — la verificacion triple del CLAUDE.md sigue siendo manual y no se
+automatiza.
 
 ## La semana tipo
 
 | Dia | Post | Fuente | Generacion |
 |---|---|---|---|
-| Lunes | 3 posts de partido (contradicciones, identidad, extremos) | destacados + fichas | batch lunes 8:00 |
+| Lunes | 3 posts de partido (contradicciones, identidad, extremos) | destacados + fichas | batch lunes 10:00 |
 | Martes | Dato de la semana (outlier) | DatoSemana | batch martes 8:00 |
-| Martes | Resumen del mejor partido (2 PNGs) | resumen_partido | batch martes: genera los de TODA la jornada; Luis elige cual publica |
+| Martes | Resumen del Monday Night (2 PNGs + ficha) | resumen_partido | batch martes: regenera TODA la jornada, que es cuando entra el MNF que el lunes faltaba |
 | Miercoles | Power Rankings | power_rankings | batch martes |
 | Miercoles | MVPs de la jornada | MVPsSemana (TXT, sin PNG) | batch martes |
 | Jueves | Bot: balance jornada anterior + picks (gancho: previa TNF) | Manning_bot --no-retrain | batch martes (2 TXT) |
