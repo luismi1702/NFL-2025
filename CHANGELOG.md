@@ -70,9 +70,11 @@
   Packers decia "8 de las 11 facetas" y eran **6 de 11**. Se conto a ojo sobre
   el PNG en vez de contra el script. Lo destapo `destacados.py`. Anotado en
   `docs/decisiones.md` como aviso de metodo
-- **Cuatro posts para manana** en `salidas/2026/w01/posts_martes.md` (fichero
-  aparte a proposito: el batch borra `borradores_posts.md` antes de escribir):
-  Packers, Saints, Ravens y Bills
+- **Posts de la jornada** en `salidas/2026/w01/posts_lunes.md` (fichero aparte a
+  proposito: el batch borra `borradores_posts.md` antes de escribir). Hoy se
+  publica un hilo de dos sobre el bajo centro — el post de liga abre y el de los
+  Ravens remata con el boxscore de BAL-IND; Packers, Saints y Bills quedan
+  pendientes. Los de contradicciones caducan, los historicos no
 - **Hallazgo propio**: Baltimore jugo el 55,0% bajo centro ante Indianapolis
   con Lamar de QB, su SEGUNDO registro desde 2018 (el maximo es 60,4% ante
   Denver en la semana 9 de 2024, sobre 107 partidos). La afirmacion del boletin
@@ -88,18 +90,39 @@
   propio modelo de EPA (el nuestro sale siempre mas alto, entre 0,009 y 0,080)
   y no documentan exportacion de datos. No se paga SumerPass; sigue el plan de
   PFF+ anual, que ahora cuesta 99,99 $ y no los 79,99 $ de la wishlist
+- **Calendario coherente**: la cabecera decia "dos tareas programadas" (son
+  tres), la tabla ponia el batch del lunes a las 8:00 (quedo a las 10:00) y la
+  fila del resumen seguia asignada al martes. Ademas el batch del martes
+  regenera ahora tambien las FICHAS: sin eso el Monday Night se quedaba sin la
+  suya y la tabla prometia algo que no pasaba. La semana pasa de 6 a 7 posts
+- **Cuarto punto de verificacion en `CLAUDE.md`**: comprobar que la metrica MIDE
+  lo que la frase dice (mismo conjunto de jugadas, mismo sujeto) y que el numero
+  del texto coincide con el de la imagen. Sale de los dos fallos del dia, los
+  dos con el numero bien calculado y la frase mal
 
 **Archivos modificados:** `pbp_loader.py`, `estado_datos.py`,
-`resumen_partido.py`, `semana_auto.py`, `under_center.py` (nuevo),
-`ficha_tactica.py` (nuevo), `borradores_prompt.md`, `CLAUDE.md`,
+`resumen_partido.py`, `semana_auto.py`, `cola_posts.py`, `under_center.py`
+(nuevo), `ficha_tactica.py` (nuevo), `destacados.py` (nuevo),
+`borradores_prompt.md`, `borradores_prompt_lunes.md` (nuevo), `CLAUDE.md`,
 `docs/scripts-catalog.md`, `docs/calendario-posts.md`, `docs/cuentas-fans.md`,
-`docs/post-ejemplos.md`, `docs/decisiones.md`, `CHANGELOG.md`
+`docs/post-ejemplos.md`, `docs/decisiones.md`, `CHANGELOG.md`.
+Fuera del repo (`salidas/` esta en .gitignore): 46 PNGs de la w01,
+`destacados.txt` y `posts_lunes.md`. Y una tarea nueva en el Programador de
+tareas de Windows.
 
 **Pendiente:**
 - PFR semanal, snap counts y QBR van genuinamente retrasados en nflverse (2 de
   15 partidos tras forzar la descarga): repetir el jueves
 - Sigue sin decidir lo del QB destacado de la ficha (ahora los Saints muestran
   a T.Shough -1.0 pese a sus 410 yardas)
+- **Verificar el guion de Atlanta en Red Zone**: su ficha no muestra ninguna
+  jugada dentro de la 20 en todo el partido. Es verosimil (marcaron desde
+  fuera), pero no usar ese dato en un post hasta comprobarlo
+- Sin publicar: Packers, Saints y Bills de `posts_lunes.md`, mas los 26 posts
+  de partido escritos antes. El material de la semana 1 caduca
+- El batch del lunes se estrena el 21-sep: hasta entonces no se ha visto correr
+  entero con `claude -p`. Conviene mirar el log de esa primera vez
+- PFF+ anual sigue sin contratar (99,99 $, decidido en agosto)
 
 ---
 

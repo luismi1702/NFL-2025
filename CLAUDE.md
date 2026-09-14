@@ -57,7 +57,8 @@ plt.savefig("output.png", dpi=200, bbox_inches="tight", facecolor=BG)
 - set_yticklabels no acepta lista de colores — iterar sobre ax.get_yticklabels()
 - Scripts independientes — no crear módulos compartidos salvo que se pida (única excepción: pbp_loader.py)
 - Experimentos temporales van en lab/ (crearla si hace falta); solo lo definitivo vive en la raíz
-- VERIFICACIÓN OBLIGATORIA antes de proponer un post: (1) cada número, contra el script que genera el visual, no contra el doc ni contra el PNG a ojo; (2) cada atribución ataque/defensa, contra la clasificación real de la métrica (sacks permitidos = ATAQUE); (3) cada nombre, récord, traspaso o resultado, con búsqueda web. Un post no se propone hasta que las tres pasen
+- VERIFICACIÓN OBLIGATORIA antes de proponer un post: (1) cada número, contra el script que genera el visual, no contra el doc ni contra el PNG a ojo; (2) cada atribución ataque/defensa, contra la clasificación real de la métrica (sacks permitidos = ATAQUE); (3) cada nombre, récord, traspaso o resultado, con búsqueda web; (4) que la métrica MIDA lo que la frase dice: mismo conjunto de jugadas y mismo sujeto. Un post no se propone hasta que las cuatro pasen
+- El punto (4) nació de dos cifras falsas el mismo día (sep-2026), las dos con el número bien calculado: "Green Bay ganó 8 de las 11 facetas" (eran 6, contadas a ojo sobre el PNG) y "Lamar jugó el 33% de sus snaps bajo centro" (ese 33% excluía las carreras de los RB, snaps en los que él también estaba; era 55%, y encima el hilo llevaba al lado un gráfico que decía 55%). Si el post lleva visual, comprobar que el número del texto y el de la imagen son el mismo
 - Antes de proponer una pieza nueva: la pregunta no es "¿falta esto en el
   catálogo?" sino "¿lo tiene alguien más?". Si el lector lo encuentra a un clic
   en cualquier web generalista, no aporta (así se descartó la clasificación, el

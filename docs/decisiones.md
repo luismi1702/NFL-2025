@@ -653,6 +653,20 @@ comprueban contra el script, no contra la imagen. Lo destapó `destacados.py`
 al no listar ese partido entre las contradicciones. Por eso el redactor del
 lunes tiene prohibido leer cifras de un PNG, y así está escrito en su prompt.
 
+**Y un segundo caso el mismo día, que obligó a ampliar la regla:** el post de
+los Ravens decía que Lamar Jackson jugó "el 33% de sus snaps bajo centro, su
+récord". El 33% estaba bien calculado, pero contaba solo sus pases y sus
+carreras, dejando fuera los 24 acarreos de Henry — snaps en los que él también
+estaba en el campo. Con el conjunto correcto son **55,0%, su segundo registro**
+desde 2018 (el máximo es 60,4% ante Denver en la semana 9 de 2024). Lo vio Luis
+porque el hilo llevaba al lado el gráfico de bajo centro, que decía 55%.
+
+**Consecuencia — cuarto punto de la verificación**, ya en `CLAUDE.md`: no basta
+con que el número exista y salga del script; hay que comprobar que **la métrica
+mide lo que la frase dice**, mismo conjunto de jugadas y mismo sujeto. Y si el
+post lleva visual, que el número del texto y el de la imagen sean el mismo. Los
+dos fallos del día tenían el dato bien y la frase mal.
+
 **Alternativas descartadas:** Mover las fichas al batch del martes → el post de
 partido se publica el lunes, llegaba tarde. Que el redactor leyera los PNG →
 es justo el error que acaba de costar un dato falso.
