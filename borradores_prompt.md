@@ -13,6 +13,9 @@ En `{DIR}/`:
 - `bot_balance.txt` — aciertos del bot en la jornada jugada
 - `bot_picks.txt` — pronósticos de la próxima jornada
 - `estado_datos.txt` — semáforo de fuentes
+- `NN_resumen_VIS_vs_LOC_*.png` y `NN_ficha_VIS_vs_LOC_*.png` — boxscore y cara
+  a cara de CADA partido de la jornada. Solo se usan los del Monday Night (ver
+  su sección más abajo)
 
 Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`.
 
@@ -55,7 +58,8 @@ Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`
    - Si el equipo aparece como *(pendiente)* en la tabla, escribe el post sin
      menciones y anotalo en la nota de verificacion
      ("CHI sin cuenta en la tabla — decidir").
-   - Solo se etiqueta en posts sobre UN equipo concreto. En piezas de liga
+   - Solo se etiqueta en posts sobre equipos concretos (uno, o los dos de un
+     partido como el Monday Night). En piezas de liga
      (power rankings, MVPs de la jornada, dato generico) van hashtags pero
      NINGUNA mencion.
    - Cuenta los caracteres CON hashtags y menciones incluidos.
@@ -101,9 +105,10 @@ Verificación:
 - resultado TB 16-14 CAR verificado en web (ESPN, enlace)
 ````
 
-Las cuatro secciones, con estos titulos exactos:
+Las cinco secciones, con estos titulos exactos:
 
 - `## MARTES — Dato de la semana`
+- `## MARTES — Monday Night`
 - `## MIÉRCOLES — Power Rankings`
 - `## MIÉRCOLES — MVPs de la jornada`
 - `## JUEVES — Bot: balance + picks`
@@ -112,6 +117,20 @@ Las cuatro secciones, con estos titulos exactos:
 - El post del jueves abre con el balance de la jornada anterior ("el bot fue
   X-Y") y remata con los picks destacados; si el TNF de esta semana está en
   los picks, úsalo de gancho.
+- El post del Monday Night cuenta el partido del lunes con su resumen:
+  - Cual es: el prefijo `NN_` es el orden de kickoff, asi que el MNF es el
+    `NN` MAS ALTO de la carpeta. Confirma en web que ese partido se jugo en
+    lunes. Algunas semanas hay DOS partidos el lunes: escribe el que tenga mejor
+    historia y nombra el otro en la verificacion. Si esa semana no hubo partido
+    en lunes (la 18, por ejemplo), deja la seccion sin bloques `post` y dilo.
+  - `IMAGEN:` es el `NN_resumen_VIS_vs_LOC_*.png`. Cada numero del texto tiene
+    que VERSE en esa imagen, o en la ficha si lo sacas de ahi (y entonces la
+    imagen es la ficha). Nunca mezcles numeros de las dos para la misma
+    metrica: el EPA por carrera del resumen INCLUYE los scrambles del QB y el
+    de la ficha NO. El 15-sep-2026 esa diferencia coloco primero a Chicago en
+    un grafico y a Kansas City en el otro.
+  - Menciones: las cuentas de los equipos de los que hable el post (pueden
+    ser los dos, maximo 3 en total), siempre de `docs/cuentas-fans.md`.
 - La nota de verificación lista: números usados y su fichero de origen, y
   nombres/hechos verificados en web con la fuente.
 - Si algún fichero falta o está vacío, dilo en su sección y no inventes: deja

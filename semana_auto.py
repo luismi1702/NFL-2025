@@ -40,8 +40,13 @@ def log(msg):
         f.write(linea + "\n")
 
 
-def paso(nombre, args, stdin_text=None, captura=None, timeout=1200):
-    """Ejecuta un script del proyecto. Si `captura`, vuelca stdout a ese TXT."""
+def paso(nombre, args, stdin_text=None, captura=None, timeout=1200,
+         sin_muestra=None):
+    """Ejecuta un script del proyecto. Si `captura`, vuelca stdout a ese TXT.
+
+    sin_muestra: codigo de salida que significa "aun no hay datos para esto"
+    (el bot en las primeras jornadas). Se registra aparte y no cuenta como fallo.
+    """
     log(f"-> {nombre}: {' '.join(args)}")
     try:
         r = subprocess.run([sys.executable] + args, cwd=RAIZ,
@@ -53,6 +58,11 @@ def paso(nombre, args, stdin_text=None, captura=None, timeout=1200):
             with io.open(captura, "w", encoding="utf-8") as f:
                 f.write(r.stdout)
             log(f"   salida -> {captura}")
+        if sin_muestra is not None and r.returncode == sin_muestra:
+            cola = [l.strip() for l in (r.stdout or "").splitlines()
+                    if l.strip()][-2:]
+            log("   SIN MUESTRA (no es fallo): " + " | ".join(cola))
+            return True
         if r.returncode != 0:
             cola = (r.stderr or r.stdout or "").strip().splitlines()[-3:]
             log(f"   FALLO (exit {r.returncode}): " + " | ".join(cola))
@@ -91,11 +101,19 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
         os.remove(destino)
     log("-> borradores: claude -p (Read/Glob/Grep/Write/WebSearch)")
     try:
+        # El prompt va por STDIN, nunca como argumento: en Windows `claude` es
+        # claude.CMD y cmd.exe corta el argumento en el primer salto de linea.
+        # Asi fallaron el 08-sep y el 15-sep ("esto es una ORDEN DE...").
         r = subprocess.run(
-            [exe, "-p", prompt,
+            [exe, "-p",
              "--allowedTools", "Read", "Glob", "Grep", "Write", "WebSearch"],
-            cwd=RAIZ, capture_output=True, text=True,
+            cwd=RAIZ, input=prompt, capture_output=True, text=True,
             encoding="utf-8", errors="replace", timeout=1800)
+        with io.open(os.path.join(txt_dir, "borradores_stdout.log"), "w",
+                     encoding="utf-8") as f:
+            f.write(r.stdout or "")
+            if r.stderr:
+                f.write("\n--- STDERR ---\n" + r.stderr)
         if r.returncode == 0 and os.path.exists(destino):
             log(f"   OK -> {destino}")
             return True
@@ -203,10 +221,58 @@ def fichas(SEASON, W):
     return not fallos
 
 
+# Hora de cada tarea programada: (dia de la semana, hora, minuto). El batch
+# "domingo" se lanza el SABADO por la noche.
+HORARIO = {"lunes": (0, 10, 0), "martes": (1, 8, 0), "domingo": (5, 23, 0)}
+
+
+def batch_pendiente(ahora=None):
+    """El batch programado mas reciente, si no llego a arrancar; si no, None.
+
+    Las tareas son de tipo Interactive (sin admin no se pueden cambiar): si a
+    su hora no hay sesion iniciada, Windows las salta y StartWhenAvailable no
+    las recupera. Paso el 15-sep-2026, tras un reinicio de Windows Update.
+    Solo se recupera el ULTIMO: el martes regenera lo del lunes, y relanzar uno
+    viejo pisaria borradores_posts.md de uno posterior.
+    """
+    from datetime import timedelta
+    ahora = ahora or datetime.now()
+    ultimos = {}
+    for dia, (wd, h, m) in HORARIO.items():
+        t = ahora.replace(hour=h, minute=m, second=0, microsecond=0)
+        t -= timedelta(days=(ahora.weekday() - wd) % 7)
+        if t > ahora:
+            t -= timedelta(days=7)
+        ultimos[dia] = t
+    dia = max(ultimos, key=ultimos.get)
+    hora = ultimos[dia]
+
+    marca = f"===== BATCH {dia.upper()} "
+    if os.path.exists(LOG):
+        for linea in io.open(LOG, encoding="utf-8", errors="replace"):
+            if marca in linea:
+                try:
+                    ts = datetime.strptime(linea[1:20], "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    continue
+                if ts >= hora:
+                    return None
+    return dia
+
+
 def main():
     ap = argparse.ArgumentParser(description="Batch semanal de generacion de PNGs")
-    ap.add_argument("--dia", choices=["lunes", "martes", "domingo"], required=True)
+    ap.add_argument("--dia", choices=["lunes", "martes", "domingo"])
+    ap.add_argument("--recuperar", action="store_true",
+                    help="al iniciar sesion: lanza el ultimo batch si se salto")
     args = ap.parse_args()
+    if args.recuperar:
+        args.dia = batch_pendiente()
+        if not args.dia:
+            return
+        log(f"RECUPERACION: el batch {args.dia} no llego a arrancar a su hora")
+    elif not args.dia:
+        ap.error("hace falta --dia o --recuperar")
 
     # Semana jugada segun schedules (la fuente de verdad del proyecto)
     from pbp_loader import ultima_semana, temporada_actual
@@ -260,10 +326,12 @@ def main():
         # JUEVES: bot — balance de la jugada y picks de la proxima, a TXT
         ok.append(paso("bot: balance semana jugada",
                        ["Manning_bot.py", "--no-retrain", "--week", str(W)],
-                       captura=os.path.join(txt_dir, "bot_balance.txt")))
+                       captura=os.path.join(txt_dir, "bot_balance.txt"),
+                       sin_muestra=3))
         ok.append(paso("bot: picks proxima jornada",
                        ["Manning_bot.py", "--no-retrain"],
-                       captura=os.path.join(txt_dir, "bot_picks.txt")))
+                       captura=os.path.join(txt_dir, "bot_picks.txt"),
+                       sin_muestra=3))
         # NIVEL 2: Claude Code headless redacta los borradores a partir de lo
         # generado. Solo puede leer, buscar en web y escribir; la publicacion
         # sigue siendo de Luis (verificacion triple del CLAUDE.md)

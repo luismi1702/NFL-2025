@@ -33,6 +33,11 @@ SEASON_PRED    = None
 ROLLING_N      = 5
 ROLLING_SHORT  = 2
 MIN_GAMES      = 2
+# Codigo de salida cuando falta muestra para predecir (no es un error): el
+# modelo se entreno con partidos en que ambos equipos llevaban >= MIN_GAMES
+# jugados, asi que la primera jornada con picks es la MIN_GAMES + 1.
+# semana_auto.py lo registra como SIN MUESTRA, no como FALLO.
+EXIT_SIN_MUESTRA = 3
 CACHE_DIR      = Path("pbp_cache")
 MODEL_FILE     = "manning_bot_model.pkl"
 
@@ -1028,9 +1033,14 @@ if __name__ == "__main__":
           + (f"  |  proxima jornada: {por_defecto}" if pendientes else "  |  temporada cerrada"))
 
     if not available:
-        raise SystemExit(
-            f"\n  Todavia no hay features para {SEASON_PRED}: la temporada no ha "
-            f"empezado.\n  Vuelve cuando se haya jugado la primera jornada.\n")
+        if last_reg == 0:
+            print(f"\n  SIN MUESTRA: la temporada {SEASON_PRED} no ha empezado.")
+        else:
+            print(f"\n  SIN MUESTRA: jugadas {last_reg} jornada(s), y el bot necesita que"
+                  f" cada equipo lleve {MIN_GAMES} partidos.")
+        print(f"  Primeros picks: semana {MIN_GAMES + 1}. Primer balance: el martes"
+              f" siguiente a esa jornada.\n")
+        raise SystemExit(EXIT_SIN_MUESTRA)
 
     rango = f"{min(available)}-{max(available)}"
     if ARGS.week is not None:
@@ -1045,7 +1055,10 @@ if __name__ == "__main__":
 
     games_semana = pred_df[pred_df["week"].astype(int) == semana].copy()
     if games_semana.empty:
-        print(f"Sin datos suficientes para semana {semana}.")
+        # Antes salia con exit 0 y el batch daba por bueno un TXT sin picks
+        print(f"\n  SIN MUESTRA para la semana {semana}: el bot solo predice partidos"
+              f" en que cada equipo lleva {MIN_GAMES} jugados (semanas {rango}).\n")
+        raise SystemExit(EXIT_SIN_MUESTRA)
     else:
         X_pred = games_semana[FEATURE_COLS].fillna(0)
         probs  = model.predict_proba(X_pred)[:, 1]

@@ -39,13 +39,29 @@ automatiza.
 - **"NFL2025 previas sabado"** — sabado 23:00: `python semana_auto.py --dia domingo`
   → un PNG por partido de la PROXIMA jornada + PDF combinado
 
+- **"NFL2025 recuperar batch"** — al iniciar sesion (+3 min):
+  `python semana_auto.py --recuperar` → si el ULTIMO batch programado no llego
+  a arrancar, lo lanza; si arranco, no hace nada. Solo el ultimo: el martes
+  regenera lo del lunes y relanzar uno viejo pisaria `borradores_posts.md`.
+
+Por que existe (15-sep-2026): las tareas son de tipo *Interactive* y solo
+corren con sesion iniciada. Windows Update reinicio a las 2:29, la sesion no se
+abrio hasta las 10:47 y el batch del martes se salto sin dejar rastro;
+`StartWhenAvailable` solo recupera si el equipo estaba APAGADO. Pasarlas a
+"ejecutar aunque no haya sesion" (S4U) necesita admin. Ese dia tambien se quito
+"no iniciar con bateria" de las tres tareas.
+
 Log de cada ejecucion: `salidas/auto_log.txt`. Un paso caido no arrastra a los
 demas. Si nflverse esta caido, estado_datos.txt lo grita: NO publicar sin leerlo.
 
 ## Arranque de temporada (sem 1-3)
 
 - Rankings, comparadores y contenders_tracker sin muestra: no publicar hasta sem 4-6.
-- Bot: MIN_GAMES=2 — comprobar en sem 1-2 si saca predicciones.
+- Bot: MIN_GAMES=2 — comprobado en 2026: NO hay post del bot los jueves de
+  las semanas 2 y 3 porque no hay picks. Los primeros son los de la semana 3,
+  generados en el batch del martes tras la semana 2. El primer balance llega el
+  martes siguiente a la semana 3. Sin muestra, el bot sale con codigo 3 y el log dice
+  SIN MUESTRA, no FALLO.
 - matchup_intel y piezas de personal/cobertura: pendientes de que exista
   pbp_participation_2026 (comprobar en sem 2 con estado_datos).
 - Semana del kickoff: publicar el hilo pendiente docs/hilo_deberes_2026.md.
@@ -61,6 +77,12 @@ dos alternativas por post y su nota de verificacion. No publica nada.
   comportamiento sin tocar codigo.
 - Cada corrida consume uso del plan de Claude (una sesion corta a la semana).
 - `borradores_stdout.log` guarda la salida completa por si la sesion se desvia.
+- Desde el 15-sep-2026 tambien redacta el post del Monday Night (seccion
+  `## MARTES — Monday Night`). Antes caia entre los dos prompts: el del lunes
+  lo excluye porque aun no se ha jugado y el del martes no lo pedia.
+- El prompt se pasa por STDIN. Como argumento, `claude.CMD` (cmd.exe) lo
+  cortaba en el primer salto de linea: por eso fallaron el 08-sep y el 15-sep
+  con un "tu mensaje se corto".
 - Verificado con la semana 18 de 2025: escribio martes, miercoles y MVPs con
   fuentes web enlazadas, y se NEGO a redactar el post del jueves porque los
   TXT del bot no traian balance ni picks (2026 sin empezar) en vez de
