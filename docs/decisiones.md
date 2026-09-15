@@ -674,3 +674,39 @@ es justo el error que acaba de costar un dato falso.
 **Coste:** una segunda corrida semanal de `claude -p`, o sea más consumo del
 plan. Asumido a cambio de no escribir los posts de partido a mano.
 
+
+## [2026-09-15] — Recuperar el batch al iniciar sesión, no cambiar el tipo de tarea
+
+**Decisión:** las tareas programadas siguen siendo *Interactive* y se añade una
+cuarta, "NFL2025 recuperar batch", que al iniciar sesión lanza el último batch
+programado si no llegó a arrancar (lo mira en `auto_log.txt`). Solo el último:
+el del martes regenera lo del lunes y relanzar uno viejo pisaría borradores.
+
+**Motivo:** el batch del martes 15-sep se saltó sin dejar rastro. Windows Update
+reinició a las 2:29 y no hubo sesión hasta las 10:47; `StartWhenAvailable` solo
+recupera si el equipo estaba apagado, no si no hay sesión.
+
+**Alternativas descartadas:** pasar las tareas a S4U ("ejecutar aunque no haya
+sesión") → Windows devuelve acceso denegado sin admin, y además no está claro
+que `claude -p` encuentre sus credenciales en esa sesión. `WakeToRun` → no
+resuelve la falta de sesión.
+
+## [2026-09-15] — Un post por partido, con ficha y resumen, desde el lado con mejor historia
+
+**Decisión:** el lunes se escribe UN post por partido jugado (antes, las tres
+mejores historias), contado desde el lado que tenga mejor historia, gane o
+pierda. Todos llevan las dos imágenes del partido, ficha y resumen. Menciones a
+las aficiones de los equipos que nombra el post, también en power rankings
+(máximo 3). Los MVPs son un hilo de 5: apertura + ataque, defensa, especiales
+y rookie.
+
+**Motivo:** Luis quería publicar todos los partidos. Elegir entre ficha o
+resumen caso por caso dejaba números del texto que no se veían en la imagen
+(Bills, Rams, Jets, Patriots, Bucs); con las dos, casi todos se ven. Los MVPs
+en hilo permiten etiquetar a cada equipo sin pasar de 3 menciones por tuit.
+
+**Alternativas descartadas:** un post por equipo (32 a la semana: satura y la
+mitad serían flojos); solo el punto de vista del ganador (los mejores posts de
+la semana 1 eran de perdedores: Saints, Packers, Carolina, Tampa Bay); dos
+posts solo en TNF/SNF/MNF (propuesto y descartado por Luis: prefiere uno por
+partido). No volver a proponerlo.

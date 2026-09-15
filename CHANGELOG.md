@@ -2,6 +2,42 @@
 
 ---
 
+## [2026-09-15] — Tres fallos del batch del martes y la cola completa de la jornada
+
+**Qué se hizo:**
+- **Batch del martes arreglado**: la tarea no corrió (reinicio de Windows Update
+  sin sesión iniciada) → tarea nueva "NFL2025 recuperar batch" al iniciar sesión
+  con `semana_auto.py --recuperar`; el redactor headless recibía el prompt
+  cortado (`claude.CMD` lo corta en el primer salto de línea) → ahora va por
+  stdin; el bot sin muestra sale con código 3 y el log dice SIN MUESTRA
+- **Power ranking sin récord del MNF**: `cargar_calendario` refresca si al cache
+  le faltan partidos jugados, y `power_rankings.py` lo usa en vez de leer el parquet
+- **Borradores del lunes en su propio fichero** (`borradores_lunes.md`): el
+  martes borraba los del lunes. `cola_posts.py` junta los dos, agrupa por día,
+  sigue el orden de la carpeta, admite varias imágenes y saca tarjeta de todo
+  partido aunque no tenga post
+- **Prompts**: un post por partido (antes 3), siempre con ficha + resumen;
+  Monday Night en el martes (no lo pedía ningún prompt); menciones también en
+  power rankings; MVPs como hilo de 5
+- `MVPsSemana.py`: categoría ROOKIE, cruzando por `gsis_id` (hay dos J.Trotter)
+- Publicados: los 16 posts de partido, MNF, dato de la semana (Chicago, con la
+  aclaración de los scrambles: sin ellos lideraba Kansas City) y una cita al
+  post de Walker con RYOE de NGS y el paquete con Tonga (4/4 en downs cortos)
+
+**Archivos modificados:** `semana_auto.py`, `Manning_bot.py`, `pbp_loader.py`,
+`power_rankings.py`, `MVPsSemana.py`, `cola_posts.py`, `borradores_prompt.md`,
+`borradores_prompt_lunes.md`, `docs/calendario-posts.md`. Tarea de Windows nueva
+(fuera del repo).
+
+**Pendiente:**
+- Miércoles 16: publicar power ranking e hilo de MVPs (en la cola)
+- Lunes 21: primera corrida del redactor con un post por partido y timeout de
+  1 h — revisar que termine y que respete ficha + resumen
+- Martes 22: primeros picks del bot (semana 3); comprobar que la tarea de
+  recuperación actúa si vuelve a saltarse un batch
+
+---
+
 ## [2026-09-14] — El cache servía jornadas a medias
 
 **Qué se hizo:**
