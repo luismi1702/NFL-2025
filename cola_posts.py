@@ -83,10 +83,48 @@ def tarjeta(sec, post, idx, dir_semana):
   </article>"""
 
 
+def orden(indexada):
+    """La cola sigue EXACTAMENTE el orden de la carpeta de la semana (por nombre
+    de fichero): 01_, 02_... por kickoff, el Monday Night en su numero, y
+    despues dato_semana y power_rankings. Los posts sin imagen (el hilo de
+    MVPs) van al final, en el orden del markdown. Pedido por Luis el 15-sep-2026
+    para ir bajando por la carpeta y por la cola a la vez."""
+    i, sec = indexada
+    if not sec["imagenes"]:
+        return (1, "", i)
+    return (0, sec["imagenes"][0].lower(), i)
+
+
 def construir(md, dir_semana, season, week):
     banner, secciones = parsear(md)
+    for sec in secciones:
+        # tambien dentro del post: 01_ficha antes que 01_resumen, como en la carpeta
+        sec["imagenes"] = sorted(sec["imagenes"], key=str.lower)
+    # Todo partido de la carpeta tiene tarjeta, aunque nadie le haya escrito
+    # post: la cola es un espejo de la carpeta (el 15-sep-2026 faltaba el
+    # BAL@IND por estar ya publicado y no habia forma de saberlo mirando)
+    usadas = {i.lower() for s in secciones for i in s["imagenes"]}
+    for f in sorted(os.listdir(dir_semana), key=str.lower):
+        m = re.match(r"(\d\d)_ficha_([A-Z]+)_vs_([A-Z]+)_", f)
+        if not m or f.lower() in usadas:
+            continue
+        resumen = f.replace("_ficha_", "_resumen_")
+        secciones.append({"titulo": f"SIN POST — {m.group(2)} vs {m.group(3)}",
+                          "imagenes": [f, resumen], "posts": [], "hueco": True})
+    secciones = [s for _, s in sorted(enumerate(secciones), key=orden)]
     tarjetas, idx, vacias = [], 0, []
     for sec in secciones:
+        if sec.get("hueco"):
+            fotos = "".join(f'<img class="shot" src="{html.escape(n)}" alt="{html.escape(n)}">'
+                            for n in sec["imagenes"]
+                            if os.path.exists(os.path.join(dir_semana, n)))
+            tarjetas.append(f"""
+  <article class="card">
+    <header><h2>{html.escape(sec["titulo"])}</h2></header>
+    {fotos}
+    <p class="falta">Este partido no tiene post en los borradores.</p>
+  </article>""")
+            continue
         if not sec["posts"]:
             if sec["titulo"].lower().startswith(("lunes", "martes", "mi", "jueves",
                                                  "domingo")):

@@ -137,8 +137,8 @@ Las secciones, con estos titulos exactos:
     lunes. Algunas semanas hay DOS partidos el lunes: escribe el que tenga mejor
     historia y nombra el otro en la verificacion. Si esa semana no hubo partido
     en lunes (la 18, por ejemplo), deja la seccion sin bloques `post` y dilo.
-  - `IMAGEN:` lleva las dos, resumen y ficha, en ese orden y separadas por
-    coma: `NN_resumen_VIS_vs_LOC_*.png, NN_ficha_VIS_vs_LOC_*.png`. Cada numero
+  - `IMAGEN:` lleva las dos, ficha y resumen, en el orden de la carpeta y
+    separadas por coma: `NN_ficha_VIS_vs_LOC_*.png, NN_resumen_VIS_vs_LOC_*.png`. Cada numero
     del texto tiene que VERSE en una de las dos. Nunca mezcles numeros de las
     dos para la misma metrica: el EPA por carrera del resumen INCLUYE los scrambles del QB y el
     de la ficha NO. El 15-sep-2026 esa diferencia coloco primero a Chicago en

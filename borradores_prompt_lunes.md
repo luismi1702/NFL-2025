@@ -72,8 +72,8 @@ los angulos varien: no escribas quince posts de EPA por jugada.
      mencion; anotalo en la verificacion.
    - Maximo 3 menciones: las de los equipos de los que habla el post (uno o
      los dos del partido).
-9. **Imagenes: SIEMPRE las dos del partido**, resumen y ficha, en ese orden:
-   `IMAGEN: NN_resumen_VIS_vs_LOC_*.png, NN_ficha_VIS_vs_LOC_*.png`
+9. **Imagenes: SIEMPRE las dos del partido**, ficha y resumen, en el orden de
+   la carpeta: `IMAGEN: NN_ficha_VIS_vs_LOC_*.png, NN_resumen_VIS_vs_LOC_*.png`
    (decidido por Luis el 15-sep-2026: se acabo elegir una por post). Cada
    numero del texto tiene que VERSE en una de las dos. Un numero de
    `destacados.txt` que no salga en ninguna (pase profundo, franjas de
@@ -86,7 +86,7 @@ Formato OBLIGATORIO y literal: lo parsea `cola_posts.py` para montar la pagina
 de copiar y pegar. Si te sales del formato, la pagina sale vacia.
 
 - Una seccion `## ` por post, con el titulo `## LUNES — <resumen en 4-6 palabras>`.
-- Justo debajo, una linea `IMAGEN:` con el resumen y la ficha separados por
+- Justo debajo, una linea `IMAGEN:` con la ficha y el resumen separados por
   coma (solo los nombres, sin ruta).
 - Cada alternativa se abre con `**[A]**` o `**[B]**` y su texto va DENTRO de un
   bloque cercado con la etiqueta `post`. En el bloque, el texto del tuit y NADA
@@ -97,7 +97,7 @@ de copiar y pegar. Si te sales del formato, la pagina sale vacia.
 # Borradores del lunes — semana {W} — generado {FECHA} (REVISAR ANTES DE PUBLICAR)
 
 ## LUNES — Green Bay gano casi todo y perdio
-IMAGEN: 13_resumen_GB_vs_MIN_2026_w01.png, 13_ficha_GB_vs_MIN_2026_w01.png
+IMAGEN: 13_ficha_GB_vs_MIN_2026_w01.png, 13_resumen_GB_vs_MIN_2026_w01.png
 
 **[A]** (224 chars)
 ```post
