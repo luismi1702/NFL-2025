@@ -121,9 +121,10 @@ viejo (`#NFL #Bucs`, sin menciones): no sirven de muestra del formato actual.
 - El lunes escribe `borradores_lunes.md` (un post por partido) y el martes
   `borradores_posts.md` (dato, MNF, power rankings, hilo de MVPs, bot).
   Compartian fichero y el batch del martes borraba los del lunes.
-- `cola_posts.py` junta los dos en una sola pagina y la ordena EXACTAMENTE
-  como la carpeta de la semana (por nombre de fichero, tambien las imagenes
-  dentro de cada post); los posts sin imagen, al final.
+- `cola_posts.py` junta los dos en una sola pagina AGRUPADA POR DIA de
+  publicacion, con un rotulo por dia; dentro de cada dia, en el orden de la
+  carpeta (por nombre de fichero, tambien las imagenes de cada post). Todo
+  partido de la carpeta tiene tarjeta, aunque no tenga post.
 - Timeout del redactor: 1 hora, porque ya son 15 posts con verificacion web.
 
 ## Nivel 2.5 — cola de copiar y pegar (ago-2026, EN MARCHA)

@@ -83,16 +83,28 @@ def tarjeta(sec, post, idx, dir_semana):
   </article>"""
 
 
+DIAS = [("lunes", "LUNES"), ("martes", "MARTES"), ("mi", "MIÉRCOLES"),
+        ("jueves", "JUEVES"), ("domingo", "DOMINGO")]
+
+
+def dia_de(sec):
+    """Indice del dia de publicacion segun el titulo; las tarjetas 'SIN POST'
+    son partidos, asi que van con el lunes."""
+    if sec.get("hueco"):
+        return 0
+    t = sec["titulo"].lower()
+    return next((k for k, (d, _) in enumerate(DIAS) if t.startswith(d)), len(DIAS))
+
+
 def orden(indexada):
-    """La cola sigue EXACTAMENTE el orden de la carpeta de la semana (por nombre
-    de fichero): 01_, 02_... por kickoff, el Monday Night en su numero, y
-    despues dato_semana y power_rankings. Los posts sin imagen (el hilo de
-    MVPs) van al final, en el orden del markdown. Pedido por Luis el 15-sep-2026
-    para ir bajando por la carpeta y por la cola a la vez."""
+    """Agrupada por DIA de publicacion (pedido por Luis el 15-sep-2026) y,
+    dentro de cada dia, en el orden de la carpeta de la semana (por nombre de
+    fichero: 01_, 02_... por kickoff, luego dato_semana, power_rankings...).
+    Los posts sin imagen van al final de su dia, en el orden del markdown."""
     i, sec = indexada
     if not sec["imagenes"]:
-        return (1, "", i)
-    return (0, sec["imagenes"][0].lower(), i)
+        return (dia_de(sec), 1, "", i)
+    return (dia_de(sec), 0, sec["imagenes"][0].lower(), i)
 
 
 def construir(md, dir_semana, season, week):
@@ -113,8 +125,18 @@ def construir(md, dir_semana, season, week):
                           "imagenes": [f, resumen], "posts": [], "hueco": True})
     secciones = [s for _, s in sorted(enumerate(secciones), key=orden)]
     tarjetas, idx, vacias = [], 0, []
+    dia_actual = None
+    n_tarjetas = 0
     for sec in secciones:
+        # El rotulo del dia solo sale si ese dia tiene alguna tarjeta (el jueves
+        # sin post del bot no deja un titulo vacio)
+        d = dia_de(sec)
+        if d != dia_actual and (sec.get("hueco") or sec["posts"]):
+            dia_actual = d
+            nombre = DIAS[d][1] if d < len(DIAS) else "OTROS"
+            tarjetas.append(f'<h2 class="dia">{nombre}</h2>')
         if sec.get("hueco"):
+            n_tarjetas += 1
             fotos = "".join(f'<img class="shot" src="{html.escape(n)}" alt="{html.escape(n)}">'
                             for n in sec["imagenes"]
                             if os.path.exists(os.path.join(dir_semana, n)))
@@ -133,6 +155,7 @@ def construir(md, dir_semana, season, week):
         for post in sec["posts"]:
             tarjetas.append(tarjeta(sec, post, idx, dir_semana))
             idx += 1
+            n_tarjetas += 1
 
     aviso = ""
     if banner:
@@ -143,7 +166,7 @@ def construir(md, dir_semana, season, week):
                   + html.escape(", ".join(vacias)) +
                   ' — el redactor no las escribio (mira la nota de verificacion '
                   'en los borradores)</div>')
-    if not tarjetas:
+    if not n_tarjetas:
         tarjetas.append('<article class="card"><p class="falta">No se encontro '
                         'ningun borrador con el formato esperado en '
                         '<code>borradores_lunes.md</code> ni <code>borradores_posts.md</code>.</p></article>')
@@ -164,6 +187,8 @@ def construir(md, dir_semana, season, week):
              border-radius:8px; margin-bottom:16px; }}
   .banner.suave {{ background:{AVISO}; }}
   .grid {{ display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); }}
+  .dia {{ grid-column:1/-1; margin:14px 0 0; padding-bottom:6px; font-size:16px;
+          letter-spacing:.08em; color:{ACCENT}; border-bottom:1px solid {GRID}; }}
   .card {{ background:{CARD}; border:1px solid {GRID}; border-radius:10px; padding:14px; }}
   .card header {{ display:flex; align-items:center; justify-content:space-between; gap:10px; }}
   .card h2 {{ font-size:14px; margin:0; font-weight:600; }}
