@@ -9,15 +9,19 @@ automatiza.
 
 | Dia | Post | Fuente | Generacion |
 |---|---|---|---|
-| Lunes | 3 posts de partido (contradicciones, identidad, extremos) | destacados + fichas | batch lunes 10:00 |
+| Lunes | Un post por partido jugado (sin el MNF) | destacados + fichas | batch lunes 10:00 |
 | Martes | Dato de la semana (outlier) | DatoSemana | batch martes 8:00 |
 | Martes | Resumen del Monday Night (2 PNGs + ficha) | resumen_partido | batch martes: regenera TODA la jornada, que es cuando entra el MNF que el lunes faltaba |
 | Miercoles | Power Rankings | power_rankings | batch martes |
-| Miercoles | MVPs de la jornada | MVPsSemana (TXT, sin PNG) | batch martes |
+| Miercoles | MVPs de la jornada: HILO de 5 (apertura + ataque, defensa, especiales, rookie) | MVPsSemana (TXT, sin PNG) | batch martes |
 | Jueves | Bot: balance jornada anterior + picks (gancho: previa TNF) | Manning_bot --no-retrain | batch martes (2 TXT) |
 | Domingo AM | HILO de la jornada: una previa por partido, el gordo abre | Previas modo jornada | batch sabado 23:00 |
 | Quincenal | Pieza tematica rotatoria (presion, PROE, rankings posicion...) | grupo B del catalogo | manual |
 
+- Posts de partido: UNO por partido, desde el lado con mejor historia (gane o
+  pierda), con resumen + ficha. Descartado el 15-sep-2026 hacer uno por equipo
+  (32 a la semana, satura y la mitad serian flojos) y tambien el mix de dos
+  posts en TNF/SNF/MNF: Luis prefiere uno por partido. No volver a proponerlo.
 - Viernes y sabado sin publicar: espaciado deliberado.
 - El hilo va en domingo (no viernes) para aterrizar el dia de partidos; el TNF
   ya jugado se cubre el jueves dentro del post del bot.
@@ -28,8 +32,8 @@ automatiza.
 
 - **"NFL2025 batch lunes"** — lunes **10:00**: `python semana_auto.py --dia lunes`
   → resumenes y fichas tacticas de TODOS los partidos del domingo, bajo centro,
-  `destacados.txt` (rastreo de lo que merece post) y los borradores de 3 posts
-  de partido con `borradores_prompt_lunes.md`, mas su cola HTML.
+  `destacados.txt` (rastreo de lo que merece post) y un borrador por partido
+  con `borradores_prompt_lunes.md` en `borradores_lunes.md`, mas su cola HTML.
   El Monday Night NO esta: se juega esa noche y lo recoge el batch del martes.
   A las 10:00 y no a las 8:00 porque el Sunday Night acaba sobre las 5:30 hora
   espanola y nflverse puede tardar en publicarlo.
@@ -103,12 +107,22 @@ temporada ya esta fijada y vive como regla 9 del `borradores_prompt.md`:
   deducir un handle. Maximo 2-3 por post.
 - Equipo marcado *(pendiente)* en la tabla: post sin menciones, anotado en la
   nota de verificacion.
-- Piezas de liga (power rankings, MVPs, dato generico): hashtags si, menciones
-  NO.
+- Se etiqueta a las aficiones de los equipos que NOMBRA el post, tambien en
+  power rankings (decidido por Luis el 15-sep-2026; antes las piezas de liga
+  iban sin menciones). Maximo 3 por tuit. Los MVPs van en hilo para que cada
+  jugador lleve las cuentas de su equipo; la apertura, sin menciones.
 - Los caracteres se cuentan CON hashtags y menciones incluidos.
 
 Los borradores de la w18 de 2025 son anteriores a esta regla y usan el formato
 viejo (`#NFL #Bucs`, sin menciones): no sirven de muestra del formato actual.
+
+## Borradores del lunes y del martes: ficheros separados (15-sep-2026)
+
+- El lunes escribe `borradores_lunes.md` (un post por partido) y el martes
+  `borradores_posts.md` (dato, MNF, power rankings, hilo de MVPs, bot).
+  Compartian fichero y el batch del martes borraba los del lunes.
+- `cola_posts.py` junta los dos en una sola pagina, primero los del lunes.
+- Timeout del redactor: 1 hora, porque ya son 15 posts con verificacion web.
 
 ## Nivel 2.5 — cola de copiar y pegar (ago-2026, EN MARCHA)
 

@@ -96,7 +96,10 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
                        .replace("{FECHA}", str(date.today())))
     # Si queda un borrador de una corrida anterior de esta misma semana, fuera:
     # su mera existencia contaria como exito aunque claude no escribiera nada
-    destino = os.path.join(txt_dir, "borradores_posts.md")
+    # Cada dia en su fichero: cuando compartian borradores_posts.md, el batch
+    # del martes borraba los posts de partido del lunes antes de publicarlos
+    destino = os.path.join(txt_dir, "borradores_lunes.md"
+                           if "lunes" in prompt_file else "borradores_posts.md")
     if os.path.exists(destino):
         os.remove(destino)
     log("-> borradores: claude -p (Read/Glob/Grep/Write/WebSearch)")
@@ -108,8 +111,8 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
             [exe, "-p",
              "--allowedTools", "Read", "Glob", "Grep", "Write", "WebSearch"],
             cwd=RAIZ, input=prompt, capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=1800)
-        with io.open(os.path.join(txt_dir, "borradores_stdout.log"), "w",
+            encoding="utf-8", errors="replace", timeout=3600)
+        with io.open(destino.replace(".md", "_stdout.log"), "w",
                      encoding="utf-8") as f:
             f.write(r.stdout or "")
             if r.stderr:
@@ -121,7 +124,7 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
         log(f"   FALLO (exit {r.returncode}): " + " | ".join(cola))
         return False
     except subprocess.TimeoutExpired:
-        log("   FALLO: timeout de 1800s")
+        log("   FALLO: timeout de 3600s")
         return False
     except Exception as e:
         log(f"   FALLO: {type(e).__name__}: {e}")

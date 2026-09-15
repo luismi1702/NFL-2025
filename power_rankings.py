@@ -165,8 +165,11 @@ print(f"Equipos en rankings: {len(stats)}")
 
 # ── RECORD W-L (desde el cache de schedules; opcional) ────────────────────────
 def records_hasta_semana(season, max_week):
+    # Por cargar_calendario y no leyendo el parquet a pelo: el cache sin
+    # refrescar dejo sin record a KC y DEN (el Monday Night) en la sem. 1 de 2026
     try:
-        sch = pd.read_parquet("pbp_cache/schedules.parquet")
+        from pbp_loader import cargar_calendario
+        sch, _ = cargar_calendario(season)
     except Exception:
         return {}
     for c in ("result", "week", "season"):

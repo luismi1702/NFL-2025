@@ -1,5 +1,5 @@
 # MVPsSemana.py
-# Líderes semanales de EPA — Ataque, Defensa y Equipos Especiales
+# Líderes semanales de EPA — Ataque, Defensa, Equipos Especiales y Rookie
 # Ataque: 50% QB / 50% receptor en pases, 100% portador en carreras
 # Defensa: EPA negativo generado por intercepciones y sacks
 # Equipos especiales: retornos, FGs, XPs y punts
@@ -119,6 +119,36 @@ def calc_st(d, play_type, kr_ret, pr_ret, kicker, punter, posteam, defteam):
     return credits
 
 
+def claves_rookies(d, season):
+    """Claves 'Nombre (TEAM)' de los rookies que aparecen en la semana.
+
+    El cruce va por gsis_id y no por nombre: el PBP abrevia ('J.Trotter') y
+    en 2026 hay dos J.Trotter en la liga, uno rookie (TB) y otro no (PHI).
+    """
+    from pbp_loader import cargar_rosters, DatosNoDisponibles
+    try:
+        ros, _ = cargar_rosters(season)
+    except DatosNoDisponibles as e:
+        print(f"  (sin roster {season}: no se puede sacar el MVP rookie — {e})")
+        return set()
+    ids = set(ros.loc[ros["rookie_year"] == season, "gsis_id"].dropna())
+    roles = [("passer_player_name", "passer_player_id", "posteam"),
+             ("receiver_player_name", "receiver_player_id", "posteam"),
+             ("rusher_player_name", "rusher_player_id", "posteam"),
+             ("interception_player_name", "interception_player_id", "defteam"),
+             ("sack_player_name", "sack_player_id", "defteam"),
+             ("kicker_player_name", "kicker_player_id", "posteam"),
+             ("punter_player_name", "punter_player_id", "posteam"),
+             ("kickoff_returner_player_name", "kickoff_returner_player_id", "posteam"),
+             ("punt_returner_player_name", "punt_returner_player_id", "defteam")]
+    claves = set()
+    for nom, pid, team in roles:
+        if nom in d.columns and pid in d.columns:
+            sub = d[d[pid].isin(ids) & d[nom].notna()]
+            claves |= set(make_key(sub[nom], sub[team]))
+    return claves
+
+
 def print_top(label, credits, n=3):
     if not credits:
         print(f"  {label}: sin datos")
@@ -168,9 +198,20 @@ def main():
     def_series = print_top("DEFENSA",            def_credit)
     st_series  = print_top("EQUIPOS ESPECIALES", st_credit)
 
+    # ROOKIE: su EPA sumado en las tres fases (un rookie casi nunca puntua en
+    # dos, pero si pasa, cuenta todo lo que genero)
+    rookies = claves_rookies(d, SEASON)
+    rk_credit = {}
+    for cred in (of_credit, def_credit, st_credit):
+        for k, v in cred.items():
+            if k in rookies:
+                rk_credit[k] = rk_credit.get(k, 0.0) + v
+    rk_series = print_top("ROOKIE", rk_credit)
+
     show_top3 = input("\nMostrar top-3 por categoria? (s/n): ").strip().lower()
     if show_top3 == "s":
-        for label, series in [("ATAQUE", of_series), ("DEFENSA", def_series), ("ST", st_series)]:
+        for label, series in [("ATAQUE", of_series), ("DEFENSA", def_series),
+                              ("ST", st_series), ("ROOKIE", rk_series)]:
             if series is not None:
                 print(f"\nTop-3 {label}:")
                 print(series.head(3).apply(lambda v: f"{v:+.3f}").to_string())

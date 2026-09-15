@@ -5,12 +5,13 @@
 #   python cola_posts.py                      # ultima semana jugada
 #   python cola_posts.py --season 2025 --week 18
 #
-# Lee  salidas/{season}/w{NN}/borradores_posts.md
+# Lee  salidas/{season}/w{NN}/borradores_lunes.md y borradores_posts.md
 # Deja salidas/{season}/w{NN}/cola_posts.html
 #
 # El markdown lo escribe Claude Code con el formato fijado en
 # borradores_prompt.md: seccion "## ", linea "IMAGEN: fichero.png" y cada
-# alternativa dentro de un bloque cercado ```post. Si el redactor se sale del
+# alternativa dentro de un bloque cercado ```post. IMAGEN admite varias
+# separadas por comas. Si el redactor se sale del
 # formato, aqui se nota: la seccion sale sin tarjetas y se avisa por consola.
 
 import argparse
@@ -22,6 +23,7 @@ import sys
 
 RAIZ = os.path.dirname(os.path.abspath(__file__))
 LIMITE = 280
+ORIGENES = ["borradores_lunes.md", "borradores_posts.md"]
 
 BG, CARD, FG, GRID, ACCENT = "#0f1115", "#151924", "#EDEDED", "#2a2f3a", "#2d6cdf"
 OK, AVISO, MAL = "#06d6a0", "#ffd166", "#d84a4a"
@@ -41,12 +43,15 @@ def parsear(md):
     for trozo in trozos:
         titulo, _, cuerpo = trozo.partition("\n")
         m = re.search(r"^IMAGEN:\s*(.+?)\s*$", cuerpo, re.MULTILINE)
+        # Una o varias imagenes separadas por comas (X admite hasta 4): los
+        # posts de partido llevan resumen + ficha, en ese orden
         imagen = m.group(1) if m else ""
         if imagen.lower() in ("ninguna", "none", "-", ""):
             imagen = ""
+        imagenes = [i.strip() for i in imagen.split(",") if i.strip()]
         posts = [{"letra": g.group("letra"), "texto": g.group("texto").strip()}
                  for g in RE_POST.finditer(cuerpo)]
-        secciones.append({"titulo": titulo.strip(), "imagen": imagen,
+        secciones.append({"titulo": titulo.strip(), "imagenes": imagenes,
                           "posts": posts})
     return banner, secciones
 
@@ -56,14 +61,13 @@ def tarjeta(sec, post, idx, dir_semana):
     n = len(texto)
     color = OK if n <= LIMITE else MAL
     img = ""
-    if sec["imagen"]:
-        existe = os.path.exists(os.path.join(dir_semana, sec["imagen"]))
-        if existe:
-            img = (f'<img class="shot" src="{html.escape(sec["imagen"])}" '
-                   f'alt="{html.escape(sec["imagen"])}">')
+    for nombre in sec["imagenes"]:
+        if os.path.exists(os.path.join(dir_semana, nombre)):
+            img += (f'<img class="shot" src="{html.escape(nombre)}" '
+                    f'alt="{html.escape(nombre)}">')
         else:
-            img = (f'<p class="falta">No se encuentra la imagen '
-                   f'<code>{html.escape(sec["imagen"])}</code> en esta carpeta</p>')
+            img += (f'<p class="falta">No se encuentra la imagen '
+                    f'<code>{html.escape(nombre)}</code> en esta carpeta</p>')
     return f"""
   <article class="card">
     <header>
@@ -74,7 +78,7 @@ def tarjeta(sec, post, idx, dir_semana):
     <pre class="post" id="p{idx}">{html.escape(texto)}</pre>
     <footer>
       <span class="chars" style="color:{color}">{n}/{LIMITE} caracteres</span>
-      {'<span class="img-nombre">' + html.escape(sec["imagen"]) + '</span>' if sec["imagen"] else ''}
+      {'<span class="img-nombre">' + html.escape(" · ".join(sec["imagenes"])) + '</span>' if sec["imagenes"] else ''}
     </footer>
   </article>"""
 
@@ -100,11 +104,11 @@ def construir(md, dir_semana, season, week):
         aviso += ('<div class="banner suave">Secciones sin borrador: '
                   + html.escape(", ".join(vacias)) +
                   ' — el redactor no las escribio (mira la nota de verificacion '
-                  'en borradores_posts.md)</div>')
+                  'en los borradores)</div>')
     if not tarjetas:
         tarjetas.append('<article class="card"><p class="falta">No se encontro '
                         'ningun borrador con el formato esperado en '
-                        '<code>borradores_posts.md</code>.</p></article>')
+                        '<code>borradores_lunes.md</code> ni <code>borradores_posts.md</code>.</p></article>')
 
     return f"""<!doctype html>
 <html lang="es">
@@ -132,6 +136,7 @@ def construir(md, dir_semana, season, week):
   .copiar.hecho {{ background:{OK}; color:#10241d; }}
   .copiar.manual {{ background:{AVISO}; color:#2a2410; }}
   .post::selection, .post ::selection {{ background:{ACCENT}; color:#fff; }}
+  .shot + .shot {{ margin-top:8px; }}
   .shot {{ display:block; width:100%; height:auto; border-radius:6px;
            margin:12px 0; border:1px solid {GRID}; }}
   .post {{ white-space:pre-wrap; word-wrap:break-word; font-family:inherit;
@@ -219,12 +224,20 @@ def main():
         return 1
 
     dir_semana = os.path.join(RAIZ, "salidas", str(season), f"w{int(week):02d}")
-    origen = os.path.join(dir_semana, "borradores_posts.md")
-    if not os.path.exists(origen):
-        print(f"No hay borradores en {origen} — lanza antes el batch del martes.")
+    # Los del lunes (partidos) y los del martes (dato, MNF, PR, MVPs, bot) van
+    # en ficheros separados para que un batch no borre al otro; la cola los
+    # junta en orden de publicacion
+    origenes = [os.path.join(dir_semana, f) for f in ORIGENES]
+    origenes = [o for o in origenes if os.path.exists(o)]
+    if not origenes:
+        print(f"No hay borradores en {dir_semana} ({', '.join(ORIGENES)}).")
         return 1
 
-    md = io.open(origen, encoding="utf-8").read()
+    trozos = [io.open(o, encoding="utf-8").read() for o in origenes]
+    # El banner de datos sin verificar de cualquiera de los dos va arriba
+    banner = any(t.lstrip().startswith("⛔") for t in trozos)
+    md = ("⛔ DATOS SIN VERIFICAR" + chr(10) if banner else "") + (2 * chr(10)).join(trozos)
+    print("Borradores: " + ", ".join(os.path.basename(o) for o in origenes))
     destino = os.path.join(dir_semana, "cola_posts.html")
     io.open(destino, "w", encoding="utf-8", newline="\n").write(
         construir(md, dir_semana, season, int(week)))

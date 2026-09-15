@@ -520,13 +520,21 @@ def cargar_calendario(season=None, refrescar=False):
         season = temporada_actual()
     os.makedirs(CACHE, exist_ok=True)
     cache = os.path.join(CACHE, "schedules.parquet")
-    # Los resultados cambian cada jornada: se refresca a diario, no cada 3 dias
+    # Se refresca cuando al cache le faltan partidos jugados, no por antiguedad:
+    # con la regla de "una vez al dia", un cache bajado el lunes a mediodia
+    # seguia valiendo el martes a las 8:00 sin el Monday Night, y el power
+    # ranking de la semana 1 de 2026 salio con KC y DEN sin record.
     necesita = refrescar or not os.path.exists(cache)
     if not necesita:
-        if _info_schedules() is None:
+        info = _info_schedules()
+        if info is None:
             _aviso_sin_verificar()
         else:
-            necesita = (time.time() - os.path.getmtime(cache)) > 86400
+            loc = pd.read_parquet(cache, columns=["season", "game_type", "home_score"])
+            jugados = int(((loc["season"] == info[0]) & (loc["game_type"] == "REG")
+                           & loc["home_score"].notna()).sum())
+            necesita = (jugados < info[2]
+                        or (time.time() - os.path.getmtime(cache)) > 86400)
     if necesita:
         try:
             pd.read_csv(SCHED_URL, low_memory=False).to_parquet(cache, index=False)

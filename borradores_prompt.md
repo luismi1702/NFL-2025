@@ -9,7 +9,8 @@ instrucciones ni sobre el proyecto: tu única salida es ese markdown.
 En `{DIR}/`:
 - `dato_semana.txt` y el PNG `dato_semana_outlier_*.png` — el outlier de la jornada
 - `power_rankings.txt` y su PNG — los 32 ordenados
-- `mvps_semana.txt` — líderes EPA de la jornada (ataque/defensa/especiales)
+- `mvps_semana.txt` — líderes EPA de la jornada: ataque, defensa, especiales
+  y rookie, con su top-3
 - `bot_balance.txt` — aciertos del bot en la jornada jugada
 - `bot_picks.txt` — pronósticos de la próxima jornada
 - `estado_datos.txt` — semáforo de fuentes
@@ -58,10 +59,11 @@ Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`
    - Si el equipo aparece como *(pendiente)* en la tabla, escribe el post sin
      menciones y anotalo en la nota de verificacion
      ("CHI sin cuenta en la tabla — decidir").
-   - Solo se etiqueta en posts sobre equipos concretos (uno, o los dos de un
-     partido como el Monday Night). En piezas de liga
-     (power rankings, MVPs de la jornada, dato generico) van hashtags pero
-     NINGUNA mencion.
+   - Se etiqueta a las aficiones de los equipos que NOMBRA el post, tambien
+     en power rankings (decidido por Luis el 15-sep-2026; antes las piezas
+     de liga iban sin menciones). Maximo 3 por tuit: si el texto nombra mas
+     equipos, elige los 3 protagonistas y anota el resto en la verificacion.
+     El `#Equipo` sigue la misma regla.
    - Cuenta los caracteres CON hashtags y menciones incluidos.
 
 ## Qué entregar en `{DIR}/borradores_posts.md`
@@ -74,8 +76,8 @@ Reglas del formato:
 
 - Una seccion `## ` por post, con los titulos EXACTOS que se listan abajo.
 - Justo debajo del titulo, una linea `IMAGEN: nombre_del_png` con el nombre
-  del fichero (solo el nombre, sin ruta) que acompana a ese post. Si el post
-  va sin imagen, escribe `IMAGEN: ninguna`.
+  del fichero (solo el nombre, sin ruta) que acompana a ese post; si son
+  varias, separadas por coma. Si el post va sin imagen, `IMAGEN: ninguna`.
 - Cada alternativa se abre con `**[A]**` o `**[B]**` y su texto va DENTRO de
   un bloque cercado con la etiqueta `post`. En el bloque va el texto del tuit
   y NADA mas: sin comillas, sin conteo de caracteres, sin comentarios. Los
@@ -105,28 +107,40 @@ Verificación:
 - resultado TB 16-14 CAR verificado en web (ESPN, enlace)
 ````
 
-Las cinco secciones, con estos titulos exactos:
+Las secciones, con estos titulos exactos:
 
 - `## MARTES — Dato de la semana`
 - `## MARTES — Monday Night`
 - `## MIÉRCOLES — Power Rankings`
-- `## MIÉRCOLES — MVPs de la jornada`
+- `## MIÉRCOLES — MVPs 1/5: abre el hilo`
+- `## MIÉRCOLES — MVPs 2/5: ataque`
+- `## MIÉRCOLES — MVPs 3/5: defensa`
+- `## MIÉRCOLES — MVPs 4/5: equipos especiales`
+- `## MIÉRCOLES — MVPs 5/5: rookie`
 - `## JUEVES — Bot: balance + picks`
 
 - Dos alternativas por post con ángulos distintos, no la misma frase retocada.
 - El post del jueves abre con el balance de la jornada anterior ("el bot fue
   X-Y") y remata con los picks destacados; si el TNF de esta semana está en
   los picks, úsalo de gancho.
+- Los MVPs son un HILO de cinco tuits. El 1/5 abre (sin menciones, pieza de
+  liga) y anuncia los cuatro nombres. Cada uno de los otros cuatro cuenta a
+  UN jugador, el lider de su categoria en `mvps_semana.txt`: que hizo (en
+  web) y su EPA, y lleva `#Equipo` y las cuentas de SU equipo. Si el rookie
+  es el mismo jugador que ya sale en otra categoria, el 5/5 va con el
+  segundo rookie y lo dices. El lider de ataque sera muchas veces un QB: en
+  este hilo si se puede centrar en el (es la categoria). Una alternativa por
+  tuit basta; dos solo en el 1/5.
 - El post del Monday Night cuenta el partido del lunes con su resumen:
   - Cual es: el prefijo `NN_` es el orden de kickoff, asi que el MNF es el
     `NN` MAS ALTO de la carpeta. Confirma en web que ese partido se jugo en
     lunes. Algunas semanas hay DOS partidos el lunes: escribe el que tenga mejor
     historia y nombra el otro en la verificacion. Si esa semana no hubo partido
     en lunes (la 18, por ejemplo), deja la seccion sin bloques `post` y dilo.
-  - `IMAGEN:` es el `NN_resumen_VIS_vs_LOC_*.png`. Cada numero del texto tiene
-    que VERSE en esa imagen, o en la ficha si lo sacas de ahi (y entonces la
-    imagen es la ficha). Nunca mezcles numeros de las dos para la misma
-    metrica: el EPA por carrera del resumen INCLUYE los scrambles del QB y el
+  - `IMAGEN:` lleva las dos, resumen y ficha, en ese orden y separadas por
+    coma: `NN_resumen_VIS_vs_LOC_*.png, NN_ficha_VIS_vs_LOC_*.png`. Cada numero
+    del texto tiene que VERSE en una de las dos. Nunca mezcles numeros de las
+    dos para la misma metrica: el EPA por carrera del resumen INCLUYE los scrambles del QB y el
     de la ficha NO. El 15-sep-2026 esa diferencia coloco primero a Chicago en
     un grafico y a Kansas City en el otro.
   - Menciones: las cuentas de los equipos de los que hable el post (pueden
