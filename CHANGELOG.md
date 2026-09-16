@@ -2,6 +2,28 @@
 
 ---
 
+## [2026-09-16] — Equipos especiales en el power ranking y cola para el móvil
+
+**Qué se hizo:**
+- `power_rankings.py`: entra un 10% de equipos especiales (EPA neto por partido
+  en kickoff, punt, FG y PAT); pesos 35/35/10/20 y `ET` en la etiqueta de cada barra
+- CHI Bears: la cuenta buena es `@DaBearsSpain` (`@LaOseraFan` era incorrecta),
+  corregida en `cuentas-fans.md`, `hilo_deberes_2026.md` y borradores de la w01
+- PNG del power ranking de la w01 regenerado; posts [A] y [B] reescritos con los
+  puestos nuevos (KC #2, DEN #31, NYG 11º). Publicado el [A] el 16-sep
+- Cola de la w01 publicada como artifact privado para copiar texto e imágenes
+  desde el móvil (https://claude.ai/artifact/NDdXRVEUivbK2wFuZs4jP9)
+
+**Archivos modificados:** `power_rankings.py`, `docs/cuentas-fans.md`,
+`docs/hilo_deberes_2026.md`, `docs/scripts-catalog.md`, `docs/decisiones.md`
+(y en local, sin git: `salidas/2026/w01/` borradores, cola y PNG)
+
+**Pendiente:** hilo de MVPs de la w01 (Luis, tarde-noche del 16-sep); posible
+post de los Jets por equipos especiales (+8,6), sin redactar hasta verificar en web
+qué jugadas lo explican
+
+---
+
 ## [2026-09-15] — Tres fallos del batch del martes y la cola completa de la jornada
 
 **Qué se hizo:**

@@ -710,3 +710,17 @@ mitad serían flojos); solo el punto de vista del ganador (los mejores posts de
 la semana 1 eran de perdedores: Saints, Packers, Carolina, Tampa Bay); dos
 posts solo en TNF/SNF/MNF (propuesto y descartado por Luis: prefiere uno por
 partido). No volver a proponerlo.
+
+## [2026-09-16] — Equipos especiales en el power ranking
+
+**Decisión:** el compuesto pasa a 35% EPA ofensivo + 35% defensivo + 10% equipos
+especiales + 20% tendencia. Especiales = EPA neto por partido (como posteam menos
+como defteam) en kickoff, punt, field_goal y extra_point.
+
+**Motivo:** Luis vio que el ranking ignoraba los especiales, que afectan aunque
+sea poco. Por partido y no por jugada porque cuántas jugadas de ST hay depende
+del marcador, no del acierto.
+
+**Alternativas descartadas:** más peso (un bloqueo o un retorno de TD mueve
+mucho la cifra con pocas semanas); media por jugada (premia o castiga el volumen
+de patadas).
