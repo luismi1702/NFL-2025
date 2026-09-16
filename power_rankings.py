@@ -120,8 +120,29 @@ if len(prev_plays) > 0:
 else:
     off_prev = pd.Series(dtype=float, name="off_prev")
 
+# ── METRIC D: EQUIPOS ESPECIALES (EPA neto por partido) ──────────────────────
+# Kickoff, punt, FG y PAT. El EPA va del lado de posteam (en punts y FG es quien
+# patea; en kickoffs, quien recibe), asi que el neto = EPA como posteam menos
+# EPA como defteam cubre patear y retornar. Por partido y no por jugada: el
+# numero de jugadas de ST depende del marcador, no del acierto.
+st_mask = (
+    df["week"].notna() &
+    (df["week"] <= week) &
+    df["play_type"].isin(["kickoff", "punt", "field_goal", "extra_point"]) &
+    df["posteam"].notna() & df["defteam"].notna() &
+    df["epa"].notna()
+)
+st_plays = df[st_mask]
+st_net = (st_plays.groupby("posteam")["epa"].sum()
+          .sub(st_plays.groupby("defteam")["epa"].sum(), fill_value=0.0))
+partidos = pd.concat([plays[["posteam", "game_id"]].rename(columns={"posteam": "t"}),
+                      def_plays[["defteam", "game_id"]].rename(columns={"defteam": "t"})]
+                     ).groupby("t")["game_id"].nunique()
+st_epa = (st_net / partidos).rename("st_epa")
+
 # ── COMBINE METRICS ────────────────────────────────────────────────────────────
-stats = pd.DataFrame({"off_epa": off_epa, "def_epa": def_epa})
+stats = pd.DataFrame({"off_epa": off_epa, "def_epa": def_epa, "st_epa": st_epa})
+stats["st_epa"] = stats["st_epa"].fillna(0.0)
 stats = stats.join(off_last3, how="left").join(off_prev, how="left")
 
 if len(off_prev) > 0:
@@ -136,11 +157,13 @@ stats = stats.dropna(subset=["off_epa", "def_epa"]).copy()
 stats["norm_off"]   = safe_norm(stats["off_epa"])
 stats["norm_def"]   = 1.0 - safe_norm(stats["def_epa"])   # inverted: lower def_epa = better
 stats["norm_trend"] = safe_norm(stats["trending"])
+stats["norm_st"]    = safe_norm(stats["st_epa"])
 
 # ── COMPOSITE ─────────────────────────────────────────────────────────────────
 stats["composite"] = (
-    0.40 * stats["norm_off"] +
-    0.40 * stats["norm_def"] +
+    0.35 * stats["norm_off"] +
+    0.35 * stats["norm_def"] +
+    0.10 * stats["norm_st"] +
     0.20 * stats["norm_trend"]
 )
 
@@ -155,8 +178,8 @@ elif "index" in stats.columns:
 
 # Ensure team column exists and is clean
 team_col_candidates = [c for c in stats.columns if c not in
-                       ["off_epa","def_epa","off_last3","off_prev","trending",
-                        "norm_off","norm_def","norm_trend","composite"]]
+                       ["off_epa","def_epa","st_epa","off_last3","off_prev","trending",
+                        "norm_off","norm_def","norm_st","norm_trend","composite"]]
 if team_col_candidates:
     stats = stats.rename(columns={team_col_candidates[0]: "team"})
 
@@ -221,6 +244,7 @@ for idx in range(len(stats)):
     comp = stats.loc[idx, "composite"]
     off  = stats.loc[idx, "off_epa"]
     deff = stats.loc[idx, "def_epa"]
+    st   = stats.loc[idx, "st_epa"]
     rank = idx + 1
 
     # Rank number
@@ -241,7 +265,7 @@ for idx in range(len(stats)):
             ha="left", va="center", fontsize=8, color=FG, zorder=5)
 
     # Off/Def EPA inside or near bar — texto oscuro sobre barras claras
-    bar_label = f"OF:{off:+.3f} DF:{deff:+.3f}"
+    bar_label = f"OF:{off:+.3f} DF:{deff:+.3f} ET:{st:+.1f}"
     text_x = max(comp * 0.5, 0.05)
     r, g, b, _ = RYG(norm_color(comp))
     lum = 0.299 * r + 0.587 * g + 0.114 * b
@@ -267,7 +291,7 @@ ax.xaxis.label.set_color(FG)
 fig.text(0.5, 0.97, f"Power Rankings NFL {SEASON} \u2014 Semana {week}",
          ha="center", va="top", fontsize=16, fontweight="bold", color=FG)
 fig.text(0.5, 0.92,
-         "40% EPA ofensivo + 40% EPA defensivo + 20% tendencia ofensiva \u00faltimas 3 semanas",
+         "35% EPA ofensivo + 35% EPA defensivo + 10% equipos especiales (EPA neto/partido) + 20% tendencia ofensiva \u00faltimas 3 semanas",
          ha="center", va="top", fontsize=10, color="#888888", fontstyle="italic")
 fig.text(0.01, 0.01, f"Fuente: nflverse-data  \u00b7  {sello(SEASON)}",
          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")

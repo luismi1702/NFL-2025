@@ -126,7 +126,7 @@ El tuit 5 (PHI) se recortó para que cupiera el cierre ("otro partido apretado" 
 >
 > Ganaron en playoffs echando a Green Bay y se acabó al partido siguiente. Si esta plantilla aprende a defender, el techo deja de estar en enero.
 >
-> #NFL | #Bears | @LaOseraFan
+> #NFL | #Bears | @DaBearsSpain
 
 **Tuit 13 — MIN** (229)
 > Vikings.
