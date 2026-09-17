@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from pbp_loader import cargar_pbp, salida, season_cli, week_cli
+from pbp_loader import cargar_pbp, salida, season_cli, week_cli, orden_partido, sello
 from matplotlib.patches import FancyBboxPatch
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
@@ -21,6 +21,16 @@ EXP_PASS_YDS = 15   # jugada explosiva pase
 EXP_RUN_YDS  = 10   # jugada explosiva carrera
 FIGSIZE      = (8.7, 13.5)
 DPI          = 170
+
+# ---------------- Nombre del PNG ----------------
+def nombre_preview(away, home, season, week):
+    """preview_... con el indice de kickoff delante (01 = TNF), como las fichas
+    y los resumenes, para que la carpeta de la semana se lea en orden de partido."""
+    orden = orden_partido(season, week, away, home) if week else None
+    if orden:
+        idx, vis, loc = orden
+        return f"{idx:02d}_preview_{vis}_vs_{loc}_{season}.png"
+    return f"preview_{away}_vs_{home}_{season}.png"
 
 # ---------------- Helpers base ----------------
 def success_rate(s: pd.Series) -> float:
@@ -215,7 +225,7 @@ def fmt_val(v, is_pct=False, nd=2):
     if pd.isna(v): return "–"
     return f"{v:.1f}%" if is_pct else f"{v:.{nd}f}"
 
-def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path):
+def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path, pie=""):
     off_rows  = ["EPA/jugada","Éxito (%)","EPA/pase","EPA/carrera","Explosivas (%)",
                  "EPA 1º down","EPA downs tardíos","Distancia media 3º down","%RedZone"]
     deff_rows = ["EPA/jugada permitido","Éxito permitido (%)","EPA/pase permitido","EPA/carrera permitido",
@@ -315,6 +325,12 @@ def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path):
         rB = st_r.loc[team_b, r] if (team_b in st_r.index and r in st_r.columns) else np.nan
         draw_row(r, vA, rA, vB, rB, max_rank=st_max.get(r, np.nan),
                  is_pct=(r=="FG%"))
+
+    # --- Sello de frescura abajo a la izquierda, a la altura de la firma ---
+    if pie:
+        ax.text(0.10, 0.065, pie,
+                transform=ax.transAxes, ha="left", va="bottom",
+                color="#888888", fontsize=9, alpha=0.85)
 
     # --- Firma sutil con @CuartayDato en la esquina inferior derecha ---
     ax.text(0.90, 0.065, "@CuartayDato",
@@ -439,19 +455,26 @@ if __name__ == "__main__":
     deff_ranks = rank_dataframe(deff, better_high_cols=[],                       better_low_cols=list(deff.columns))
     st_ranks   = rank_dataframe(st,   better_high_cols=["FG%","EPA/jugada ST"],  better_low_cols=[])
 
+    # En modo jornada las stats cortan en la semana anterior, que no tiene por
+    # que ser la ultima con datos si se regenera una jornada vieja
+    if modo_semana and week_num > 1:
+        pie = f"NFL {SEASON} · datos hasta sem. {week_num - 1}"
+    else:
+        pie = sello(SEASON)
+
     # ── Generar imágenes ──────────────────────────────────────────────────────
     if modo_semana:
         with PdfPages(pdf_path) as pdf:
             for away, home in matchups:
-                out_png = salida(f"preview_{away}_vs_{home}_{SEASON}.png", SEASON, week)
-                fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png)
+                out_png = salida(nombre_preview(away, home, SEASON, week_num), SEASON, week)
+                fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png, pie)
                 pdf.savefig(fig, bbox_inches="tight", facecolor="#0f1115")
                 plt.close(fig)
                 print(f"  → {out_png}")
         print(f"\nPDF combinado: {pdf_path}  ({len(matchups)} partidos)")
     else:
         away, home = matchups[0]
-        out_png = salida(f"preview_{away}_vs_{home}_{SEASON}.png", SEASON, week)
-        fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png)
+        out_png = salida(nombre_preview(away, home, SEASON, week), SEASON, week)
+        fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png, pie)
         plt.close(fig)
         print(f"\nPNG generado: {out_png}")
