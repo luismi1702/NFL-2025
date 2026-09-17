@@ -15,6 +15,7 @@ automatiza.
 | Miercoles | Power Rankings | power_rankings | batch martes |
 | Miercoles | MVPs de la jornada: HILO de 5 (apertura + ataque, defensa, especiales, rookie) | MVPsSemana (TXT, sin PNG) | batch martes |
 | Jueves | Bot: balance jornada anterior + picks (gancho: previa TNF) | Manning_bot --no-retrain | batch martes (2 TXT) |
+| Sabado | Pieza de DUELO: un partido del domingo a fondo (p.ej. Johnson vs Flores, hilo) | lab/ + PBP, FTN, participation historica | manual |
 | Domingo AM | HILO de la jornada: una previa por partido, el gordo abre | Previas modo jornada | batch sabado 23:00 |
 | Quincenal | Pieza tematica rotatoria (presion, PROE, rankings posicion...) | grupo B del catalogo | manual |
 
@@ -22,7 +23,12 @@ automatiza.
   pierda), con resumen + ficha. Descartado el 15-sep-2026 hacer uno por equipo
   (32 a la semana, satura y la mitad serian flojos) y tambien el mix de dos
   posts en TNF/SNF/MNF: Luis prefiere uno por partido. No volver a proponerlo.
-- Viernes y sabado sin publicar: espaciado deliberado.
+- Viernes sin publicar: espaciado deliberado. El sabado se abrio el 17-sep-2026
+  (Luis) para generar contenido tambien ese dia: una pieza de duelo de UN solo
+  partido del domingo, mas profunda que la previa. Para no solaparse con el
+  hilo del domingo, ese partido NO abre el hilo de previas.
+- Hasta que el bot tenga muestra (semana 3), el jueves va la previa del TNF sola
+  (hecho el 17-sep-2026 con DET @ BUF).
 - El hilo va en domingo (no viernes) para aterrizar el dia de partidos; el TNF
   ya jugado se cubre el jueves dentro del post del bot.
 - Bot PUBLICO con balance honesto ("fue 11-5"): decidido ago-2026. La
