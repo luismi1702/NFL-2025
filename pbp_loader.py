@@ -34,6 +34,7 @@ from datetime import date
 from urllib.request import urlretrieve
 from urllib.error import HTTPError, URLError
 
+import numpy as np
 import pandas as pd
 
 
@@ -437,6 +438,15 @@ def cargar_pfr(tipo="def", season=None, semanal=False, refrescar=False):
              rush -> ybc_att (yardas antes del contacto), yac_att, brk_tkl
     semanal  True = fichero de la temporada por semanas; False = acumulado
 
+    OJO (sep-2026): el acumulado NO trae la temporada en curso — nflverse la
+    añade al acabar (la de 2025 llego en feb-2026). Sin esto, 8 scripts recibian
+    un DataFrame vacio y algunos dibujaban presiones a 0 como si fueran reales.
+    Si el acumulado viene vacio para def/pass, se reconstruye sumando el
+    semanal (solo REG, como el oficial) con las mismas columnas. Lo que el
+    semanal no trae queda en NaN: pocket_time, on_tgt, RPO, play action y air
+    yards del QB; age, gs, loaded y bats del defensor. `pos` sale del roster.
+    El DataFrame lleva df.attrs["reconstruido_semanal"] = True.
+
     Es la fuente que cubre los items 3 y 6 de docs/pff-wishlist.md sin pagar.
     """
     if tipo not in _PFR_TIPOS:
@@ -450,7 +460,140 @@ def cargar_pfr(tipo="def", season=None, semanal=False, refrescar=False):
                         PFR_SEASON_URL.format(tipo=tipo), f"PFR {tipo}")
     if season is None:
         season = temporada_actual()
-    return df[df["season"] == season].copy(), season
+    out = df[df["season"] == season].copy()
+    if out.empty and tipo in ("def", "pass"):
+        try:
+            sem, _ = cargar_pfr(tipo, season, semanal=True, refrescar=refrescar)
+        except DatosNoDisponibles:
+            return out, season
+        if not sem.empty:
+            out = _pfr_acumulado_desde_semanal(tipo, sem, season)
+            print(f"  PFR {tipo} {season}: acumulado reconstruido desde el semanal "
+                  f"(semanas {int(sem['week'].min())}-{int(sem['week'].max())})")
+    return out, season
+
+
+# Semanal -> nombre de columna del acumulado (solo las que se pueden sumar)
+_PFR_DEF_SUMAS = {
+    "def_ints": "int", "def_targets": "tgt", "def_completions_allowed": "cmp",
+    "def_yards_allowed": "yds", "def_receiving_td_allowed": "td",
+    "def_air_yards_completed": "air", "def_yards_after_catch": "yac",
+    "def_times_blitzed": "bltz", "def_times_hurried": "hrry",
+    "def_times_hitqb": "qbkd", "def_sacks": "sk", "def_pressures": "prss",
+    "def_tackles_combined": "comb", "def_missed_tackles": "m_tkl",
+}
+_PFR_PASS_SUMAS = {
+    "passing_drops": "drops", "passing_bad_throws": "bad_throws",
+    "times_blitzed": "times_blitzed", "times_hurried": "times_hurried",
+    "times_hit": "times_hit", "times_pressured": "times_pressured",
+}
+# depth_chart_position del roster -> etiqueta de PFR que usan los scripts
+_POS_PFR = {"FS": "S", "SS": "S", "S": "S", "NB": "CB", "CB": "CB",
+            "NT": "DT", "DT": "DT", "DE": "DE", "OLB": "OLB",
+            "ILB": "LB", "MLB": "LB", "LB": "LB"}
+
+
+def _pfr_acumulado_desde_semanal(tipo, sem, season):
+    """Replica el formato del acumulado de PFR: una fila por jugador y equipo,
+    y si jugo en varios, otra fila total con tm/team = '2TM', '3TM'..."""
+    sem = sem[sem["game_type"].astype(str).str.upper() == "REG"].copy()
+    # Partidos cojos: PFR a veces publica solo uno de los dos equipos (en 2025
+    # faltaron tres del Thanksgiving y KC salia con un 10% menos de presiones)
+    cojos = sem.groupby("game_id")["team"].nunique()
+    cojos = sorted(cojos[cojos < 2].index)
+    if cojos:
+        print(f"  !! PFR {tipo} semanal: {len(cojos)} partido(s) con un solo equipo "
+              f"({', '.join(cojos[:4])}) — sus rivales salen con datos de menos")
+    sumas = _PFR_DEF_SUMAS if tipo == "def" else _PFR_PASS_SUMAS
+    for c in list(sumas) + (["def_adot"] if tipo == "def" else []):
+        sem[c] = pd.to_numeric(sem[c], errors="coerce")
+    if tipo == "def":
+        sem["_air_tgt"] = sem["def_adot"] * sem["def_targets"]   # para el aDOT ponderado
+
+    extra = ["_air_tgt"] if tipo == "def" else []
+    agg = {c: "sum" for c in list(sumas) + extra}
+    agg["game_id"] = "nunique"
+    agg["pfr_player_name"] = "last"
+    por_eq = sem.groupby(["pfr_player_id", "team"], as_index=False).agg(agg)
+    total = sem.groupby("pfr_player_id", as_index=False).agg(
+        {**agg, "team": "nunique"})
+    total = total[total["team"] > 1].copy()
+    total["team"] = total["team"].astype(int).astype(str) + "TM"
+    t = pd.concat([total, por_eq], ignore_index=True)
+    t = t.rename(columns={**sumas, "pfr_player_id": "pfr_id",
+                          "pfr_player_name": "player", "game_id": "g"})
+    t["season"] = season
+
+    # `g` no se puede contar en el semanal: solo trae fila si el jugador hizo
+    # algo medible, y en 2025 salian 7.791 partidos frente a 12.170. Se cuentan
+    # los partidos con algun snap (defensa, ataque o especiales), como PFR.
+    try:
+        sn, _ = cargar_snaps(season)
+        sn = sn[sn["game_type"].astype(str).str.upper() == "REG"]
+        jugo = sn[sn[["offense_snaps", "defense_snaps", "st_snaps"]]
+                  .apply(pd.to_numeric, errors="coerce").fillna(0).sum(axis=1) > 0]
+        g_eq = jugo.groupby(["pfr_player_id", "team"])["game_id"].nunique()
+        g_tot = jugo.groupby("pfr_player_id")["game_id"].nunique()
+        eq_col = "team"
+        es_total = t[eq_col].str.endswith("TM")
+        g_snaps = pd.Series(
+            [g_tot.get(pid) if tot else g_eq.get((pid, eq))
+             for pid, eq, tot in zip(t["pfr_id"], t[eq_col], es_total)],
+            index=t.index, dtype="float")
+        t["g"] = g_snaps.fillna(t["g"])
+    except Exception:
+        pass
+
+    if tipo == "pass":
+        for c in ("pass_attempts", "drop_pct", "bad_throw_pct", "pocket_time",
+                  "pressure_pct", "on_tgt_pct"):
+            t[c] = np.nan
+        t.attrs["reconstruido_semanal"] = True
+        return t
+
+    t = t.rename(columns={"team": "tm"})
+    tgt = t["tgt"].where(t["tgt"] > 0)
+    # Placajes: el semanal omite partidos enteros de los DL (Darius Robinson,
+    # 5 filas de 17 partidos) y en 2025 sumaba un 15% menos. Se toman de las
+    # stats de nflverse (solo + asistidos), que cuadran ±2 con PFR en el 92%.
+    # En jugadores traspasados, las filas por equipo se quedan con el semanal.
+    try:
+        st, _ = cargar_stats(season)
+        ros, _ = cargar_rosters(season)
+        gsis_pfr = (ros.dropna(subset=["pfr_id", "gsis_id"])
+                       .drop_duplicates("gsis_id").set_index("gsis_id")["pfr_id"])
+        st = st.assign(pfr_id=st["player_id"].map(gsis_pfr),
+                       comb=pd.to_numeric(st["def_tackles_solo"], errors="coerce").fillna(0)
+                            + pd.to_numeric(st["def_tackle_assists"], errors="coerce").fillna(0))
+        comb_st = st.dropna(subset=["pfr_id"]).groupby("pfr_id")["comb"].sum()
+        traspasados = set(t.loc[t["tm"].str.endswith("TM"), "pfr_id"])
+        usar = ~(t["pfr_id"].isin(traspasados) & ~t["tm"].str.endswith("TM"))
+        t.loc[usar, "comb"] = t.loc[usar, "pfr_id"].map(comb_st).fillna(t.loc[usar, "comb"])
+    except Exception:
+        pass
+    t["cmp_percent"] = (t["cmp"] / tgt).round(3)
+    t["yds_cmp"] = (t["yds"] / t["cmp"].where(t["cmp"] > 0)).round(1)
+    t["yds_tgt"] = (t["yds"] / tgt).round(1)
+    t["dadot"] = (t.pop("_air_tgt") / tgt).round(1)
+    tackles = (t["comb"] + t["m_tkl"]).where(lambda x: x > 0)
+    t["m_tkl_percent"] = (t["m_tkl"] / tackles).round(3)
+    # Passer rating permitido (formula NFL, cada termino acotado a [0, 2.375])
+    a = ((t["cmp"] / tgt - 0.3) * 5).clip(0, 2.375)
+    b = ((t["yds"] / tgt - 3) * 0.25).clip(0, 2.375)
+    c = (t["td"] / tgt * 20).clip(0, 2.375)
+    d = (2.375 - t["int"] / tgt * 25).clip(0, 2.375)
+    t["rat"] = ((a + b + c + d) / 6 * 100).round(1)
+    for col in ("age", "gs", "loaded", "bats"):
+        t[col] = np.nan
+    try:
+        ros, _ = cargar_rosters(season)
+        ros = ros.dropna(subset=["pfr_id"]).drop_duplicates("pfr_id", keep="last")
+        pos = ros.set_index("pfr_id")["depth_chart_position"]
+        t["pos"] = t["pfr_id"].map(pos).map(lambda p: _POS_PFR.get(p, p))
+    except Exception:
+        t["pos"] = np.nan
+    t.attrs["reconstruido_semanal"] = True
+    return t
 
 
 def cargar_ngs(tipo="passing", season=None, refrescar=False):

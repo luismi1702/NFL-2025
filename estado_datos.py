@@ -49,12 +49,17 @@ FUENTES = [
      "week",  "play_action, blitz"),
     ("pbp_participation", lambda s: pl.cargar_participation(s),
      _sem_desde_game_id, "cobertura, personal, rutas (13 scripts) — SIN CRON"),
-    ("pfr_advstats def", lambda s: pl.cargar_pfr("def", s),
-     ACUM,    "cobertura CB/S, presiones, placajes fallados"),
+    # PFR tiene dos ficheros. El acumulado (sin semanal=True) NO trae la
+    # temporada en curso: nflverse lo cierra al acabar (2025 llego en feb-2026).
+    # En temporada todo sale del semanal, que se actualiza cada 6 h.
+    ("pfr def acumulado", lambda s: pl.cargar_pfr("def", s),
+     ACUM,    "llega al acabar la temporada — en curso: usar semanal"),
     ("pfr def semanal", lambda s: pl.cargar_pfr("def", s, semanal=True),
-     "week",  "lo mismo, jornada a jornada"),
-    ("pfr_advstats pass", lambda s: pl.cargar_pfr("pass", s),
-     ACUM,    "pocket time, presion sufrida por QB"),
+     "week",  "cobertura CB/S, presiones, placajes fallados"),
+    ("pfr pass acumulado", lambda s: pl.cargar_pfr("pass", s),
+     ACUM,    "llega al acabar la temporada — pocket time solo aqui"),
+    ("pfr pass semanal", lambda s: pl.cargar_pfr("pass", s, semanal=True),
+     "week",  "presion, blitz, hurries y hits sufridos por QB"),
     ("nextgen_stats",   lambda s: pl.cargar_ngs("receiving", s),
      "week",  "separacion, YAC sobre esperado"),
     ("snap_counts",     lambda s: pl.cargar_snaps(s),

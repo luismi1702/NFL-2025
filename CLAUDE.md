@@ -19,11 +19,17 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
 - Los datos auxiliares (participacion, FTN, stats) tardan dias o semanas en
   publicarse al arrancar la temporada. Envolver su carga en
   `try/except DatosNoDisponibles` explicando que necesita el visual
-- AVISO: `pbp_participation` (cobertura, personal, rutas) NO tiene cron en
-  nflverse — es un rebuild manual. En 2025 se ejecuto una sola vez, en febrero.
-  No dar por hecho que esta fresco: `python estado_datos.py` lo comprueba
+- AVISO: `pbp_participation` (cobertura, personal, rutas) NO existe en temporada.
+  Desde 2024 la cede FTN gratis SOLO al terminar la temporada (2025 se publico
+  el 10-feb-2026; confirmado por nflverse en nflverse-data#88 y #51). No viene
+  con otro nombre ni dentro de otro fichero (revisado 17-sep-2026). Sustitutos
+  en temporada: FTN (qb_location, n_offense_backfield, n_defense_box, motion,
+  play action, n_blitzers, n_pass_rushers) y PFR semanal (blitz, presiones).
+  Sin personal (nº de TE) ni coberturas hasta febrero
 - Fuentes verificadas que SI se actualizan en temporada (cada 6h o a diario):
-  cargar_pfr (cobertura CB/S, presiones, placajes fallados, pocket time),
+  cargar_pfr (cobertura CB/S, presiones, placajes fallados; el acumulado de
+  PFR solo llega al acabar la temporada, asi que en curso cargar_pfr lo
+  reconstruye desde el semanal: ±1-3% del oficial, sin pocket time),
   cargar_ngs (separacion, YAC sobre esperado, RYOE), cargar_snaps,
   cargar_lesiones, cargar_qbr (Total QBR de ESPN), cargar_stats_equipo,
   cargar_contratos (OverTheCap, para offseason)
