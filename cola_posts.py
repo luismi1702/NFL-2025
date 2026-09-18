@@ -84,7 +84,8 @@ def tarjeta(sec, post, idx, dir_semana):
 
 
 DIAS = [("lunes", "LUNES"), ("martes", "MARTES"), ("mi", "MIÉRCOLES"),
-        ("jueves", "JUEVES"), ("sábado", "SÁBADO"), ("sabado", "SÁBADO"),
+        ("jueves", "JUEVES"), ("viernes", "VIERNES"),
+        ("sábado", "SÁBADO"), ("sabado", "SÁBADO"),
         ("domingo", "DOMINGO")]
 
 
