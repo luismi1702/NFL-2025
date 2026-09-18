@@ -136,8 +136,9 @@ Las secciones, con estos titulos exactos:
   18-sep-2026 para TNF, SNF y MNF: en los partidos grandes se publica a los dos
   lados). Cada seccion cuenta el partido desde SU equipo, con su angulo y las
   cuentas de ESE equipo; no valen dos versiones de la misma frase. Uno puede
-  ser el del ganador y el otro el del que perdio. Dentro de cada seccion,
-  una sola alternativa `**[A]**` basta.
+  ser el del ganador y el otro el del que perdio. Dentro de cada seccion van
+  DOS alternativas, `**[A]**` y `**[B]**`, con angulos distintos: Luis elige
+  una por equipo, asi que un partido de primetime deja cuatro textos.
 - El post del Monday Night cuenta el partido del lunes con su resumen:
   - Cual es: el prefijo `NN_` es el orden de kickoff, asi que el MNF es el
     `NN` MAS ALTO de la carpeta. Confirma en web que ese partido se jugo en

@@ -43,8 +43,10 @@ El Sunday Night lleva DOS posts, uno por equipo (decidido por Luis el
 18-sep-2026 para TNF, SNF y MNF). Es el partido con el `NN` MAS ALTO de la
 carpeta del lunes, porque el MNF no esta todavia; confirmalo en web. Titulos
 `## LUNES — <resumen> (local)` y `## LUNES — <resumen> (visitante)`, cada uno
-contado desde SU equipo, con su angulo y las cuentas de ESE equipo. El resto de
-partidos siguen con UN post.
+contado desde SU equipo, con su angulo y las cuentas de ESE equipo, y con DOS
+alternativas (`**[A]**` y `**[B]**`) dentro de cada uno: Luis elige una por
+equipo, o sea cuatro textos para ese partido. El resto de partidos siguen con
+UN post y sus dos alternativas de siempre.
 
 ## Reglas innegociables
 
