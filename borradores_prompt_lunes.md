@@ -39,6 +39,13 @@ el angulo, mira que familias de `destacados.txt` lo mencionan, por este orden:
 Ordena las secciones por el prefijo `NN_` de los PNG (orden de kickoff). Que
 los angulos varien: no escribas quince posts de EPA por jugada.
 
+El Sunday Night lleva DOS posts, uno por equipo (decidido por Luis el
+18-sep-2026 para TNF, SNF y MNF). Es el partido con el `NN` MAS ALTO de la
+carpeta del lunes, porque el MNF no esta todavia; confirmalo en web. Titulos
+`## LUNES — <resumen> (local)` y `## LUNES — <resumen> (visitante)`, cada uno
+contado desde SU equipo, con su angulo y las cuentas de ESE equipo. El resto de
+partidos siguen con UN post.
+
 ## Reglas innegociables
 
 1. **Cada numero sale de `destacados.txt` o se VE escrito en la imagen que

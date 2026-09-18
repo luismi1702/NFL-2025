@@ -2,6 +2,27 @@
 
 ---
 
+## [2026-09-18] — Dos posts en los partidos de primetime
+
+**Decisión:** En TNF, SNF, MNF y en cualquier partido que Luis marque como
+grande se publican **dos posts, uno por equipo**, cada uno desde su lado y con
+las cuentas de ese equipo. El resto de partidos siguen con uno solo.
+
+**Motivo:** Son los partidos que más audiencia tienen y los que más aficionados
+de los dos equipos están mirando la etiqueta. Con un solo post, la mitad del
+partido se queda sin contar.
+
+**Deroga:** la parte de la decisión del 15-sep-2026 que descartaba «el mix de
+dos posts en TNF/SNF/MNF». Sigue en pie lo demás de aquel día: NO se hace un
+post por equipo en los partidos normales (serían 32 a la semana).
+
+**Alcance:** `docs/calendario-posts.md`, `borradores_prompt.md` (el MNF pasa a
+dos secciones, local y visitante), `borradores_prompt_lunes.md` (el SNF, que es
+el `NN` más alto de la carpeta del lunes) y el análisis del TNF de los viernes,
+que es manual.
+
+---
+
 ## [2026-08-16] — El criterio para proponer contenido: «¿lo tiene alguien más?»
 
 **Decisión:** Antes de construir una pieza nueva se comprueba que el dato no

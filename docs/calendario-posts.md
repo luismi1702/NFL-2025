@@ -22,8 +22,11 @@ automatiza.
 
 - Posts de partido: UNO por partido, desde el lado con mejor historia (gane o
   pierda), con resumen + ficha. Descartado el 15-sep-2026 hacer uno por equipo
-  (32 a la semana, satura y la mitad serian flojos) y tambien el mix de dos
-  posts en TNF/SNF/MNF: Luis prefiere uno por partido. No volver a proponerlo.
+  (32 a la semana, satura y la mitad serian flojos).
+- EXCEPCION (18-sep-2026): los partidos de PRIMETIME (TNF, SNF, MNF) y los que
+  Luis marque como grandes llevan DOS posts, uno por equipo, cada uno con su
+  angulo y las cuentas de ESE equipo. Deroga la parte del 15-sep que descartaba
+  el mix de dos posts en esos partidos.
 - El viernes se abrio el 18-sep-2026 (Luis): analisis del TNF de la noche
   anterior, con los PNG de resumen_partido y ficha_tactica del partido. El PBP
   del jueves esta publicado el viernes por la manana; FTN todavia no, asi que

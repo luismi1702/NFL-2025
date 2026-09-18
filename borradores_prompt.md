@@ -110,7 +110,8 @@ Verificación:
 Las secciones, con estos titulos exactos:
 
 - `## MARTES — Dato de la semana`
-- `## MARTES — Monday Night`
+- `## MARTES — Monday Night (local)`
+- `## MARTES — Monday Night (visitante)`
 - `## MIÉRCOLES — Power Rankings`
 - `## MIÉRCOLES — MVPs 1/5: abre el hilo`
 - `## MIÉRCOLES — MVPs 2/5: ataque`
@@ -131,6 +132,12 @@ Las secciones, con estos titulos exactos:
   segundo rookie y lo dices. El lider de ataque sera muchas veces un QB: en
   este hilo si se puede centrar en el (es la categoria). Una alternativa por
   tuit basta; dos solo en el 1/5.
+- El Monday Night lleva DOS posts, uno por equipo (decidido por Luis el
+  18-sep-2026 para TNF, SNF y MNF: en los partidos grandes se publica a los dos
+  lados). Cada seccion cuenta el partido desde SU equipo, con su angulo y las
+  cuentas de ESE equipo; no valen dos versiones de la misma frase. Uno puede
+  ser el del ganador y el otro el del que perdio. Dentro de cada seccion,
+  una sola alternativa `**[A]**` basta.
 - El post del Monday Night cuenta el partido del lunes con su resumen:
   - Cual es: el prefijo `NN_` es el orden de kickoff, asi que el MNF es el
     `NN` MAS ALTO de la carpeta. Confirma en web que ese partido se jugo en
