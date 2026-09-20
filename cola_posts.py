@@ -288,11 +288,19 @@ def main():
         print("Sin semana jugada: nada que preparar.")
         return 1
 
-    dir_semana = os.path.join(RAIZ, "salidas", str(season), f"w{int(week):02d}")
+    def carpeta(w):
+        return os.path.join(RAIZ, "salidas", str(season), f"w{int(w):02d}")
+
+    dir_semana = carpeta(week)
     # Los del lunes (partidos) y los del martes (dato, MNF, PR, MVPs, bot) van
     # en ficheros separados para que un batch no borre al otro; la cola los
-    # junta en orden de publicacion
-    origenes = [os.path.join(dir_semana, f) for f in ORIGENES]
+    # junta en orden de publicacion.
+    # Tambien entra la carpeta de la jornada SIGUIENTE: viernes (analisis del
+    # TNF), sabado (pieza de duelo) y domingo (hilo de previas) hablan ya de
+    # ella y viven ahi con sus PNG (decidido el 20-sep-2026). Asi la pagina
+    # sigue siendo una sola para toda la semana de publicacion.
+    origenes = [os.path.join(carpeta(w), f)
+                for w in (week, int(week) + 1) for f in ORIGENES]
     origenes = [o for o in origenes if os.path.exists(o)]
     if not origenes:
         print(f"No hay borradores en {dir_semana} ({', '.join(ORIGENES)}).")
@@ -302,7 +310,9 @@ def main():
     # El banner de datos sin verificar de cualquiera de los dos va arriba
     banner = any(t.lstrip().startswith("⛔") for t in trozos)
     md = ("⛔ DATOS SIN VERIFICAR" + chr(10) if banner else "") + (2 * chr(10)).join(trozos)
-    print("Borradores: " + ", ".join(os.path.basename(o) for o in origenes))
+    print("Borradores: " + ", ".join(
+        os.path.join(os.path.basename(os.path.dirname(o)), os.path.basename(o))
+        for o in origenes))
     destino = os.path.join(dir_semana, "cola_posts.html")
     io.open(destino, "w", encoding="utf-8", newline="\n").write(
         construir(md, dir_semana, season, int(week)))

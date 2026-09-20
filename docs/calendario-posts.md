@@ -28,6 +28,11 @@ automatiza.
   angulo y las cuentas de ESE equipo, y cada uno con DOS alternativas: cuatro
   textos por partido, de los que Luis publica dos. Deroga la parte del 15-sep
   que descartaba el mix de dos posts en esos partidos.
+- Cada pieza vive en la carpeta de la JORNADA DE LA QUE HABLA (20-sep-2026):
+  lunes a jueves en `w{N}` (hablan de la jornada jugada) y viernes, sabado y
+  domingo en `w{N+1}`, junto a los PNG que usan (analisis del TNF, pieza de
+  duelo y hilo de previas). `cola_posts.py` lee las dos carpetas y monta una
+  sola pagina, en la de `w{N}`.
 - El viernes se abrio el 18-sep-2026 (Luis): analisis del TNF de la noche
   anterior, con los PNG de resumen_partido y ficha_tactica del partido. El PBP
   del jueves esta publicado el viernes por la manana; FTN todavia no, asi que
