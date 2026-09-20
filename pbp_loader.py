@@ -157,6 +157,27 @@ def ultima_semana(season=None):
     return 18 if season < info[0] else None
 
 
+def proxima_semana(season=None):
+    """Primera semana REG con partidos SIN jugar: la que toca previsualizar.
+
+    No vale `ultima_semana() + 1`. El jueves por la noche, con el TNF jugado,
+    la semana en curso ya cuenta como "jugada" y el batch del sabado saco las
+    previas de la jornada siguiente (paso el 19-sep-2026: previas de la 3 la
+    noche antes de la 2). Aqui se mira el calendario: la semana que toca es la
+    primera que aun tiene partidos por jugar.
+    """
+    try:
+        cal, _ = cargar_calendario(season)
+    except Exception:
+        wk = ultima_semana(season)
+        return wk + 1 if wk else None
+    reg = cal[cal["game_type"] == "REG"]
+    pendientes = reg[reg["home_score"].isna()]
+    if pendientes.empty:
+        return None
+    return int(pd.to_numeric(pendientes["week"], errors="coerce").min())
+
+
 def sello(season=None, prefijo="NFL"):
     """Texto para el pie de los PNG: 'NFL 2026 · datos hasta sem. 7'.
 

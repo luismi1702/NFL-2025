@@ -349,9 +349,15 @@ def main():
 
     else:  # domingo (se lanza el sabado por la noche)
         # Previas de TODA la proxima jornada para el hilo del domingo.
-        # Los PNGs se archivan en la semana W+1, que es la que previsualizan.
+        # La semana NO es W+1: con el TNF del jueves ya jugado, W es la jornada
+        # EN CURSO y salian las previas de la siguiente (paso el 19-sep-2026,
+        # previas de la 3 la noche antes de la 2). Se pregunta al calendario
+        # cual es la primera jornada con partidos por jugar.
+        from pbp_loader import proxima_semana
+        WP = proxima_semana() or (W + 1)
+        log(f"previas: jornada por jugar = {WP} (ultima jugada: {W})")
         ok.append(paso("previas de la jornada",
-                       ["Previas.py", "--week", str(W + 1)],
+                       ["Previas.py", "--week", str(WP)],
                        stdin_text="j\n\n\n", timeout=2400))
 
     buenos = sum(1 for x in ok if x)
