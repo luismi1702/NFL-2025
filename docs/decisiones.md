@@ -2,6 +2,24 @@
 
 ---
 
+## [2026-09-20] — Cada pieza vive en la carpeta de la jornada de la que habla
+
+**Decisión:** Los borradores de lunes a jueves van en `w{N}` (hablan de la jornada
+jugada) y los de viernes, sábado y domingo en `w{N+1}`, junto a los PNG que usan
+(análisis del TNF, pieza de duelo y hilo de previas). `cola_posts.py` lee las dos
+carpetas y sigue montando una sola página, en la de `w{N}`.
+
+**Motivo:** Al abrir tres días nuevos de publicación, los textos quedaron en `w01`
+apuntando a imágenes de `w02`. No rompía nada (la cola solo escribe el nombre del
+PNG), pero era confuso y el martes habría mezclado la jornada 2 con las previas de
+la 3.
+
+**Alternativas descartadas:** Renombrar las carpetas al ciclo de publicación
+(`publicacion_w01`) → obliga a tocar `salida()` y todos los scripts, y separa cada
+texto de su imagen, que es justo lo que se quería evitar.
+
+---
+
 ## [2026-09-18] — Dos posts en los partidos de primetime
 
 **Decisión:** En TNF, SNF, MNF y en cualquier partido que Luis marque como

@@ -2,6 +2,44 @@
 
 ---
 
+## [2026-09-17 a 09-20] — Semana de publicación diaria, PFR arreglado y previas ordenadas
+
+**Qué se hizo:**
+- **PFR en temporada**: el acumulado (`advstats_season_*`) no trae la temporada en
+  curso, así que `cargar_pfr` devolvía vacío y 8 scripts fallaban (cuatro de ellos
+  dibujando presiones a 0 sin avisar). Ahora se reconstruye desde el semanal:
+  `g` de snap counts, placajes de las stats de nflverse, `pos` del roster, ratios y
+  passer rating recalculados. Validado contra 2025 (presiones 98,4% a ±1)
+- **Participation confirmado**: no existe en temporada ni con otro nombre. FTN la
+  cede solo al acabar el año (nflverse-data#88 y #51). Revisadas las 25 releases
+- **`estado_datos.py`** separa acumulado y semanal de PFR (def y pass)
+- **`Previas.py`**: PNG numerados por orden de kickoff (01 = TNF) y sello de frescura
+  en el pie; el batch del sábado sacaba las previas de W+1 y con el TNF jugado se
+  iba una jornada de más → nuevo `pbp_loader.proxima_semana()`
+- **Calendario**: viernes (análisis del TNF), sábado (pieza de duelo) y primetime con
+  dos posts, uno por equipo, con dos alternativas cada uno
+- **Cada pieza en la carpeta de la jornada de la que habla**: viernes, sábado y
+  domingo pasan a `w{N+1}`; `cola_posts.py` lee las dos carpetas y monta una página
+- **Publicado**: previa del TNF (jueves), análisis BUF 41-31 DET por los dos lados
+  (viernes), hilo Johnson vs Flores con dos PNG (sábado) e hilo de previas de 16
+  tuits (domingo)
+- **Hilo Johnson vs Flores**: los datos de SumerSports NO se reproducen con los
+  nuestros (blitz +0,21 frente a su +0,30); el hilo se reescribió con nuestro ángulo
+- **La verificación pilló 4 errores antes de publicar**: tres sedes o resultados mal
+  (PIT, LV, TB) y un 0,00 de EPA que resultó ser real (los dos partidos se anulan)
+
+**Archivos modificados:** `pbp_loader.py`, `estado_datos.py`, `Previas.py`,
+`semana_auto.py`, `cola_posts.py`, `borradores_prompt.md`,
+`borradores_prompt_lunes.md`, `CLAUDE.md`, `docs/calendario-posts.md`,
+`docs/decisiones.md`, `lab/johnson_vs_flores*.py`
+
+**Pendiente:**
+- Actualizar la página del móvil (artifact del 16-sep): no tiene viernes, sábado ni domingo
+- Commitear `lab/johnson_vs_flores.py` y `lab/johnson_vs_flores_png.py` si se reutilizan
+- El primer balance y los picks del bot llegan con el batch del martes 22-sep (semana 3)
+- Pocket time de PFR no está disponible hasta febrero
+
+---
 ## [2026-09-16] — Equipos especiales en el power ranking y cola para el móvil
 
 **Qué se hizo:**
