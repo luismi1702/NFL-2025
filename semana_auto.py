@@ -100,8 +100,15 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
     # del martes borraba los posts de partido del lunes antes de publicarlos
     destino = os.path.join(txt_dir, "borradores_lunes.md"
                            if "lunes" in prompt_file else "borradores_posts.md")
+    # No se borra: se aparta a _previo.md. Ahora que un batch muerto se
+    # relanza (21-sep-2026), lo que hubiera ahi puede ser trabajo verificado
+    # a mano, y el relanzamiento no puede llevarselo por delante
     if os.path.exists(destino):
-        os.remove(destino)
+        previo = destino.replace(".md", "_previo.md")
+        if os.path.exists(previo):
+            os.remove(previo)
+        os.replace(destino, previo)
+        log(f"   el borrador anterior se aparta en {os.path.basename(previo)}")
     log("-> borradores: claude -p (Read/Glob/Grep/Write/WebSearch)")
     try:
         # El prompt va por STDIN, nunca como argumento: en Windows `claude` es
@@ -229,14 +236,41 @@ def fichas(SEASON, W):
 HORARIO = {"lunes": (0, 10, 0), "martes": (1, 8, 0), "domingo": (5, 23, 0)}
 
 
+INTENTOS_MAX = 2   # el original y UN relanzamiento: ni bucle ni gasto doble
+
+
+def _lineas_desde(hora, marca):
+    """Cuantas lineas del log con esa marca hay desde `hora`."""
+    if not os.path.exists(LOG):
+        return 0
+    n = 0
+    for linea in io.open(LOG, encoding="utf-8", errors="replace"):
+        if marca in linea:
+            try:
+                ts = datetime.strptime(linea[1:20], "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                continue
+            if ts >= hora:
+                n += 1
+    return n
+
+
 def batch_pendiente(ahora=None):
-    """El batch programado mas reciente, si no llego a arrancar; si no, None.
+    """El batch programado mas reciente, si no llego a TERMINAR; si no, None.
 
     Las tareas son de tipo Interactive (sin admin no se pueden cambiar): si a
     su hora no hay sesion iniciada, Windows las salta y StartWhenAvailable no
     las recupera. Paso el 15-sep-2026, tras un reinicio de Windows Update.
     Solo se recupera el ULTIMO: el martes regenera lo del lunes, y relanzar uno
     viejo pisaria borradores_posts.md de uno posterior.
+
+    Desde el 21-sep-2026 lo que se busca es la linea de FIN, no la de inicio:
+    ese dia el batch arranco, murio dentro del paso de borradores y se quedo
+    sin escribir ni FALLO ni FIN, asi que contaba como hecho y nadie se entero.
+    Un batch que empezo y no termino tambien es un batch pendiente. Para que
+    eso no se convierta en un bucle, como mucho se relanza una vez
+    (INTENTOS_MAX): si el segundo intento tampoco cierra, el log lo dice y lo
+    miras tu.
     """
     from datetime import timedelta
     ahora = ahora or datetime.now()
@@ -250,46 +284,22 @@ def batch_pendiente(ahora=None):
     dia = max(ultimos, key=ultimos.get)
     hora = ultimos[dia]
 
-    marca = f"===== BATCH {dia.upper()} "
-    if os.path.exists(LOG):
-        for linea in io.open(LOG, encoding="utf-8", errors="replace"):
-            if marca in linea:
-                try:
-                    ts = datetime.strptime(linea[1:20], "%Y-%m-%d %H:%M:%S")
-                except ValueError:
-                    continue
-                if ts >= hora:
-                    return None
+    if _lineas_desde(hora, f"===== FIN BATCH {dia.upper()}"):
+        return None                                   # cerrado: nada que hacer
+    if _lineas_desde(hora, f"===== BATCH {dia.upper()} ") >= INTENTOS_MAX:
+        log(f"RECUPERACION: el batch {dia} ya se intento {INTENTOS_MAX} veces "
+            f"sin cerrar — no se relanza, revisalo a mano")
+        return None
     return dia
 
 
-def main():
-    ap = argparse.ArgumentParser(description="Batch semanal de generacion de PNGs")
-    ap.add_argument("--dia", choices=["lunes", "martes", "domingo"])
-    ap.add_argument("--recuperar", action="store_true",
-                    help="al iniciar sesion: lanza el ultimo batch si se salto")
-    args = ap.parse_args()
-    if args.recuperar:
-        args.dia = batch_pendiente()
-        if not args.dia:
-            return
-        log(f"RECUPERACION: el batch {args.dia} no llego a arrancar a su hora")
-    elif not args.dia:
-        ap.error("hace falta --dia o --recuperar")
 
-    # Semana jugada segun schedules (la fuente de verdad del proyecto)
-    from pbp_loader import ultima_semana, temporada_actual
-    W = ultima_semana()
-    SEASON = temporada_actual()
-    if not W:
-        log(f"Sin jornadas jugadas en {SEASON} todavia — nada que generar.")
-        return
-    txt_dir = os.path.join(RAIZ, "salidas", str(SEASON), f"w{W:02d}")
 
-    log(f"===== BATCH {args.dia.upper()} — NFL {SEASON}, semana jugada {W} =====")
-    ok = []
-
-    if args.dia == "lunes":
+def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
+    """Los pasos de ese dia, apilando su resultado en `ok` (que es del
+    llamante a proposito: si esto revienta a mitad, main sigue sabiendo
+    cuantos pasos habian salido bien y puede cerrar el log)."""
+    if dia == "lunes":
         # LUNES: la jornada del domingo ya esta publicada. Visuales de todos los
         # partidos, rastreo de lo destacado y borradores de posts de partido.
         ok.append(paso("estado de datos", ["estado_datos.py"],
@@ -308,7 +318,7 @@ def main():
                            ["cola_posts.py", "--season", str(SEASON),
                             "--week", str(W)]))
 
-    elif args.dia == "martes":
+    elif dia == "martes":
         # Semaforo de fuentes primero: si algo esta caido, que quede en el log
         ok.append(paso("estado de datos", ["estado_datos.py"],
                        captura=os.path.join(txt_dir, "estado_datos.txt")))
@@ -360,8 +370,44 @@ def main():
                        ["Previas.py", "--week", str(WP)],
                        stdin_text="j\n\n\n", timeout=2400))
 
-    buenos = sum(1 for x in ok if x)
-    log(f"===== FIN: {buenos}/{len(ok)} pasos OK =====")
+
+def main():
+    ap = argparse.ArgumentParser(description="Batch semanal de generacion de PNGs")
+    ap.add_argument("--dia", choices=["lunes", "martes", "domingo"])
+    ap.add_argument("--recuperar", action="store_true",
+                    help="al iniciar sesion: lanza el ultimo batch si se salto")
+    args = ap.parse_args()
+    if args.recuperar:
+        args.dia = batch_pendiente()
+        if not args.dia:
+            return
+        log(f"RECUPERACION: el batch {args.dia} no llego a arrancar a su hora")
+    elif not args.dia:
+        ap.error("hace falta --dia o --recuperar")
+
+    # Semana jugada segun schedules (la fuente de verdad del proyecto)
+    from pbp_loader import ultima_semana, temporada_actual
+    W = ultima_semana()
+    SEASON = temporada_actual()
+    if not W:
+        log(f"Sin jornadas jugadas en {SEASON} todavia — nada que generar.")
+        return
+    # Los TXT y los borradores viven en el cajon `textos/` de la semana
+    # (21-sep-2026); los PNG estan en previas/, partidos/ y liga/
+    txt_dir = os.path.join(RAIZ, "salidas", str(SEASON), f"w{W:02d}", "textos")
+    os.makedirs(txt_dir, exist_ok=True)
+
+    log(f"===== BATCH {args.dia.upper()} — NFL {SEASON}, semana jugada {W} =====")
+    ok = []
+    # El FIN se escribe SIEMPRE, tambien si un paso lanza: el 21-sep-2026 el
+    # batch se fue dentro del paso de borradores sin dejar ni FALLO ni FIN, y
+    # la recuperacion lo dio por hecho. Un kill duro sigue sin dejar rastro,
+    # pero de eso ya se encarga batch_pendiente: sin FIN, pendiente.
+    try:
+        pasos_del_dia(args.dia, SEASON, W, txt_dir, ok)
+    finally:
+        buenos = sum(1 for x in ok if x)
+        log(f"===== FIN BATCH {args.dia.upper()}: {buenos}/{len(ok)} pasos OK =====")
     if buenos < len(ok):
         sys.exit(1)
 

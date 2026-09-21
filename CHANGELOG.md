@@ -2,6 +2,51 @@
 
 ---
 
+## [2026-09-21] — Posts del lunes de la semana 2 y carpetas por cajones
+
+**Qué se hizo:**
+- **Posts del lunes (semana 2)**: 15 secciones con dos alternativas cada una —
+  14 partidos del domingo y el Sunday Night con post por equipo (IND y KC).
+  El TNF no lleva post: se cubrió el viernes, como manda el calendario
+- El batch del lunes NO arrancó a las 10:00 (sesión sin abrir); lo recuperó la
+  tarea de inicio de sesión a las 12:36 y generó todo sin fallos
+- **Dos trampas del punto (4) de la verificación, esquivadas**: la línea "QB"
+  del PNG de resumen no siempre es el titular (HOU salía con K.Kroeger cuando
+  jugó Stroud; WAS con Mariota siendo Daniels el titular) y las 108 yardas por
+  tierra de Baltimore son del EQUIPO, no de Henry (16-68 en `destacados.txt`)
+- **Carpetas de la semana por cajones**: `previas/`, `partidos/`, `liga/` y
+  `textos/` dentro de cada `w{NN}`, con `cola_posts.html` arriba del todo.
+  Lo reparte `pbp_loader.salida()` por el nombre del fichero; migradas las
+  carpetas ya existentes de 2025 y 2026
+- **`cola_posts.py` encuentra por fin las imágenes de la jornada siguiente**:
+  antes resolvía los `IMAGEN:` contra la carpeta de la semana en curso, así que
+  las piezas de viernes, sábado y domingo (que viven en `w{N+1}`) salían con
+  "No se encuentra la imagen". Ahora indexa las dos semanas y todos los cajones
+  y enlaza con ruta relativa
+- **`Previas.py`**: el PDF combinado deja de caer en la raíz del repo y va a
+  `w{NN}/previas/previas_{season}_w{NN}.pdf`, con sus PNG
+
+- **El batch cierra el log siempre**: los pasos salen a `pasos_del_dia()` y el
+  `===== FIN BATCH {DIA}` se escribe desde un `finally`. Ese día el batch murió
+  dentro del paso de borradores sin dejar ni `FALLO` ni `FIN`, y como la
+  recuperación miraba la línea de INICIO, lo daba por hecho. Ahora mira la de
+  FIN: un batch que empezó y no terminó también está pendiente, con tope de un
+  relanzamiento (`INTENTOS_MAX`) para no entrar en bucle ni gastar dos veces
+- Como consecuencia, el paso de borradores ya no BORRA el borrador anterior:
+  lo aparta a `_previo.md`, que ahora un relanzamiento podría llevarse por
+  delante trabajo verificado a mano
+- Limpiados: `previas_semana_3_2026.pdf` de la raíz, los dos PNG de `_preview/`
+  y `w01/posts_lunes.md` (ya copiado dentro de `borradores_lunes.md`)
+
+**Archivos modificados:** `pbp_loader.py`, `cola_posts.py`, `semana_auto.py`,
+`Previas.py`, `borradores_prompt.md`, `borradores_prompt_lunes.md`,
+`CLAUDE.md`, `docs/calendario-posts.md`
+
+**Pendiente:**
+- Nada del batch del lunes: la corrida muerta se cerró a mano en `auto_log.txt`
+  con su explicación, así que la recuperación no la relanza
+
+---
 ## [2026-09-17 a 09-20] — Semana de publicación diaria, PFR arreglado y previas ordenadas
 
 **Qué se hizo:**

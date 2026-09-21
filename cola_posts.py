@@ -5,8 +5,10 @@
 #   python cola_posts.py                      # ultima semana jugada
 #   python cola_posts.py --season 2025 --week 18
 #
-# Lee  salidas/{season}/w{NN}/borradores_lunes.md y borradores_posts.md
-# Deja salidas/{season}/w{NN}/cola_posts.html
+# Lee  salidas/{season}/w{NN}/textos/borradores_lunes.md y borradores_posts.md
+# Deja salidas/{season}/w{NN}/cola_posts.html (arriba del todo de la semana)
+# Las imagenes se buscan por nombre en los cajones previas/, partidos/ y
+# liga/ de esta semana y de la siguiente, y se enlazan con ruta relativa.
 #
 # El markdown lo escribe Claude Code con el formato fijado en
 # borradores_prompt.md: seccion "## ", linea "IMAGEN: fichero.png" y cada
@@ -56,18 +58,36 @@ def parsear(md):
     return banner, secciones
 
 
-def tarjeta(sec, post, idx, dir_semana):
+def indexar(carpetas, dir_html):
+    """{nombre de fichero en minusculas: src relativo a la pagina}.
+
+    Desde el 21-sep-2026 los PNG viven en cajones (previas/, partidos/,
+    liga/) y los de viernes, sabado y domingo estan ademas en la carpeta de
+    la jornada SIGUIENTE, asi que la cola busca en las dos semanas y en
+    todos los cajones, y escribe la ruta relativa que necesita el <img>.
+    """
+    idx = {}
+    for carpeta in carpetas:
+        for raiz, _, ficheros in os.walk(carpeta):
+            for f in ficheros:
+                idx.setdefault(f.lower(), os.path.relpath(
+                    os.path.join(raiz, f), dir_html).replace(os.sep, "/"))
+    return idx
+
+
+def tarjeta(sec, post, idx, imagenes):
     texto = post["texto"]
     n = len(texto)
     color = OK if n <= LIMITE else MAL
     img = ""
     for nombre in sec["imagenes"]:
-        if os.path.exists(os.path.join(dir_semana, nombre)):
-            img += (f'<img class="shot" src="{html.escape(nombre)}" '
+        src = imagenes.get(nombre.lower())
+        if src:
+            img += (f'<img class="shot" src="{html.escape(src)}" '
                     f'alt="{html.escape(nombre)}">')
         else:
             img += (f'<p class="falta">No se encuentra la imagen '
-                    f'<code>{html.escape(nombre)}</code> en esta carpeta</p>')
+                    f'<code>{html.escape(nombre)}</code> en la semana</p>')
     return f"""
   <article class="card">
     <header>
@@ -109,7 +129,9 @@ def orden(indexada):
     return (dia_de(sec), 0, sec["imagenes"][0].lower(), i)
 
 
-def construir(md, dir_semana, season, week):
+def construir(md, dir_semana, season, week, imagenes=None):
+    if imagenes is None:
+        imagenes = indexar([dir_semana], dir_semana)
     banner, secciones = parsear(md)
     for sec in secciones:
         # tambien dentro del post: 01_ficha antes que 01_resumen, como en la carpeta
@@ -118,7 +140,7 @@ def construir(md, dir_semana, season, week):
     # post: la cola es un espejo de la carpeta (el 15-sep-2026 faltaba el
     # BAL@IND por estar ya publicado y no habia forma de saberlo mirando)
     usadas = {i.lower() for s in secciones for i in s["imagenes"]}
-    for f in sorted(os.listdir(dir_semana), key=str.lower):
+    for f in sorted((os.path.basename(v) for v in imagenes.values()), key=str.lower):
         m = re.match(r"(\d\d)_ficha_([A-Z]+)_vs_([A-Z]+)_", f)
         if not m or f.lower() in usadas:
             continue
@@ -139,9 +161,10 @@ def construir(md, dir_semana, season, week):
             tarjetas.append(f'<h2 class="dia">{nombre}</h2>')
         if sec.get("hueco"):
             n_tarjetas += 1
-            fotos = "".join(f'<img class="shot" src="{html.escape(n)}" alt="{html.escape(n)}">'
-                            for n in sec["imagenes"]
-                            if os.path.exists(os.path.join(dir_semana, n)))
+            fotos = "".join(
+                f'<img class="shot" src="{html.escape(imagenes[n.lower()])}" '
+                f'alt="{html.escape(n)}">'
+                for n in sec["imagenes"] if n.lower() in imagenes)
             tarjetas.append(f"""
   <article class="card">
     <header><h2>{html.escape(sec["titulo"])}</h2></header>
@@ -155,7 +178,7 @@ def construir(md, dir_semana, season, week):
                 vacias.append(sec["titulo"])
             continue
         for post in sec["posts"]:
-            tarjetas.append(tarjeta(sec, post, idx, dir_semana))
+            tarjetas.append(tarjeta(sec, post, idx, imagenes))
             idx += 1
             n_tarjetas += 1
 
@@ -299,8 +322,12 @@ def main():
     # TNF), sabado (pieza de duelo) y domingo (hilo de previas) hablan ya de
     # ella y viven ahi con sus PNG (decidido el 20-sep-2026). Asi la pagina
     # sigue siendo una sola para toda la semana de publicacion.
-    origenes = [os.path.join(carpeta(w), f)
-                for w in (week, int(week) + 1) for f in ORIGENES]
+    # textos/ desde el 21-sep-2026; la ruta plana sigue valiendo para las
+    # semanas archivadas antes del cambio
+    origenes = [os.path.join(carpeta(w), sub, f)
+                for w in (week, int(week) + 1)
+                for sub in ("textos", "")
+                for f in ORIGENES]
     origenes = [o for o in origenes if os.path.exists(o)]
     if not origenes:
         print(f"No hay borradores en {dir_semana} ({', '.join(ORIGENES)}).")

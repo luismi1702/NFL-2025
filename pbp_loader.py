@@ -234,11 +234,45 @@ def week_cli(defecto=None):
     return cli().week if cli().week is not None else defecto
 
 
+SUBCARPETAS = ("previas", "partidos", "liga", "textos")
+
+
+def subcarpeta(nombre):
+    """Donde vive el fichero dentro de la carpeta de la semana (21-sep-2026).
+
+    La carpeta de una jornada mezclaba 16 previas, 45 PNG de partido, los
+    graficos de liga y los TXT, y no habia forma de mirarla y saber que era
+    cada cosa. Cuatro cajones, deducidos del nombre:
+
+      previas/   las previas de la jornada (PNG numerados + PDF combinado)
+      partidos/  resumenes, resumenes de claves y fichas tacticas
+      liga/      lo que no es de un partido: power rankings, dato de la
+                 semana, bajo centro, piezas tematicas
+      textos/    borradores, destacados, estado de los datos y logs
+
+    `cola_posts.html` se queda en la raiz de la semana: es la puerta de
+    entrada, no una pieza mas. Devuelve "" para eso.
+    """
+    base = os.path.basename(nombre).lower()
+    ext  = os.path.splitext(base)[1]
+    if ext in (".html", ".htm"):
+        return ""
+    if ext in (".txt", ".md", ".log", ".json", ".csv"):
+        return "textos"
+    if "preview" in base or base.startswith("previas"):
+        return "previas"
+    if "_resumen" in base or "_ficha" in base or \
+            base.startswith(("resumen", "ficha")):
+        return "partidos"
+    return "liga"
+
+
 def salida(nombre, season=None, week=None):
-    """Ruta de salida con la semana estampada: salidas/2026/w07/proe_2026_w07.png
+    """Ruta de salida archivada: salidas/2026/w07/liga/proe_2026_w07.png
 
     La semana por defecto es hasta donde llegan los datos, asi que el archivo
     queda ordenado solo y el gráfico de la semana 4 no pisa al de la semana 3.
+    Dentro de la semana, cada pieza va a su cajon (ver `subcarpeta`).
     Con --raiz se conserva el comportamiento antiguo (PNG en la raiz).
     """
     if season is None:
@@ -257,6 +291,9 @@ def salida(nombre, season=None, week=None):
         return base
     destino = os.path.join(SALIDAS, str(season), sufijo) if sufijo \
         else os.path.join(SALIDAS, str(season))
+    if sufijo:
+        destino = os.path.join(destino, subcarpeta(base)) if subcarpeta(base) \
+            else destino
     os.makedirs(destino, exist_ok=True)
     return os.path.join(destino, base)
 

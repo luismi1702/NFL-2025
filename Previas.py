@@ -429,7 +429,9 @@ if __name__ == "__main__":
             stats_df = df.copy()
         print(f"  Jugadas para stats: {len(stats_df):,} (semanas 1–{week_num - 1})")
 
-        pdf_path = f"previas_semana_{week_num}_{SEASON}.pdf"
+        # El PDF combinado va con sus PNG, en previas/ de la jornada que
+        # previsualiza (antes caia suelto en la raiz del repo)
+        pdf_path = salida(f"previas_{SEASON}.pdf", SEASON, week_num)
         modo_semana = True
 
     # ── Modo dos equipos ──────────────────────────────────────────────────────
@@ -466,7 +468,7 @@ if __name__ == "__main__":
     if modo_semana:
         with PdfPages(pdf_path) as pdf:
             for away, home in matchups:
-                out_png = salida(nombre_preview(away, home, SEASON, week_num), SEASON, week)
+                out_png = salida(nombre_preview(away, home, SEASON, week_num), SEASON, week_num)
                 fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png, pie)
                 pdf.savefig(fig, bbox_inches="tight", facecolor="#0f1115")
                 plt.close(fig)

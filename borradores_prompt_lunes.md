@@ -11,12 +11,17 @@ Monday Night NO: se juega esta noche y lo redacta el batch del martes.
 
 ## Material (leelo todo antes de escribir)
 
+`{DIR}` es el cajon `textos/` de la carpeta de la jornada. Los PNG estan al
+lado, en `../partidos/` (los de partido) y `../liga/` (los de liga). En la
+linea `IMAGEN:` va SOLO el nombre del fichero, sin carpeta: `cola_posts.py`
+lo busca en todos los cajones.
+
 En `{DIR}/`:
 - `destacados.txt` — **tu fuente principal**. Un rastreo automatico de la
   jornada en cuatro familias: extremos, contradicciones, cambios de identidad
   y jugadores desatados. Cada numero de ahi es publicable.
 - `estado_datos.txt` — semaforo de fuentes.
-- Los PNG de la jornada, que son los que acompanan a los posts:
+En `{DIR}/../partidos/` y `{DIR}/../liga/`, los PNG que acompanan a los posts:
   - `NN_resumen_VIS_vs_LOC_*.png` — boxscore y curva de probabilidad
   - `NN_resumen_claves_VIS_vs_LOC_*.png` — desviaciones vs su norma
   - `NN_ficha_VIS_vs_LOC_*.png` — cara a cara de las 14 facetas

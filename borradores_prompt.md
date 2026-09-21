@@ -6,6 +6,11 @@ instrucciones ni sobre el proyecto: tu única salida es ese markdown.
 
 ## Material de la semana (léelo todo antes de escribir)
 
+`{DIR}` es el cajon `textos/` de la carpeta de la jornada. Los PNG estan al
+lado, en `../liga/` (dato de la semana, power rankings, bajo centro) y
+`../partidos/` (resumenes y fichas). En la linea `IMAGEN:` va SOLO el nombre
+del fichero, sin carpeta: `cola_posts.py` lo busca en todos los cajones.
+
 En `{DIR}/`:
 - `dato_semana.txt` y el PNG `dato_semana_outlier_*.png` — el outlier de la jornada
 - `power_rankings.txt` y su PNG — los 32 ordenados

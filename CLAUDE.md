@@ -38,6 +38,11 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
 from pbp_loader import salida, season_cli, week_cli
 plt.savefig(salida(f"mi_grafico_{SEASON}.png", SEASON), ...)
 - salida() archiva en salidas/{año}/w{semana}/ y estampa _wNN en el nombre
+- Dentro de la semana hay CUATRO cajones, y salida() elige por el nombre:
+  `previas/` (previas + PDF), `partidos/` (resúmenes, claves y fichas),
+  `liga/` (power rankings, dato de la semana, bajo centro, piezas temáticas)
+  y `textos/` (borradores, destacados, estado de datos, logs). `cola_posts.html`
+  se queda en la raíz de la semana: es la puerta de entrada
 - La semana por defecto es hasta donde llegan los DATOS (ultima_semana()), no
   una pedida por teclado; los scripts de semana concreta la pasan explicita
 - Estampar `sello(SEASON)` en el pie del PNG ("NFL 2026 · datos hasta sem. 7")

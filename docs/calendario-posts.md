@@ -28,6 +28,22 @@ automatiza.
   angulo y las cuentas de ESE equipo, y cada uno con DOS alternativas: cuatro
   textos por partido, de los que Luis publica dos. Deroga la parte del 15-sep
   que descartaba el mix de dos posts en esos partidos.
+- Dentro de cada `w{N}` hay cuatro cajones (21-sep-2026), porque la carpeta
+  plana mezclaba 16 previas, 45 PNG de partido, los gráficos de liga y los TXT:
+
+  ```
+  salidas/2026/w03/
+    cola_posts.html    <- la página de copiar y pegar, arriba del todo
+    previas/           16 PNG numerados por kickoff + previas_2026_w03.pdf
+    partidos/          NN_resumen, NN_resumen_claves y NN_ficha de cada partido
+    liga/              power rankings, dato de la semana, bajo centro, duelos
+    textos/            borradores, destacados, estado_datos, logs
+  ```
+
+  Lo reparte `pbp_loader.salida()` por el nombre del fichero, así que ningún
+  script elige carpeta a mano. En la línea `IMAGEN:` de los borradores va solo
+  el nombre del PNG: `cola_posts.py` lo busca en los cajones de las DOS semanas
+  y escribe la ruta relativa. El PDF de previas ya no cae en la raíz del repo.
 - Cada pieza vive en la carpeta de la JORNADA DE LA QUE HABLA (20-sep-2026):
   lunes a jueves en `w{N}` (hablan de la jornada jugada) y viernes, sabado y
   domingo en `w{N+1}`, junto a los PNG que usan (analisis del TNF, pieza de
