@@ -29,3 +29,8 @@ _preview/
 # Dependencias y renders de los proyectos Remotion de lab/
 node_modules/
 lab/remotion_under_center/out/
+
+# Experimentos: lab/ no se commitea (decision de Luis, 21-sep-2026).
+# Los 11 ficheros de lab/ trackeados de antes siguen en el repo: .gitignore
+# solo afecta a lo no trackeado.
+lab/
