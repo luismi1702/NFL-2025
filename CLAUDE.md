@@ -14,6 +14,11 @@ from pbp_loader import cargar_pbp, cargar_stats, cargar_participation, cargar_ft
 SEASON = season_cli()             # respeta --season; None = auto-detecta
 df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca muestra
 - cargar_ftn: FTN charting (is_play_action, blitzers...) — solo 2022+
+- AVISO FTN: el charting llega PARTIDO A PARTIDO, no por semanas completas, y
+  tarda dias. El 22-sep-2026 la semana 2 tenia 1 partido de 16 y `estado_datos`
+  lo daba por OK (solo comprueba que la semana existe, no cuenta partidos como
+  hace con PFR). Antes de usar FTN para una pieza, contar partidos:
+  `ftn.groupby("week").nflverse_game_id.nunique()`
 - solo_reg=False solo en scripts de partido/semana concreta (resumen, previas, semanales)
 - No usar pd.read_csv contra URLs de nflverse en scripts nuevos
 - Los datos auxiliares (participacion, FTN, stats) tardan dias o semanas en

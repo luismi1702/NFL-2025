@@ -897,3 +897,20 @@ Bowers), "Justin Gerber" (Herbert), "David Daniels" (Jayden) y "Tyler Sox"
 todos los nombres se verifican por web antes de publicar (punto 3 de la
 verificación obligatoria). Si alguna vez hace falta fiarse de los nombres del
 propio texto, ahí sí compensa el `small`.
+
+## [2026-09-22] — `lab/` no se commitea, y ahora lo impone el `.gitignore`
+
+**Decisión:** `lab/` entra en el `.gitignore`. Los experimentos viven en disco
+y no en el repo, como ya se había decidido el 21-sep. Los 11 ficheros de `lab/`
+trackeados de antes se quedan donde están: `.gitignore` no desregistra lo ya
+trackeado, y sacarlos es otra decisión que no se ha tomado.
+
+**Motivo:** la decisión del 21-sep solo vivía como una línea del CHANGELOG, así
+que no la cumplía nadie: un `git add -A` del 22-sep metió 54 ficheros de `lab/`
+(Johnson, Waddle y el proyecto Remotion). Una convención que depende de
+acordarse no es una convención.
+
+**Alternativas descartadas:** confiar en el criterio de cada sesión (es lo que
+acaba de fallar); `git rm --cached` también de los 11 antiguos (no se pidió, y
+alguno puede estar referenciado); commitear `lab/` y filtrar solo
+`node_modules/` y `out/` (contradice la decisión del 21-sep).

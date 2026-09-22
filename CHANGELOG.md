@@ -26,7 +26,8 @@
   charteado de 16 en la semana 2
 
 **Archivos modificados:** `borradores_prompt.md`, `docs/decisiones.md`,
-`CHANGELOG.md`; en local, sin git: `lab/mvps_st_fix.py` (nuevo) y
+`CHANGELOG.md`, `CLAUDE.md` (aviso de cobertura del FTN), `.gitignore`
+(`lab/`, `node_modules/`); en local, sin git: `lab/mvps_st_fix.py` (nuevo) y
 `salidas/2026/w02/`. `lab/` pasa al `.gitignore`: sigue la decision del
 21-sep de no commitear los experimentos
 
