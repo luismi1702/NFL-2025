@@ -25,3 +25,7 @@ _preview/
 
 # PDF combinado de previas (regenerable con Previas.py modo jornada)
 /previas_semana_*.pdf
+
+# Dependencias y renders de los proyectos Remotion de lab/
+node_modules/
+lab/remotion_under_center/out/

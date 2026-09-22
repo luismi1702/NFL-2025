@@ -763,3 +763,137 @@ del marcador, no del acierto.
 **Alternativas descartadas:** más peso (un bloqueo o un retorno de TD mueve
 mucho la cifra con pocas semanas); media por jugada (premia o castiga el volumen
 de patadas).
+
+## [2026-09-21] — Carpetas de la semana por cajones
+
+**Decisión:** dentro de cada `salidas/{año}/w{NN}/` hay cuatro cajones:
+`previas/`, `partidos/`, `liga/` y `textos/`, con `cola_posts.html` en la raíz
+de la semana. Los reparte `pbp_loader.salida()` por el nombre del fichero, así
+que ningún script elige carpeta a mano. `cola_posts.py` indexa las dos semanas
+(la jugada y la siguiente) y todos sus cajones.
+
+**Motivo:** la carpeta plana mezclaba 16 previas, 45 PNG de partido, los
+gráficos de liga y los TXT, y Luis se liaba. De paso salió un bug: la cola no
+encontraba las imágenes de viernes, sábado y domingo, que viven en `w{N+1}`.
+
+**Alternativas descartadas:** un `INDICE.md` automático por semana (no ordena
+nada, solo lo describe); prefijo del día en el nombre del fichero (`dom_`,
+`vie_`), que obligaba a tocar cinco scripts y la galería. Luis eligió cajones.
+`liga/` no estaba en su propuesta: se añadió porque el power ranking o el dato
+de la semana no son ni previas ni de un partido.
+
+## [2026-09-21] — La recuperación del batch exige la línea de FIN
+
+**Decisión:** `semana_auto.py` escribe `===== FIN BATCH {DÍA}` desde un
+`finally`, y `batch_pendiente()` da un batch por hecho solo si ve esa línea, no
+la de inicio. Como mucho se relanza una vez (`INTENTOS_MAX = 2`). El paso de
+borradores ya no borra el borrador anterior: lo aparta a `_previo.md`.
+
+**Motivo:** el 21-sep el batch del lunes murió dentro del paso de borradores
+sin escribir ni FALLO ni FIN, y como se miraba el inicio, contaba como hecho.
+Mismo agujero que el 15-sep. Y ahora que un batch muerto se relanza, borrar el
+borrador podía llevarse por delante trabajo verificado a mano.
+
+**Alternativas descartadas:** solo el `finally` o un `atexit` (un kill duro no
+ejecuta ninguno de los dos; lo que lo cubre es exigir el FIN); relanzar sin tope
+(un fallo que se repite entra en bucle y gasta el plan dos veces).
+
+## [2026-09-21] — Reacción a podcasts: su ángulo, nuestros números
+
+**Decisión:** nuevo formato. De cada episodio se sacan las afirmaciones
+comprobables y se miden con nuestro PBP; se propone UNA sola pieza por programa
+y solo si de verdad mola. Luis etiqueta a mano a los podcasts. Los de pago, solo
+con su sesión y su permiso.
+
+**Motivo:** generar interacción con programas que ya tienen audiencia. La regla
+es la misma que con SumerSports (14-sep): se toma la idea, nunca la cifra. El
+listón lo puso Luis con ejemplos: Waddle y Johnson sí; Mahomes, Houston (16
+series sin TD) y Arizona no, aunque los tres datos eran ciertos.
+
+**Alternativas descartadas:** corregirles en público (el zasca da un pico y
+cierra la puerta del programa; mejor completar lo que dicen); una pieza por dato
+("no hace falta ser pesados"); etiquetar deduciendo handles (prohibido por
+`cuentas-fans.md`); Spotify (no hay forma de sacar el audio).
+
+## [2026-09-22] — El EPA de equipos especiales no mide al retornador
+
+**Decisión:** `calc_st` (en `MVPsSemana.py`) acredita al retornador el EPA de la
+JUGADA ENTERA, y eso no es lo que hizo él. El arreglo vive en
+`lab/mvps_st_fix.py` (`calc_st_v2`) y descarta tres casos, sin repartir EPA
+dentro de la jugada: fair catch / touchback / downed / fuera (eso mide al
+PATEADOR rival), fumble del propio retornador que recupera un compañero (la
+ganancia posterior no es suya; si lo PIERDE se le deja entero, que ahí sí es
+suyo) y penalty APLICADA (las declinadas y compensadas, con `penalty_yards` 0,
+se mantienen). Kickers y punters no se tocan: su EPA es suyo.
+
+**Motivo:** el redactor de borradores avisó de que 76 yardas en cinco
+devoluciones no explican +6,7 EPA, y tenía razón. De los +6,731 de R.Shaheed
+(SEA, sem. 2), +2,56 son un kickoff que él FUMBLEÓ y remató Surratt hasta la
+ARI 37, +2,34 un retorno de 14 yardas con 15 de unnecessary roughness del rival,
+y ~+1,6 cuatro punts que solo hizo fair catch. Con el arreglo se queda en +0,924
+y el líder de la semana 2 pasa a ser S.Moore (GB, +5,402). La semana 1 no cambia
+de líder (E.McPherson, kicker). Otros afectados: D.Meyers (CIN) +3,927 → +0,870
+y J.Coker (CAR) +2,480 → −0,093.
+
+**Alternativas descartadas:** repartir el EPA dentro de la jugada (hace falta un
+modelo de EP propio); descartar solo las penalties del equipo que patea (las que
+inflan) y quedarse las del suyo — queda pendiente de decidir, ahora el criterio
+es simétrico; dejarlo y avisar en el post (el número se publica como elogio, y
+elogiar a alguien por su propio fumble no se sostiene).
+
+**Pendiente:** portar `calc_st_v2` a `MVPsSemana.py`. Mientras no se haga, el
+batch del martes vuelve a sacar el líder inflado cada semana.
+
+## [2026-09-22] — Ni el z ni los diagnósticos internos salen en el texto del post
+
+**Decisión:** reglas 10 y 11 de `borradores_prompt.md` (añadidas al final, sin
+tocar la numeración de la 9, que `CLAUDE.md` referencia). La 10 prohíbe sacar al
+texto el `z`, tamaños de muestra, percentiles y nombres de columna: van a la
+nota de verificación. La 11 obliga a desglosar en el PBP de qué jugadas sale el
+total de un líder de `mvps_semana.txt` antes de convertirlo en elogio, con las
+dos trampas de especiales escritas explícitas.
+
+**Motivo:** el `z` de `dato_semana.txt` es ROBUSTO (mediana y MAD), no el
+clásico: en la semana 2 de 2026 el robusto daba +2,52 y el clásico +2,66 para el
+mismo dato. El redactor lo metía en el tuit como si fuera un z normal. Al lector
+no le dice nada y invita a leerlo mal. La 11 nace del caso Shaheed de arriba.
+
+**Alternativas descartadas:** cambiar `DatoSemana.py` al z clásico (el robusto
+es mejor para detectar outliers, que es su trabajo); etiquetarlo en el tuit
+("z robusto") — gasta caracteres en metodología, justo lo que la regla 8 evita.
+
+## [2026-09-22] — `estado_datos.txt` da por bueno el FTN sin contar partidos
+
+**Decisión:** pendiente de arreglar. El semáforo debe contar PARTIDOS del FTN,
+como ya hace con PFR (`17/32 p.`), y no solo comprobar que la semana existe.
+
+**Motivo:** el 22-sep decía `ftn_charting OK 1-2 al dia` cuando la semana 2
+tenía 1 partido charteado de 16 (la semana 1 sí tenía los 16). Cualquier pieza
+de play action, blitz o pass rush de esa jornada saldría perfecta y sería falsa
+— exactamente lo que advierte el pie del propio fichero. Se detectó al intentar
+comprobar un dato de blitz de T.Shough que dio el podcast Ecos de la NFL: el
+NO@BAL no estaba charteado y el dato no se pudo verificar ni completar.
+
+**Alternativas descartadas:** fiarse del recuento de semanas (es lo que falla);
+avisar solo en los scripts que usan FTN (el semáforo existe justo para que el
+aviso esté en un sitio).
+
+## [2026-09-22] — Transcribir podcasts con Whisper `base`, y por Bash
+
+**Decisión:** el modelo por defecto para transcribir podcasts es `base`, no
+`small` (Luis, 22-sep). El MCP `video-analyzer__get_transcript` no sirve:
+rechaza las URL `.mp3` por validación y, con el fichero local ya convertido, el
+Whisper CLI se queda sin tiempo y devuelve `transcript: []`. La receta es
+`curl` del enclosure del RSS y `whisper --model base --language es --fp16 False`
+con un `--initial_prompt` de vocabulario NFL, lanzado en segundo plano.
+
+**Motivo:** en CPU, `small` tarda 30-60 min con un episodio de 45 min y la
+espera no compensa. `base` va unas tres veces más rápido.
+
+**Consecuencia asumida:** `base` destroza los nombres propios — en el episodio
+2x19 de Ecos de la NFL salieron "Acovidin" (Nakobe Dean), "procbahuas" (Brock
+Bowers), "Justin Gerber" (Herbert), "David Daniels" (Jayden) y "Tyler Sox"
+(Shough). No importa, porque la transcripción se usa para sacar el ÁNGULO y
+todos los nombres se verifican por web antes de publicar (punto 3 de la
+verificación obligatoria). Si alguna vez hace falta fiarse de los nombres del
+propio texto, ahí sí compensa el `small`.

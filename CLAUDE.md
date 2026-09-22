@@ -70,6 +70,7 @@ plt.savefig("output.png", dpi=200, bbox_inches="tight", facecolor=BG)
 - Experimentos temporales van en lab/ (crearla si hace falta); solo lo definitivo vive en la raíz
 - VERIFICACIÓN OBLIGATORIA antes de proponer un post: (1) cada número, contra el script que genera el visual, no contra el doc ni contra el PNG a ojo; (2) cada atribución ataque/defensa, contra la clasificación real de la métrica (sacks permitidos = ATAQUE); (3) cada nombre, récord, traspaso o resultado, con búsqueda web; (4) que la métrica MIDA lo que la frase dice: mismo conjunto de jugadas y mismo sujeto. Un post no se propone hasta que las cuatro pasen
 - El punto (4) nació de dos cifras falsas el mismo día (sep-2026), las dos con el número bien calculado: "Green Bay ganó 8 de las 11 facetas" (eran 6, contadas a ojo sobre el PNG) y "Lamar jugó el 33% de sus snaps bajo centro" (ese 33% excluía las carreras de los RB, snaps en los que él también estaba; era 55%, y encima el hilo llevaba al lado un gráfico que decía 55%). Si el post lleva visual, comprobar que el número del texto y el de la imagen son el mismo
+- La línea "QB" del PNG de `resumen_partido.py` NO siempre es el titular (sep-2026: HOU salía con K.Kroeger jugando Stroud; WAS, con Mariota siendo Daniels el titular). Quién jugó de quarterback se mira en el PBP (`passer_player_name`), nunca en esa línea
 - Antes de proponer una pieza nueva: la pregunta no es "¿falta esto en el
   catálogo?" sino "¿lo tiene alguien más?". Si el lector lo encuentra a un clic
   en cualquier web generalista, no aporta (así se descartó la clasificación, el
@@ -88,6 +89,7 @@ Estructura (DRAFT, solo en la ventana de abril): [historia del equipo] → [dato
 - Menciones: SOLO de docs/cuentas-fans.md, nunca inventadas ni deducidas. Manda el tema del post, no el script del PNG. Máximo 2-3
 - Se etiqueta SIEMPRE a la afición del equipo del que va el post, gane o pierda. Única excepción: los equipos marcados *(pendiente)* en la tabla, que no tienen cuenta conocida
 - Terminología de jugadas: "proteger al QB" / "mejorar la protección de pase" / "pass pro", NUNCA "proteger al pasador". "Forzar turnovers", NUNCA "robar balones"
+- Reacción a podcasts (sep-2026): su ángulo, nuestros números recalculados con el PBP. UNA sola pieza por programa, y solo si de verdad mola. Mejor completar lo que dicen que corregirles. Los podcasts no están en `docs/cuentas-fans.md`: los etiqueta Luis a mano. Ver `docs/decisiones.md` (21-sep-2026)
 
 ## Docs (leer cuando se necesiten)
 - Catálogo de scripts: docs/scripts-catalog.md

@@ -70,6 +70,25 @@ Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`
      equipos, elige los 3 protagonistas y anota el resto en la verificacion.
      El `#Equipo` sigue la misma regla.
    - Cuenta los caracteres CON hashtags y menciones incluidos.
+10. **Nada de diagnosticos internos en el texto del post.** El `z=+X.XX` de
+    `dato_semana.txt` es un z-score ROBUSTO (mediana y MAD), no el z de toda
+    la vida: para el mismo dato el clasico da otra cifra (sem. 2 de 2026:
+    z robusto +2.52, z clasico +2.66). Publicarlo invita a leerlo mal y al
+    lector no le dice nada. Di "lo mas extremo de la jornada" o "lo mas
+    alejado de la media", nunca el numero. Lo mismo con tamanos de muestra,
+    percentiles y nombres de columna: son para la nota de verificacion.
+11. **El EPA de `mvps_semana.txt` se reparte por jugada entera, no por
+    merito.** Antes de escribir el post de un lider, mira en el PBP de que
+    jugadas sale su total y comprueba que el texto se lo atribuye a quien
+    toca. Dos trampas conocidas en EQUIPOS ESPECIALES:
+    - al retornador se le acredita TODA la jugada, incluida la parte
+      posterior a un fumble suyo que recupera un companero, y las penalties
+      del equipo que patea;
+    - al retornador de punts se le acredita el EPA (cambiado de signo) de
+      punts que solo hizo fair catch: eso mide al PATEADOR rival, no a el.
+    Si el total no se explica por lo que hizo el jugador, NO lo conviertas en
+    elogio: cambia de protagonista (los kickers son limpios: su EPA es suyo)
+    o cuenta la jugada de verdad. Anota el desglose en la verificacion.
 
 ## Qué entregar en `{DIR}/borradores_posts.md`
 

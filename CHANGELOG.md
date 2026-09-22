@@ -2,6 +2,80 @@
 
 ---
 
+## [2026-09-22] — Martes de la semana 2, arreglo de especiales y reacción a Ecos de la NFL
+
+**Qué se hizo:**
+- **Publicados los tres posts del martes** (dato de la semana + los dos del
+  Monday Night). Correcciones sobre el borrador automático: los Giants ganaron
+  a Dallas EN CASA (28-20), no "en Dallas"; fuera el `z=+2.52`; confirmado que
+  Aaron Donald vuelve por primera vez desde 2023; el parte de Dart ya existía
+  (esguince de LCM). En los posts de NYG no se cita ningún número de QB: el PBP
+  dice Dart 5 pases y Winston 29
+- **`lab/mvps_st_fix.py`** (nuevo): `calc_st_v2` arregla el crédito de equipos
+  especiales, que acreditaba al retornador la jugada entera. R.Shaheed pasa de
+  +6,731 a +0,924 y el líder de la semana 2 pasa a S.Moore (GB). La semana 1 no
+  cambia de líder. El hilo de MVPs del miércoles se rehace con Moore en el 4/5
+  y la apertura 1/5 corregida
+- **`borradores_prompt.md`**: reglas 10 (nada de `z` ni diagnósticos internos en
+  el texto) y 11 (desglosar el EPA de un líder antes de convertirlo en elogio)
+- **Reacción a Ecos de la NFL 2x19** (Substack, RSS público): de las afirmaciones
+  del episodio sale UNA pieza, la de los linebackers de Las Vegas. Nakobe Dean y
+  Quay Walker están en 19 de los 46 acarreos con placador identificado (41 %) y
+  el mayor golpe defensivo del curso es un fumble forzado por Dean
+- **Detectado**: `estado_datos.txt` daba `ftn_charting OK` con 1 partido
+  charteado de 16 en la semana 2
+
+**Archivos modificados:** `borradores_prompt.md`, `docs/decisiones.md`,
+`CHANGELOG.md`, `lab/mvps_st_fix.py` (nuevo); en local, sin git:
+`salidas/2026/w02/`
+
+**Descartado por la verificación (regla 4):** "la mejor defensa de la liga" como
+titular de la pieza de los Raiders — quitando la única jugada del fumble de
+Dean, LV cae de 1ª a 5ª; y "0 de 5 corriendo en 3er down", porque de esas cinco
+jugadas una es un scramble en 3&15 y otra un snap abortado de los Chargers.
+
+**Pendiente:**
+- Portar `calc_st_v2` a `MVPsSemana.py` antes del batch del martes que viene
+- Que `estado_datos` cuente partidos del FTN, como hace con PFR
+- Decidir si el descarte por penalty se limita a las del equipo que patea
+- Publicar (o no) la pieza de los Raiders
+
+---
+
+## [2026-09-21] — Piezas de Johnson y Waddle, y reacción a podcasts
+
+**Qué se hizo:**
+- **Boletín Week 2 Review de SumerSports** (buzón `cuartaydato@gmail.com`, leído por
+  Chrome): de ahí sale el ángulo de Johnson vs Flores, con las cifras recalculadas
+  con nuestro PBP. Su 77,5 % de blitz no se usa: FTN solo tiene 179 jugadas de la sem. 2
+- **`lab/johnson_peor_partido.py`**: los 70 partidos de Ben Johnson cantando jugadas;
+  el 31,9 % del domingo es el peor, y ya iba en 31,7 % antes de la lesión de Williams
+- **`lab/waddle_reparto.py`**: dos PNG, el reparto de objetivos y su efecto. El envío
+  medio a Waddle pasa de 4,3 a 15,3 yardas y el pase de Denver de -0,45 a +0,27 EPA
+  por intento. La cuota se calcula igual que en `destacados.py`, para que coincida
+- Las dos piezas pasan a LUNES en la cola, porque responden a podcasts y caducan;
+  de Waddle se elige la [B]. Los PNG se quedan sin título, a petición de Luis
+- **Reacción a podcasts**, formato nuevo: probado con El Nickel (YouTube), PepeDiario
+  (de pago, con la sesión de Luis) y 100 Yardas (Apple). Lista de lo comprobable y
+  una sola pieza por programa. De 100 Yardas no salió ninguna
+- Transcripción: subtítulos de YouTube con `yt-dlp`; iVoox y Apple, con Whisper
+  `base` en trozos de 19 min (el `small` de 74 min lo cortó la falta de memoria).
+  En Windows, Whisper se salta trozos enteros por `UnicodeEncodeError`
+- **Detectado**: la línea "QB" del PNG de `resumen_partido.py` no siempre es el
+  titular (HOU salía con K.Kroeger jugando Stroud; WAS, con Mariota)
+
+**Archivos modificados:** `lab/johnson_peor_partido.py` y `lab/waddle_reparto.py`
+(nuevos, sin commitear), `CLAUDE.md`, `docs/decisiones.md`; en local, sin git:
+`salidas/2026/w02/` (borradores, cola y PNG de `liga/`)
+
+**Pendiente:**
+- Arreglar cómo elige al quarterback la línea "QB" de `resumen_partido.py`
+- Confirmar en X que `@PepeBrasin` es Pepe de PepeDiario y `@Rubenibg`, Rubén Ibeas
+  de El Nickel (las dos ya están en `cuentas-fans.md`, pero como aficiones)
+- Los scripts de `lab/` quedan sin commitear, por decisión de Luis
+
+---
+
 ## [2026-09-21] — Posts del lunes de la semana 2 y carpetas por cajones
 
 **Qué se hizo:**
