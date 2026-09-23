@@ -17,6 +17,17 @@
   borrador se le escapó WAS, +0.151). Regenerada `cola_posts.html`
 - **`lab/mvps_st_fix.py`** guarda ahora la versión vieja como `calc_st_legacy`
   y compara contra la de producción, para que el cotejo siga sirviendo
+- **Publicados los posts del miércoles**: Power Rankings y el hilo de MVPs de
+  5 tuits, ya con Moore en el 4/5. Verificado antes de publicar el desglose de
+  cada líder (regla 11): Lloyd +16,540 son un sack y dos INT suyas; Purdy es
+  además el máximo corredor de SF con 30 yardas
+- **Verificado "su primer pase en la NFL"** (Jack Strand, 3/5 del hilo) a
+  petición de Luis: cierto. Atlanta jugó con dos QB —Cooper Rush hasta el
+  tercer cuarto y Strand desde el 3:08—, así que la primera INT de Lloyd es a
+  Rush y la segunda, el pick six, al primer pase de Strand. Lo titula así el
+  propio vídeo de NFL.com. Strand es el 4º QB desde 1991 que se estrena con un
+  pick six, tras Favre, Winston y Darnold: dato no usado, lo cubrieron FOX y
+  Yahoo el mismo domingo y no pasa el listón de "¿lo tiene alguien más?"
 
 **Archivos modificados:** `MVPsSemana.py`, `CHANGELOG.md`; fuera de git:
 `lab/mvps_st_fix.py` y `salidas/2026/w02/`
