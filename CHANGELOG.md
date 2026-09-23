@@ -2,6 +2,37 @@
 
 ---
 
+## [2026-09-23] — El arreglo de especiales entra en produccion
+
+**Qué se hizo:**
+- **`MVPsSemana.calc_st` porta el arreglo** de `lab/mvps_st_fix.py`: el EPA de
+  equipos especiales ya no acredita al retornador la jugada entera. Se añaden
+  `descartes_retorno()` y `_serie()`, y `calc_st` acepta un `traza` opcional
+  para ver qué jugadas se descartan. Comprobado: la semana 2 de 2026 pasa de
+  R.Shaheed (+6,731) a S.Moore (+5,402) y la semana 1 no cambia de líder
+- **`salidas/2026/w02/textos/borradores_posts.md` reescrito a mano**: el 4/5 del
+  hilo de MVPs pasa de Shaheed a Moore (dos alternativas), la apertura 1/5 deja
+  de nombrarlo, y el Power Ranking [B] corrige "de las peores de la NFL" por
+  "la 26ª": son SIETE los equipos que conceden más que Buffalo, no seis (al
+  borrador se le escapó WAS, +0.151). Regenerada `cola_posts.html`
+- **`lab/mvps_st_fix.py`** guarda ahora la versión vieja como `calc_st_legacy`
+  y compara contra la de producción, para que el cotejo siga sirviendo
+
+**Archivos modificados:** `MVPsSemana.py`, `CHANGELOG.md`; fuera de git:
+`lab/mvps_st_fix.py` y `salidas/2026/w02/`
+
+**Aprendido:** portar el arreglo no rehace lo ya escrito. Los borradores y la
+cola de una semana se generaron con el cálculo viejo y hubo que reescribirlos
+y regenerar la cola a mano.
+
+**Pendiente:**
+- Que `estado_datos` cuente partidos del FTN, como hace con PFR
+- Decidir si el descarte por penalty se limita a las del equipo que patea
+- Publicar (o no) la pieza de los Raiders (Dean + Walker)
+- Arreglar cómo elige al quarterback la línea "QB" de `resumen_partido.py`
+
+---
+
 ## [2026-09-22] — Martes de la semana 2, arreglo de especiales y reacción a Ecos de la NFL
 
 **Qué se hizo:**

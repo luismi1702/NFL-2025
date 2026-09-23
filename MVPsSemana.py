@@ -93,7 +93,65 @@ def calc_defensa(d, interception, sack_p, defteam):
     return credits
 
 
-def calc_st(d, play_type, kr_ret, pr_ret, kicker, punter, posteam, defteam):
+def _serie(d, name):
+    """La columna si existe; si no, una de ceros (no todos los años la traen)."""
+    return d[name] if name in d.columns else pd.Series(0, index=d.index)
+
+
+def descartes_retorno(d, ret_col):
+    """{motivo: máscara} de las jugadas que NO se acreditan al retornador.
+
+    El EPA de la jugada entera no es suyo: hay que quitar lo que no hizo él.
+    No se reparte EPA dentro de la jugada (haría falta un modelo de EP propio),
+    se descarta la jugada completa cuando el crédito no es atribuible.
+    """
+    sin_retorno = (
+        (_serie(d, "punt_fair_catch").fillna(0) == 1)
+        | (_serie(d, "kickoff_fair_catch").fillna(0) == 1)
+        | (_serie(d, "touchback").fillna(0) == 1)
+        | (_serie(d, "punt_downed").fillna(0) == 1)
+        | (_serie(d, "kickoff_downed").fillna(0) == 1)
+        | (_serie(d, "punt_out_of_bounds").fillna(0) == 1)
+        | (_serie(d, "kickoff_out_of_bounds").fillna(0) == 1)
+        | (d["return_yards"].isna() if "return_yards" in d.columns else False)
+    )
+
+    # Fumble del retornador que recupera su propio equipo: la ganancia
+    # posterior es del compañero. Si lo PIERDE, el EPA es suyo y se queda.
+    ret = d[ret_col].fillna("").str.strip()
+    fumblo = pd.Series(False, index=d.index)
+    for c in ("fumbled_1_player_name", "fumbled_2_player_name"):
+        if c in d.columns:
+            fumblo |= (d[c].fillna("").str.strip() == ret) & (ret != "")
+    fumble_propio = fumblo & (_serie(d, "fumble_lost").fillna(0) != 1)
+
+    # Solo las penalties APLICADAS mueven el EPA: las declinadas y las
+    # compensadas vienen con penalty==1 y penalty_yards 0, y la jugada vale
+    # tal cual.
+    con_penalty = (_serie(d, "penalty").fillna(0) == 1) & (
+        _serie(d, "penalty_yards").fillna(0) > 0
+    )
+
+    return {
+        "sin retorno (fair catch, touchback, downed, fuera)": sin_retorno,
+        "fumble del retornador recuperado por su equipo": fumble_propio & ~sin_retorno,
+        "penalty aplicada en la jugada": con_penalty & ~sin_retorno & ~fumble_propio,
+    }
+
+
+def calc_st(d, play_type, kr_ret, pr_ret, kicker, punter, posteam, defteam,
+            traza=None):
+    """EPA de equipos especiales, acreditado a quien lo genera.
+
+    Hasta sep-2026 esto daba al retornador el EPA de la JUGADA ENTERA, y se
+    le colgaban tres cosas que no hizo: el tramo posterior a un fumble suyo
+    que recupera un compañero, las penalties del equipo que patea y el EPA
+    (cambiado de signo) de punts que solo hizo fair catch —que mide al
+    PATEADOR rival—. Con eso R.Shaheed salía líder de la semana 2 de 2026 con
+    +6,731 cuando lo suyo eran +0,924. Ver docs/decisiones.md (22-sep-2026).
+
+    Kickers y punters no se tocan: el EPA de un FG o un XP es suyo entero.
+    """
     credits = {}
 
     def _add(plays, name_col, team_col, multiplier=1.0):
@@ -105,16 +163,32 @@ def calc_st(d, play_type, kr_ret, pr_ret, kicker, punter, posteam, defteam):
                 for k, v in totals.items():
                     credits[k] = credits.get(k, 0.0) + v
 
-    if play_type:
-        base = d[d["epa"].notna()]
-        # Los retornos no son play_type propio en nflverse: van dentro de
-        # "kickoff" (posteam = equipo que recibe) y "punt" (posteam = equipo
-        # que patea → el retornador es del defteam y su EPA bueno es negativo).
-        _add(base[base[play_type] == "kickoff"],     kr_ret,  posteam)
-        _add(base[base[play_type] == "punt"],        pr_ret,  defteam, multiplier=-1.0)
-        _add(base[base[play_type] == "field_goal"],  kicker,  posteam)
-        _add(base[base[play_type] == "extra_point"], kicker,  posteam)
-        _add(base[base[play_type] == "punt"],        punter,  posteam)
+    if not play_type:
+        return credits
+
+    base = d[d["epa"].notna()]
+
+    # Los retornos no son play_type propio en nflverse: van dentro de
+    # "kickoff" (posteam = equipo que recibe) y "punt" (posteam = equipo
+    # que patea → el retornador es del defteam y su EPA bueno es negativo).
+    for tipo, ret_col, team_col, mult in [("kickoff", kr_ret, posteam,  1.0),
+                                          ("punt",    pr_ret, defteam, -1.0)]:
+        if not ret_col:
+            continue
+        jug = base[(base[play_type] == tipo) & base[ret_col].notna()]
+        if jug.empty:
+            continue
+        fuera = pd.Series(False, index=jug.index)
+        for motivo, mask in descartes_retorno(jug, ret_col).items():
+            fuera |= mask
+            if traza is not None and mask.any():
+                traza.append((tipo, motivo, int(mask.sum()),
+                              round(float(jug.loc[mask, "epa"].sum() * mult), 2)))
+        _add(jug[~fuera], ret_col, team_col, multiplier=mult)
+
+    _add(base[base[play_type] == "field_goal"],  kicker, posteam)
+    _add(base[base[play_type] == "extra_point"], kicker, posteam)
+    _add(base[base[play_type] == "punt"],        punter, posteam)
 
     return credits
 
