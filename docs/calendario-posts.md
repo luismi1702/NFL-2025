@@ -80,6 +80,15 @@ automatiza.
 - **"NFL2025 previas sabado"** — sabado 23:00: `python semana_auto.py --dia domingo`
   → un PNG por partido de la PROXIMA jornada + PDF combinado
 
+- **"NFL2025 boletin SumerSports"** — lunes 15:00 y 17:00, jueves 16:00 y
+  18:00: `python semana_auto.py --dia boletin` (24-sep-2026). Lee con `claude -p`
+  el boletin de SumerSports (Gmail de cuartaydato, solo buscar y leer) y deja
+  `textos/ideas_boletin.md`: resumen, que angulos se rehacen con nuestros datos
+  y cuales no, top 3 y hechos verificados en web. La Review (lunes 14:02) va a
+  `w{N}`; la Preview (jueves 14:00-15:00) a `w{N+1}`, para el duelo del sabado.
+  El segundo disparador de cada dia es el reintento: si el fichero ya existe no
+  hace nada, y si el correo aun no ha llegado no escribe y lo busca despues.
+  La tarea de recuperar tambien lo lanza. Prompt: `ideas_boletin_prompt.md`.
 - **"NFL2025 recuperar batch"** — al iniciar sesion (+3 min):
   `python semana_auto.py --recuperar` → si el ULTIMO batch programado no llego
   a arrancar, lo lanza; si arranco, no hace nada. Solo el ultimo: el martes

@@ -21,6 +21,8 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   `ftn.groupby("week").nflverse_game_id.nunique()`
 - solo_reg=False solo en scripts de partido/semana concreta (resumen, previas, semanales)
 - No usar pd.read_csv contra URLs de nflverse en scripts nuevos
+- `player_stats/player_stats.csv.gz` se congeló en 2024 y sigue descargando sin
+  error: usar `stats_player_week_{season}` (no trae `dakota`; sí `passing_cpoe`)
 - Los datos auxiliares (participacion, FTN, stats) tardan dias o semanas en
   publicarse al arrancar la temporada. Envolver su carga en
   `try/except DatosNoDisponibles` explicando que necesita el visual

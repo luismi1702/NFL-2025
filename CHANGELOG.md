@@ -2,6 +2,46 @@
 
 ---
 
+## [2026-09-24] — Manning bot v7, contenders al batch y el jueves de ATL @ GB
+
+**Qué se hizo:**
+- **Publicado**: previa del TNF (alternativa A: récord de estrenos en Lambeau +
+  Atlanta con una sola visita a la Red Zone) y cita al hilo de Rubén Ibeas sobre
+  el play action de Green Bay (Love, +0,30 EPA con PA 2023-25, 8º de 58 QBs)
+- **FTN de la semana 2 llegó HOY** (1 de 16 partidos esta mañana, 16 de 16
+  tras refrescar): el aviso del CLAUDE.md se cumplió al pie de la letra
+- **Manning bot v7**: no podía predecir NINGUNA jornada sin jugar (las tablas de
+  features solo tenían partidos jugados → SIN MUESTRA eterno; y si se colaba,
+  Elo/SOS/QB a 0,5 o 0 en silencio). Nuevo `tablas_soporte()` con fila para el
+  próximo partido de cada equipo. El QB venía de `player_stats.csv.gz`,
+  congelado en 2024 sin error: pasa a `stats_player_week` con cpoe en vez de
+  dakota. Reentrenado: 69,2 % vs 68,2 % del mercado (v6: 68,9 %). Prueba de
+  equivalencia en `lab/manning_test_futuro.py` (29/30 partidos idénticos)
+- **El bot se estrena en público en la semana 4** (jueves 1-oct, sin balance de
+  la 3); fijado en `borradores_prompt.md` y el calendario
+- **`contenders_tracker.py` al batch del martes desde la semana 5**
+  (`CONTENDERS_DESDE`) y guardando por `salida()` en `liga/`
+- **@Packers_Espana** añadida a los Packers en `docs/cuentas-fans.md`
+- **Descartados por muestra**: la respuesta a Rubén sobre la OL bajo centro
+  (2 partidos, 15 pases bajo centro) y el reparto de presión por posición: sin
+  PFF no se puede atribuir a un liniero, y las etiquetas de posición del rival
+  (DE en un 3-4, "LB" en PFR) no dicen por dónde entra la presión
+
+**Archivos modificados:** `Manning_bot.py`, `contenders_tracker.py`,
+`semana_auto.py`, `borradores_prompt.md`, `docs/calendario-posts.md`,
+`docs/scripts-catalog.md`, `docs/cuentas-fans.md`, `lab/gb_*.py`,
+`lab/manning_test_futuro.py`, `lab/verif_previa_atl_gb.py`
+
+**Pendiente:**
+- Viernes: análisis del ATL @ GB por los dos lados (sin FTN)
+- Martes 29: comprobar en el log que el bot saca picks de la semana 4 con el
+  modelo v7 y que el redactor NO escribe balance de la semana 3
+- Pieza temática: el play action funciona aunque no corras (correlación 0,02 en
+  128 equipos-temporada, `lab/gb_play_action_2.py`)
+- PFF+ sigue sin contratar: bloquea las presiones por liniero
+
+---
+
 ## [2026-09-23] — El arreglo de especiales entra en produccion
 
 **Qué se hizo:**

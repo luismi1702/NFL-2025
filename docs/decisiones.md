@@ -914,3 +914,22 @@ acordarse no es una convención.
 acaba de fallar); `git rm --cached` también de los 11 antiguos (no se pidió, y
 alguno puede estar referenciado); commitear `lab/` y filtrar solo
 `node_modules/` y `out/` (contradice la decisión del 21-sep).
+
+## [2026-09-24] — Manning bot v7: reentrenar en temporada en vez de parchear
+
+**Decisión:** Arreglar a la vez los dos fallos del bot (features de partidos sin
+jugar y QB congelado en 2024) y reentrenar, con `passing_cpoe` en lugar de
+`dakota`, que ya no se publica. El estreno público pasa a la semana 4.
+
+**Motivo:** Luis eligió la opción B. El benchmark walk-forward se repitió antes
+de dar el modelo por bueno: 69,2 % frente a 68,2 % del mercado, Brier 0,2117
+(v6: 68,9 % y 0,2112). Es equivalente, no mejor, pero el modelo ya no se
+entrena con el QB de 2025 a cero. Se estrena en la 4 para que el primer
+balance público sea de picks que se publicaron.
+
+**Alternativas descartadas:** (a) arreglar solo las filas futuras y dejar el
+QB a cero (el modelo medido, pero con una feature muerta); arreglar solo el
+filtro de MIN_GAMES (habría sacado picks con Elo 0,5 y QB 0 sin avisar);
+calcular dakota a mano (no es pública su fórmula exacta); publicar los picks de
+la semana 3 el mismo jueves del TNF.
+

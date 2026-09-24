@@ -141,6 +141,96 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
         return False
 
 
+# Boletin de SumerSports (24-sep-2026). Envios vistos: la Review los lunes a
+# las 14:02 (14 y 21-sep) y la Preview los jueves a las 14:03 y 15:04 (17 y
+# 24-sep; la de la semana 1 fue el miercoles, con el TNF de apertura el
+# jueves). Se lee una hora despues y la tarea reintenta dos horas mas tarde.
+BOLETIN_HORAS = {"review": (0, 15, 0), "preview": (3, 16, 0)}    # (dia, h, m)
+BOLETIN_TOOLS = ["Read", "Glob", "Grep", "Write", "WebSearch",
+                 "mcp__claude_ai_Gmail__search_threads",
+                 "mcp__claude_ai_Gmail__get_thread"]
+
+
+def _ultimo_boletin(ahora=None):
+    """('review'|'preview', hora) del ultimo boletin que ya deberia haber llegado."""
+    from datetime import timedelta
+    ahora = ahora or datetime.now()
+    horas = {}
+    for tipo, (wd, h, m) in BOLETIN_HORAS.items():
+        t = ahora.replace(hour=h, minute=m, second=0, microsecond=0)
+        t -= timedelta(days=(ahora.weekday() - wd) % 7)
+        if t > ahora:
+            t -= timedelta(days=7)
+        horas[tipo] = t
+    tipo = max(horas, key=horas.get)
+    return tipo, horas[tipo]
+
+
+def boletin(SEASON):
+    """Lee el ultimo boletin de SumerSports con `claude -p` y deja
+    `ideas_boletin.md` en textos/: que angulos se pueden rehacer con nuestros
+    datos y cuales no. No redacta posts ni toca el buzon (solo buscar y leer).
+
+    La Review (lunes) habla de la jornada jugada y va a su carpeta; la Preview
+    (jueves) alimenta el duelo del sabado y va a la de la jornada que viene,
+    como el resto de piezas de viernes a domingo. Si el fichero ya existe no se
+    repite, asi que la recuperacion al iniciar sesion puede llamarlo sin miedo.
+    """
+    import shutil
+    from datetime import date
+    from pbp_loader import ultima_semana, proxima_semana
+    tipo, _ = _ultimo_boletin()
+    W = ultima_semana() if tipo == "review" else (proxima_semana()
+                                                  or (ultima_semana() or 0) + 1)
+    if not W:
+        log("-> boletin: sin jornada a la que asignarlo — paso omitido")
+        return True
+    txt_dir = os.path.join(RAIZ, "salidas", str(SEASON), f"w{W:02d}", "textos")
+    destino = os.path.join(txt_dir, "ideas_boletin.md")
+    if os.path.exists(destino):
+        log(f"-> boletin {tipo}: ya estaba hecho ({destino})")
+        return True
+    exe = shutil.which("claude")
+    if not exe:
+        log("-> boletin: claude CLI no encontrado — paso omitido")
+        return False
+    os.makedirs(txt_dir, exist_ok=True)
+    prompt = (io.open(os.path.join(RAIZ, "ideas_boletin_prompt.md"),
+                      encoding="utf-8").read()
+              .replace("{DIR}", txt_dir.replace(os.sep, "/"))
+              .replace("{TIPO}", tipo.capitalize())
+              .replace("{FECHA}", str(date.today())))
+    log(f"-> boletin {tipo} (semana {W}): claude -p con Gmail en solo lectura")
+    try:
+        # Prompt por STDIN, como en borradores(): cmd.exe corta argumentos
+        r = subprocess.run([exe, "-p", "--allowedTools"] + BOLETIN_TOOLS,
+                           cwd=RAIZ, input=prompt, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace",
+                           timeout=1800)
+        with io.open(os.path.join(txt_dir, "ideas_boletin_stdout.log"), "w",
+                     encoding="utf-8") as f:
+            f.write(r.stdout or "")
+            if r.stderr:
+                f.write("\n--- STDERR ---\n" + r.stderr)
+        if r.returncode == 0 and os.path.exists(destino):
+            log(f"   OK -> {destino}")
+            return True
+        if r.returncode == 0 and "SIN CORREO" in (r.stdout or ""):
+            # Aun no ha llegado: sin fichero, asi el reintento o la
+            # recuperacion al iniciar sesion lo vuelven a buscar
+            log(f"   la {tipo} aun no ha llegado — se reintenta mas tarde")
+            return True
+        cola = (r.stderr or r.stdout or "").strip().splitlines()[-3:]
+        log(f"   FALLO (exit {r.returncode}): " + " | ".join(cola))
+        return False
+    except subprocess.TimeoutExpired:
+        log("   FALLO: timeout de 1800s")
+        return False
+    except Exception as e:
+        log(f"   FALLO: {type(e).__name__}: {e}")
+        return False
+
+
 def resumenes(SEASON, W):
     """Los 2 PNGs de resumen de CADA partido de la jornada jugada.
 
@@ -386,11 +476,18 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
 
 def main():
     ap = argparse.ArgumentParser(description="Batch semanal de generacion de PNGs")
-    ap.add_argument("--dia", choices=["lunes", "martes", "domingo"])
+    ap.add_argument("--dia", choices=["lunes", "martes", "domingo", "boletin"])
     ap.add_argument("--recuperar", action="store_true",
                     help="al iniciar sesion: lanza el ultimo batch si se salto")
     args = ap.parse_args()
+    if args.dia == "boletin":
+        from pbp_loader import temporada_actual
+        sys.exit(0 if boletin(temporada_actual()) else 1)
     if args.recuperar:
+        # El boletin va aparte del batch: no cuenta para batch_pendiente y se
+        # salta solo si su fichero ya existe
+        from pbp_loader import temporada_actual
+        boletin(temporada_actual())
         args.dia = batch_pendiente()
         if not args.dia:
             return
