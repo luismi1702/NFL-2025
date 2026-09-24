@@ -148,6 +148,11 @@ Las secciones, con estos titulos exactos:
 - El post del jueves abre con el balance de la jornada anterior ("el bot fue
   X-Y") y remata con los picks destacados; si el TNF de esta semana está en
   los picks, úsalo de gancho.
+- El balance SOLO se cuenta de jornadas cuyos picks se PUBLICARON. En 2026 el
+  bot se estrena con los picks de la semana 4 (decidido por Luis el
+  24-sep-2026): el post del jueves 1-oct NO lleva balance de la semana 3 (esos
+  picks no salieron), solo los picks de la 4 presentados como estreno. El
+  primer balance público es el de la semana 4, en el jueves siguiente.
 - Los MVPs son un HILO de cinco tuits. El 1/5 abre (sin menciones, pieza de
   liga) y anuncia los cuatro nombres. Cada uno de los otros cuatro cuenta a
   UN jugador, el lider de su categoria en `mvps_semana.txt`: que hizo (en

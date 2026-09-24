@@ -1,10 +1,15 @@
-# Manning_bot.py  v6
+# Manning_bot.py  v7
 # Predictor de resultados NFL con Machine Learning — datos nflverse
 # Mejoras v5: SOS (Strength of Schedule via Elo opponent quality), MIN_GAMES=2
 # Mejoras v6: ensemble clasificador + regresion de margen, y features de
 # estabilidad (success rate, EPA neutral, EPA downs 1-2, equipos especiales).
 # Verificado en lab/manning_exp_bateria.py: 69,0% walk-forward 2022-2025
 # contra 65,5% de v5 — paridad con la linea de apuestas (68,0%).
+# v7 (24-sep-2026): predice de verdad la jornada SIN JUGAR (antes ningun
+# partido futuro tenia features y salia SIN MUESTRA siempre; ver
+# tablas_soporte) y el QB sale de stats_player_week, con cpoe en vez de
+# dakota (el fichero viejo se congelo en 2024). Walk-forward 2022-2025:
+# 69,2% vs 68,2% del mercado (v6: 68,9%). Prueba: lab/manning_test_futuro.py
 
 import os
 import socket
@@ -44,8 +49,11 @@ MODEL_FILE     = "manning_bot_model.pkl"
 SCHEDULE_URL     = "https://github.com/nflverse/nfldata/raw/master/data/games.csv"
 PBP_URL          = ("https://github.com/nflverse/nflverse-data/releases/download/"
                     "pbp/play_by_play_{season}.csv.gz")
+# player_stats/player_stats.csv.gz (el de antes) se congelo en 2024 sin avisar:
+# seguia descargando bien, pero sin 2025 ni 2026. El sucesor es uno por
+# temporada, y ya no trae dakota
 PLAYER_STATS_URL = ("https://github.com/nflverse/nflverse-data/releases/download/"
-                    "player_stats/player_stats.csv.gz")
+                    "stats_player/stats_player_week_{season}.csv.gz")
 
 NEEDED_PBP_COLS = [
     "season", "week", "game_id", "season_type",
@@ -86,8 +94,8 @@ FEATURE_COLS = [
     "elo_win_prob",
     # Weather
     "is_dome", "temp_adj", "wind_adj", "high_wind", "cold_game",
-    # QB rolling
-    "d_qb_epa", "d_qb_dakota",
+    # QB rolling (v7: dakota -> cpoe; dakota ya no se publica desde 2025)
+    "d_qb_epa", "d_qb_cpoe",
     # Moneyline — solo prob (spread_line era redundante con home_impl_prob)
     "home_impl_prob", "total_line",
     # Strength of schedule: calidad de rivales enfrentados (Elo-based)
@@ -294,18 +302,25 @@ def build_schedule_logs(schedules: pd.DataFrame) -> pd.DataFrame:
 # FASE 2C — ELO RATINGS (NUEVO)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def compute_elo(schedules: pd.DataFrame) -> pd.DataFrame:
+def compute_elo(schedules: pd.DataFrame, pendientes=None) -> pd.DataFrame:
     """
     Elo estilo FiveThirtyEight desde todos los años disponibles en schedules.
     Usa datos desde 1999 (16 años de warmup antes de 2015).
     Guarda valores PRE-partido (sin leakage).
+
+    `pendientes` (ver partidos_pendientes) añade al final los partidos aun sin
+    jugar con el Elo de HOY. Sin ellos, un partido futuro no tenia fila y
+    build_features le ponia elo_win_prob = 0.5 en silencio. Como necesita el
+    Elo vivo al final del bucle, con pendientes no se usa el cache (el bucle
+    entero tarda un segundo).
     """
     reg = schedules[schedules["game_type"] == "REG"].copy()
     reg = coerce(reg, ["result"])
     reg = reg.dropna(subset=["result"]).sort_values(["season", "week"])
+    hay_pendientes = pendientes is not None and len(pendientes) > 0
 
     cache = CACHE_DIR / "elo.parquet"
-    if cache.exists():
+    if cache.exists() and not hay_pendientes:
         cached = pd.read_parquet(cache)
         if len(cached) >= len(reg):     # sin partidos nuevos → cache valido
             return cached
@@ -346,7 +361,25 @@ def compute_elo(schedules: pd.DataFrame) -> pd.DataFrame:
     df = pd.DataFrame(records)
     df.to_parquet(cache, index=False)
     print(f"  Elo calculado: {len(df):,} partidos")
-    return df
+    if not hay_pendientes:
+        return df
+
+    futuros = []
+    for _, g in pendientes.iterrows():
+        ht, at = g["home_team"], g["away_team"]
+        # Primer partido de una temporada nueva: toca la regresion que el
+        # bucle aplicaria al llegar a ella
+        e_h, e_a = elo.get(ht, 1500.0), elo.get(at, 1500.0)
+        if prev_season is not None and g["season"] != prev_season:
+            e_h -= ELO_REGRESS * (e_h - ELO_MEAN)
+            e_a -= ELO_REGRESS * (e_a - ELO_MEAN)
+        futuros.append({
+            "season": g["season"], "week": g["week"],
+            "home_team": ht, "away_team": at,
+            "elo_diff":     e_h - e_a + ELO_HFA,
+            "elo_win_prob": 1 / (1 + 10 ** (-(e_h - e_a + ELO_HFA) / 400)),
+        })
+    return pd.concat([df, pd.DataFrame(futuros)], ignore_index=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -386,56 +419,101 @@ def compute_sos(elo_df: pd.DataFrame) -> pd.DataFrame:
 # FASE 2E — QB ROLLING STATS
 # ══════════════════════════════════════════════════════════════════════════════
 
-def load_qb_rolling() -> pd.DataFrame:
-    """
-    Descarga player_stats.csv.gz y calcula rolling EWMA de passing_epa y dakota
-    por QB (player_id), cruzando temporadas para reflejar historial real.
+QB_COLS = ["passing_epa", "passing_cpoe"]
+
+
+def load_qb_stats(hasta_season: int) -> pd.DataFrame:
+    """QB titular de cada (season, week, team), de stats_player_week_{season}.
+
+    Un cache por temporada: las cerradas no cambian y se leen del disco; la
+    ultima se refresca si tiene mas de 12 h. Si la temporada aun no tiene
+    fichero (404 antes del kickoff) se salta.
     """
     import time
-    cache = CACHE_DIR / "qb_stats.parquet"
-    if cache.exists():
-        edad_dias = (time.time() - os.path.getmtime(cache)) / 86400
-        if edad_dias < 3:
-            return pd.read_parquet(cache)
-        print(f"qb_stats con {edad_dias:.0f} dias — refrescando...")
+    needed = ["player_id", "position", "team", "season", "week",
+              "season_type", "attempts"] + QB_COLS
+    partes = []
+    for season in range(2014, hasta_season + 1):
+        cache = CACHE_DIR / f"qb_week_{season}.parquet"
+        fresco = cache.exists() and (
+            season < hasta_season or
+            (time.time() - os.path.getmtime(cache)) / 3600 < 12)
+        if fresco:
+            partes.append(pd.read_parquet(cache))
+            continue
+        try:
+            df = pd.read_csv(PLAYER_STATS_URL.format(season=season),
+                             low_memory=False, compression="infer", usecols=needed)
+            df = df[(df["position"] == "QB") & (df["season_type"] == "REG")]
+            df.to_parquet(cache, index=False)
+            partes.append(df)
+        except Exception as e:
+            if cache.exists():
+                print(f"  Aviso: no se pudo refrescar QB {season} ({e}) — usando cache")
+                partes.append(pd.read_parquet(cache))
+            elif season == hasta_season:
+                print(f"  QB {season}: sin fichero todavia ({e}) — se omite")
+            else:
+                raise
+    qbs = pd.concat(partes, ignore_index=True)
+    qbs["team"] = qbs["team"].replace(TEAM_MAP)
+    qbs = coerce(qbs, ["attempts"] + QB_COLS)
+    # Titular = QB con mas intentos por (season, week, team)
+    return (qbs.sort_values("attempts", ascending=False)
+               .drop_duplicates(subset=["season", "week", "team"], keep="first")
+               .sort_values(["player_id", "season", "week"])
+               .reset_index(drop=True))
 
-    print("Descargando player_stats (QB rolling)...")
-    needed = ["player_id", "player_name", "position", "recent_team",
-              "season", "week", "season_type", "attempts",
-              "passing_epa", "dakota"]
-    try:
-        df = pd.read_csv(PLAYER_STATS_URL, low_memory=False, compression="infer",
-                         usecols=needed)
-    except Exception as e:
-        if cache.exists():
-            print(f"  Aviso: no se pudo refrescar player_stats ({e}) — usando cache")
-            return pd.read_parquet(cache)
-        raise
 
-    qbs = df[
-        (df["position"] == "QB") &
-        (df["season_type"] == "REG") &
-        (df["season"] >= 2014)
-    ].copy()
-    qbs = coerce(qbs, ["attempts", "passing_epa", "dakota"])
+def compute_qb_rolling(qbs: pd.DataFrame) -> pd.DataFrame:
+    """EWMA por QB (player_id), cruzando temporadas para reflejar historial real.
 
-    # Starter = QB con más intentos por (season, week, team)
-    qbs = (qbs.sort_values("attempts", ascending=False)
-              .drop_duplicates(subset=["season", "week", "recent_team"], keep="first")
-              .sort_values(["player_id", "season", "week"])
-              .reset_index(drop=True))
+    r_qb_* es la forma ANTES de cada partido (shift, sin leakage) y n_qb_* la
+    de DESPUES, que es la que se usa para su proximo partido aun sin jugar.
+    """
+    qbs = qbs.copy()
+    for col in QB_COLS:
+        g = qbs.groupby("player_id")[col]
+        qbs[f"r_qb_{col}"] = g.transform(
+            lambda s: s.shift(1).ewm(span=ROLLING_N, min_periods=1).mean())
+        qbs[f"n_qb_{col}"] = g.transform(
+            lambda s: s.ewm(span=ROLLING_N, min_periods=1).mean())
+    print(f"  QB stats cargadas: {len(qbs):,} QB-weeks "
+          f"(hasta {int(qbs['season'].max())})")
+    return qbs[["player_id", "season", "week", "team"]
+               + [f"r_qb_{c}" for c in QB_COLS] + [f"n_qb_{c}" for c in QB_COLS]]
 
-    # Rolling EWMA por player_id (sin reset de temporada → historial real)
-    for col in ["passing_epa", "dakota"]:
-        qbs[f"r_qb_{col}"] = qbs.groupby("player_id")[col].transform(
-            lambda s: s.shift(1).ewm(span=ROLLING_N, min_periods=1).mean()
-        )
 
-    result = qbs[["player_id", "season", "week",
-                  "r_qb_passing_epa", "r_qb_dakota"]].copy()
-    result.to_parquet(cache, index=False)
-    print(f"  QB stats cargadas: {len(result):,} QB-weeks")
-    return result
+def qb_pendientes(qb_rolling: pd.DataFrame, pendientes: pd.DataFrame) -> pd.DataFrame:
+    """Filas de QB para los partidos sin jugar: la forma del QB tras su ultimo
+    partido, colocada en la semana del partido pendiente.
+
+    El QB es el que el calendario de nflverse da como titular previsto; si no
+    lo trae, el ultimo titular del equipo. Un QB sin partidos previos (debut)
+    se queda sin fila, igual que le pasaba en entrenamiento.
+    """
+    if pendientes is None or len(pendientes) == 0:
+        return qb_rolling
+    orden = qb_rolling.sort_values(["season", "week"])
+    ultimo_qb = orden.groupby("player_id").tail(1).set_index("player_id")
+    titular_equipo = orden.groupby("team")["player_id"].last()
+    filas = []
+    for _, g in pendientes.iterrows():
+        for lado in ("home", "away"):
+            pid = g.get(f"{lado}_qb_id")
+            if pd.isna(pid):
+                pid = titular_equipo.get(g[f"{lado}_team"])
+            if pid is None or pd.isna(pid) or pid not in ultimo_qb.index:
+                continue
+            u = ultimo_qb.loc[pid]
+            fila = {"player_id": pid, "season": g["season"], "week": g["week"],
+                    "team": g[f"{lado}_team"]}
+            for c in QB_COLS:
+                fila[f"r_qb_{c}"] = u[f"n_qb_{c}"]
+            filas.append(fila)
+    if not filas:
+        return qb_rolling
+    return pd.concat([qb_rolling, pd.DataFrame(filas)], ignore_index=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -499,6 +577,63 @@ def compute_schedule_rolling(sched_logs: pd.DataFrame) -> pd.DataFrame:
     sl["sr_pythag"] = (sl["sr_pts_for"] ** 2) / (
         sl["sr_pts_for"] ** 2 + sl["sr_pts_against"] ** 2 + 1e-6)
     return sl
+
+
+def partidos_pendientes(schedules: pd.DataFrame, season: int) -> pd.DataFrame:
+    """Partidos REG de `season` sin resultado que son el PROXIMO de los dos equipos.
+
+    Solo el proximo: la forma de un equipo dentro de dos jornadas depende de un
+    partido que aun no se ha jugado, y una fila ahi seria inventarla.
+    """
+    reg = schedules[(schedules["game_type"] == "REG") &
+                    (schedules["season"] == season)].copy()
+    reg = coerce(reg, ["home_score", "week"])
+    pend = reg[reg["home_score"].isna()]
+    if pend.empty:
+        return pend
+    lados = pd.concat([pend[["week", "home_team"]].rename(columns={"home_team": "team"}),
+                       pend[["week", "away_team"]].rename(columns={"away_team": "team"})])
+    proxima = lados.groupby("team")["week"].min()
+    es_proximo = ((pend["week"] == pend["home_team"].map(proxima)) &
+                  (pend["week"] == pend["away_team"].map(proxima)))
+    pend = pend[es_proximo].copy()
+    pend["week"] = pend["week"].astype(int)   # coerce lo dejo en float
+    return pend
+
+
+def _filas_futuras(pendientes: pd.DataFrame) -> pd.DataFrame:
+    """(season, week, team) de cada equipo con partido pendiente, sin stats:
+    los EWMA con shift(1) les ponen la forma acumulada hasta su ultimo partido."""
+    return pd.concat([
+        pendientes[["season", "week", "home_team"]].rename(columns={"home_team": "team"}),
+        pendientes[["season", "week", "away_team"]].rename(columns={"away_team": "team"}),
+    ], ignore_index=True)
+
+
+def tablas_soporte(schedules, game_logs, qbs, season_pred):
+    """Todas las tablas que cruza build_features, con fila para los partidos
+    pendientes de `season_pred`.
+
+    Antes de v7 solo tenian filas los partidos YA jugados: un partido futuro no
+    encontraba sus EWMA, h_games quedaba NaN y el filtro de MIN_GAMES lo tiraba
+    (el SIN MUESTRA eterno de sep-2026). Y aunque pasara, Elo, SOS, calendario
+    y QB se rellenaban con 0 o 0.5 en silencio.
+    """
+    pend = partidos_pendientes(schedules, season_pred)
+    fut  = _filas_futuras(pend) if len(pend) else None
+
+    logs = game_logs if fut is None else pd.concat([game_logs, fut], ignore_index=True)
+    rolling = add_season_carryover(compute_rolling(logs))
+
+    sched_logs = build_schedule_logs(schedules)
+    if fut is not None:
+        sched_logs = pd.concat([sched_logs, fut], ignore_index=True)
+    sched_rolling = compute_schedule_rolling(sched_logs)
+
+    elo_df = compute_elo(schedules, pendientes=pend)
+    sos_df = compute_sos(elo_df)
+    qb_rolling = qb_pendientes(compute_qb_rolling(qbs), pend)
+    return rolling, sched_rolling, elo_df, sos_df, qb_rolling
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -599,27 +734,30 @@ def build_features(schedules, rolling, sched_rolling,
     df["elo_win_prob"] = df["elo_win_prob"].fillna(0.5)
 
     # ── Join QB rolling ───────────────────────────────────────────────────
-    qb_cols = ["player_id", "season", "week", "r_qb_passing_epa", "r_qb_dakota"]
+    qb_cols = ["player_id", "season", "week", "r_qb_passing_epa", "r_qb_passing_cpoe"]
     if qb_rolling is not None and "home_qb_id" in df.columns:
+        # Un QB que juega dos veces la misma semana no existe, pero un
+        # duplicado aqui multiplicaria filas del calendario: se blinda
+        qbr = qb_rolling[qb_cols].drop_duplicates(["player_id", "season", "week"])
         df = df.merge(
-            qb_rolling[qb_cols].rename(columns={
+            qbr.rename(columns={
                 "player_id": "home_qb_id",
-                "r_qb_passing_epa": "h_r_qb_epa",
-                "r_qb_dakota":      "h_r_qb_dakota",
+                "r_qb_passing_epa":  "h_r_qb_epa",
+                "r_qb_passing_cpoe": "h_r_qb_cpoe",
             }),
             on=["home_qb_id","season","week"], how="left"
         )
         df = df.merge(
-            qb_rolling[qb_cols].rename(columns={
+            qbr.rename(columns={
                 "player_id": "away_qb_id",
-                "r_qb_passing_epa": "a_r_qb_epa",
-                "r_qb_dakota":      "a_r_qb_dakota",
+                "r_qb_passing_epa":  "a_r_qb_epa",
+                "r_qb_passing_cpoe": "a_r_qb_cpoe",
             }),
             on=["away_qb_id","season","week"], how="left"
         )
     else:
         df["h_r_qb_epa"] = df["a_r_qb_epa"] = 0.0
-        df["h_r_qb_dakota"] = df["a_r_qb_dakota"] = 0.0
+        df["h_r_qb_cpoe"] = df["a_r_qb_cpoe"] = 0.0
 
     # ── Diferenciales PBP ─────────────────────────────────────────────────
     df["d_off_epa"]        = df["h_off_epa"]        - df["a_off_epa"]
@@ -650,7 +788,7 @@ def build_features(schedules, rolling, sched_rolling,
 
     # ── QB diferenciales ─────────────────────────────────────────────────
     df["d_qb_epa"]    = df["h_r_qb_epa"].fillna(0)    - df["a_r_qb_epa"].fillna(0)
-    df["d_qb_dakota"] = df["h_r_qb_dakota"].fillna(0) - df["a_r_qb_dakota"].fillna(0)
+    df["d_qb_cpoe"]   = df["h_r_qb_cpoe"].fillna(0)   - df["a_r_qb_cpoe"].fillna(0)
 
     # ── Strength of Schedule ──────────────────────────────────────────────
     if sos_df is not None:
@@ -928,12 +1066,9 @@ if __name__ == "__main__":
         print(f"  {SEASON_PRED}: {len(logs_new)} team-weeks actualizados")
 
     # 3. Todas las features de soporte
-    rolling       = add_season_carryover(compute_rolling(game_logs))
-    sched_logs    = build_schedule_logs(schedules)
-    sched_rolling = compute_schedule_rolling(sched_logs)
-    elo_df        = compute_elo(schedules)
-    sos_df        = compute_sos(elo_df)
-    qb_rolling    = load_qb_rolling()
+    qbs = load_qb_stats(SEASON_PRED)
+    rolling, sched_rolling, elo_df, sos_df, qb_rolling = tablas_soporte(
+        schedules, game_logs, qbs, SEASON_PRED)
 
     # 4. Feature matrix
     print("\nConstruyendo feature matrix...")
@@ -1081,7 +1216,7 @@ if __name__ == "__main__":
             games_semana["correct"] = None
 
         print(f"\n{'='*75}")
-        print(f"  MANNING BOT v6 -- NFL {SEASON_PRED}  |  Semana {semana}")
+        print(f"  MANNING BOT v7 -- NFL {SEASON_PRED}  |  Semana {semana}")
         print(f"{'='*75}")
         print(f"  {'PARTIDO':<28}  {'PRED':>5}  {'P.HOME':>7}  {'P.AWAY':>7}  {'REAL':>5}  OK")
         print(f"  {'-'*68}")

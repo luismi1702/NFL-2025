@@ -3,7 +3,7 @@
 ## Machine Learning
 | Script | Descripción |
 |--------|-------------|
-| Manning_bot.py | Predictor resultados v6: clasificador (XGB+LR+RF) + regresion de margen promediados, 39 features. Walk-forward 68,9% vs 68,2% del mercado (`--bench`). Flags: --retrain / --no-retrain / --week / --bench. Modelo en manning_bot_model.pkl |
+| Manning_bot.py | Predictor resultados v7: clasificador (XGB+LR+RF) + regresion de margen promediados, 39 features (QB: EPA y CPOE de stats_player_week). Walk-forward 69,2% vs 68,2% del mercado (`--bench`). Flags: --retrain / --no-retrain / --week / --bench. Modelo en manning_bot_model.pkl |
 
 ## Utilidades / Cache
 | Script | Descripción |

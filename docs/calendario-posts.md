@@ -62,7 +62,7 @@ automatiza.
   (hecho el 17-sep-2026 con DET @ BUF).
 - El hilo va en domingo (no viernes) para aterrizar el dia de partidos.
 - Bot PUBLICO con balance honesto ("fue 11-5"): decidido ago-2026. La
-  transparencia es el contenido — v6 empata con el mercado (68,9 % vs 68,2 %).
+  transparencia es el contenido — v7 empata con el mercado (69,2 % vs 68,2 %).
 
 ## Tareas programadas (Windows Task Scheduler, con StartWhenAvailable)
 
@@ -97,11 +97,14 @@ demas. Si nflverse esta caido, estado_datos.txt lo grita: NO publicar sin leerlo
 ## Arranque de temporada (sem 1-3)
 
 - Rankings, comparadores y contenders_tracker sin muestra: no publicar hasta sem 4-6.
-- Bot: MIN_GAMES=2 — comprobado en 2026: NO hay post del bot los jueves de
-  las semanas 2 y 3 porque no hay picks. Los primeros son los de la semana 3,
-  generados en el batch del martes tras la semana 2. El primer balance llega el
-  martes siguiente a la semana 3. Sin muestra, el bot sale con codigo 3 y el log dice
-  SIN MUESTRA, no FALLO.
+- Bot: MIN_GAMES=2 — NO hay post del bot el jueves de la semana 2 porque no
+  hay picks. (Hasta el 24-sep-2026 tampoco salian los de la semana 3: el bot
+  no sabia predecir partidos sin jugar. Arreglado en la v7.) Sin muestra, el
+  bot sale con codigo 3 y el log dice SIN MUESTRA, no FALLO.
+- ESTRENO PUBLICO DEL BOT 2026: picks de la semana 4, jueves 1-oct (decidido
+  por Luis el 24-sep-2026). Los de la semana 3 se generaron pero no se
+  publicaron, asi que ese jueves va sin balance; el primer balance publico es
+  el de la semana 4, el jueves 8-oct. Esta en `borradores_prompt.md`.
 - matchup_intel y piezas de personal/cobertura: pendientes de que exista
   pbp_participation_2026 (comprobar en sem 2 con estado_datos).
 - Semana del kickoff: publicar el hilo pendiente docs/hilo_deberes_2026.md.

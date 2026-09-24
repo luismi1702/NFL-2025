@@ -25,7 +25,7 @@ como pendiente.
 | DAL Cowboys | @SpainCowboys | hilo draft |
 | DEN Broncos | @BroncosSpain | hilo draft |
 | DET Lions | @rugidos_detroit | hilo draft |
-| GB Packers | @PackersESP · @Rubenibg | hilo draft |
+| GB Packers | @PackersESP · @Rubenibg · @Packers_Espana | hilo draft (@Packers_Espana: Luis, 24-sep-2026) |
 | HOU Texans | @TexansSpanish | hilo draft |
 | IND Colts | *(pendiente)* | sin mención en el hilo |
 | JAX Jaguars | @JaguarsESP | hilo draft |
