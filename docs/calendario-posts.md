@@ -75,7 +75,8 @@ automatiza.
   espanola y nflverse puede tardar en publicarlo.
 - **"NFL2025 batch martes"** — martes 8:00: `python semana_auto.py --dia martes`
   → estado_datos.txt, dato PNG, power rankings PNG, mvps_semana.txt,
-  bot_balance.txt, bot_picks.txt en `salidas/{año}/w{NN}/`
+  bot_balance.txt, bot_picks.txt en `salidas/{año}/w{NN}/`, y desde la
+  semana 5 el contenders tracker (PNG + contenders.txt)
 - **"NFL2025 previas sabado"** — sabado 23:00: `python semana_auto.py --dia domingo`
   → un PNG por partido de la PROXIMA jornada + PDF combinado
 
@@ -96,7 +97,10 @@ demas. Si nflverse esta caido, estado_datos.txt lo grita: NO publicar sin leerlo
 
 ## Arranque de temporada (sem 1-3)
 
-- Rankings, comparadores y contenders_tracker sin muestra: no publicar hasta sem 4-6.
+- Rankings y comparadores sin muestra: no publicar hasta sem 4-6.
+- contenders_tracker (formula del campeon): entra en el batch del martes desde
+  la semana 5 (`CONTENDERS_DESDE` en `semana_auto.py`, decidido 24-sep-2026).
+  Deja `liga/contenders_{año}_wNN.png` y `textos/contenders.txt`.
 - Bot: MIN_GAMES=2 — NO hay post del bot el jueves de la semana 2 porque no
   hay picks. (Hasta el 24-sep-2026 tampoco salian los de la semana 3: el bot
   no sabia predecir partidos sin jugar. Arreglado en la v7.) Sin muestra, el

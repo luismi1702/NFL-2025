@@ -10,8 +10,9 @@
 #            tacticas + bajo centro), destacados.txt con lo que merece post y
 #            los borradores de esos posts. El Monday Night no esta: se juega esa
 #            noche y entra en el batch del martes.
-# martes  -> dato de la semana, power rankings, MVPs (TXT), bot: balance de la
-#            semana jugada + picks de la proxima (TXT). Para los posts de
+# martes  -> dato de la semana, power rankings, MVPs (TXT), contenders (desde
+#            la semana 5), bot: balance de la semana jugada + picks de la
+#            proxima (TXT). Para los posts de
 #            martes (dato+resumen), miercoles (PR+MVPs) y jueves (bot).
 # domingo -> previas de TODOS los partidos de la proxima jornada (PNGs + PDF)
 #            para el hilo del domingo por la manana.
@@ -30,6 +31,8 @@ from datetime import datetime
 
 RAIZ = os.path.dirname(os.path.abspath(__file__))
 LOG  = os.path.join(RAIZ, "salidas", "auto_log.txt")
+# Primera jornada jugada con la que el batch del martes saca contenders_tracker
+CONTENDERS_DESDE = 5
 
 
 def log(msg):
@@ -336,6 +339,16 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
         ok.append(paso("MVPs de la jornada", ["MVPsSemana.py", "--week", str(W)],
                        stdin_text="s\n",
                        captura=os.path.join(txt_dir, "mvps_semana.txt")))
+        # Contenders (formula del campeon): desde la semana 5. Antes, los 12
+        # umbrales prorrateados a 17 partidos son ruido (decidido 24-sep-2026)
+        if W >= CONTENDERS_DESDE:
+            ok.append(paso("contenders (formula del campeon)",
+                           ["contenders_tracker.py", "--season", str(SEASON),
+                            "--week", str(W)],
+                           captura=os.path.join(txt_dir, "contenders.txt")))
+        else:
+            log(f"-> contenders: se salta hasta la semana {CONTENDERS_DESDE} "
+                f"(jugadas {W})")
         # JUEVES: bot — balance de la jugada y picks de la proxima, a TXT
         ok.append(paso("bot: balance semana jugada",
                        ["Manning_bot.py", "--no-retrain", "--week", str(W)],

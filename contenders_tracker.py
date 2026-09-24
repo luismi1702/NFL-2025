@@ -389,10 +389,14 @@ def render(df, season, week, n_weeks_played):
 
     fig.text(0.99, 0.005, "@CuartayDato", ha="right", va="bottom",
              fontsize=9, color="#888888", alpha=0.8, fontstyle="italic")
-    fig.text(0.01, 0.005, "Fuente: nflverse  ·  Conteos prorrateados a ritmo 17 PJ",
+    fig.text(0.01, 0.005, f"NFL {season} · datos hasta sem. {week}  ·  Fuente: nflverse  ·  "
+             "Conteos prorrateados a ritmo 17 PJ",
              ha="left", va="bottom", fontsize=7, color="#555555", fontstyle="italic")
 
-    out = f"contenders_s{season}_w{week}.png"
+    # Archivado en salidas/{año}/wNN/liga/ como el resto de piezas de liga
+    # (antes caia en la raiz con nombre propio y el batch no lo encontraba)
+    from pbp_loader import salida
+    out = salida(f"contenders_{season}.png", season, week)
     fig.savefig(out, dpi=180, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
     print(f"Guardado: {out}")

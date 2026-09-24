@@ -93,7 +93,7 @@
 ## Fórmula del campeón
 | Script | Descripción |
 |--------|-------------|
-| contenders_tracker.py | Tracker semanal autosuficiente: descarga datos frescos y muestra qué equipos cumplen los 12 criterios de campeón hasta la semana indicada. Uso: `python contenders_tracker.py [--season N] [--week N]`. Genera contenders_s{año}_w{semana}.png |
+| contenders_tracker.py | Tracker semanal autosuficiente: descarga datos frescos y muestra qué equipos cumplen los 12 criterios de campeón hasta la semana indicada. Uso: `python contenders_tracker.py [--season N] [--week N]`. Genera `salidas/{año}/wNN/liga/contenders_{año}_wNN.png` via `salida()`. En el batch del martes desde la semana 5 |
 
 ## Draft
 Éxito = 2º contrato (≥2 años) con el mismo equipo que lo drafteó, firmado 3+ años después (proxy de retención; clases 2021-2022 con ventana incompleta).
