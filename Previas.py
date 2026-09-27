@@ -386,6 +386,7 @@ if __name__ == "__main__":
         # semana N solo tiene el TNF en el PBP, y el hilo de previas salia
         # con un unico partido en vez de con la jornada entera.
         matchups = []
+        dia_partido = {}   # (away, home) -> "Sunday 13:00" (hora ET), para el TXT
         try:
             from pbp_loader import cargar_calendario
             cal, _ = cargar_calendario(SEASON)
@@ -395,6 +396,7 @@ if __name__ == "__main__":
                 home = str(row["home_team"]).strip().upper()
                 if away not in ("NAN", "") and home not in ("NAN", ""):
                     matchups.append((away, home))
+                    dia_partido[(away, home)] = f"{row.get('weekday', '')} {row.get('gametime', '')}".strip()
             if matchups:
                 print("  Partidos detectados desde el calendario (schedules).")
         except Exception as e:
@@ -496,9 +498,11 @@ if __name__ == "__main__":
         lineas = [f"NUMEROS DE LAS PREVIAS — semana {week_num} de {SEASON}",
                   f"Stats de las semanas 1-{week_num - 1}; rango 1 = el mejor de 32 "
                   "(en defensa, 1 = la que menos concede). Mismos numeros que los PNG.",
-                  "Orden: kickoff (el NN_ del PNG).", ""]
+                  "Orden: kickoff (el NN_ del PNG). Dia y hora ET del calendario oficial:",
+                  "el hilo del domingo lleva SOLO los de Sunday; los de Monday van el lunes.", ""]
         for n, (away, home) in enumerate(matchups, 1):
-            lineas.append(f"== {n:02d} {away} @ {home} — "
+            dia = dia_partido.get((away, home), "") if modo_semana else ""
+            lineas.append(f"== {n:02d} {away} @ {home} — {dia or 'dia ?'} — "
                           f"{os.path.basename(salida(nombre_preview(away, home, SEASON, week_num), SEASON, week_num))}")
             for t in (away, home):
                 lineas.append(f"  {t} ({record_equipo(t) or '?'})")

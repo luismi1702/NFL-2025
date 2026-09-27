@@ -17,11 +17,15 @@ lado. En la linea `IMAGEN:` va SOLO el nombre del fichero, sin carpeta.
   defensa, 1º = la que menos concede), el record de cada equipo y los CONTEOS
   que hay detras de cada % (visitas a la red zone, FG intentados).
 - `{DIR}/../previas/NN_preview_VIS_vs_LOC_*.png` — un PNG por partido.
-- `{DIR}/../partidos/01_*` — si existe, el TNF YA SE JUGO: ese partido NO va
-  en el hilo.
-- `{DIR}/../liga/duelo_*.png` — si existe, es la pieza de DUELO del sabado
-  (las siglas van en el nombre: `duelo_bal_dal_*` = BAL-DAL). Ese partido va
-  en el hilo, pero NO lo abre y con un angulo distinto al del sabado.
+- El DIA de cada partido esta en su linea `== NN` del TXT (Thursday, Sunday,
+  Monday...), sacado del calendario oficial. Manda sobre todo lo demas:
+  - **Sunday**: va en el hilo. TODOS, tambien el partido de la pieza de
+    DUELO del sabado (`{DIR}/../liga/duelo_*.png`, siglas en el nombre:
+    `duelo_bal_dal_*` = BAL-DAL), con un angulo distinto al del sabado
+    (Luis, 27-sep-2026: "aunque ya hayamos hablado, hay que meterlo").
+  - **Monday**: NO va en el hilo. Cada partido del lunes es un post propio del
+    LUNES (ver abajo).
+  - **Thursday / Saturday**: ya se jugaron. Fuera.
 - `docs/post-ejemplos.md`, seccion "Como publica Luis de verdad": el estilo
   REAL de la cuenta, con un hilo de previas publicado. Imitalo.
 - `docs/cuentas-fans.md` — las unicas menciones permitidas.
@@ -39,8 +43,17 @@ lado. En la linea `IMAGEN:` va SOLO el nombre del fichero, sin carpeta.
 - El partido gordo (dos invictos, dos extremos que chocan, un duelo
   divisional con algo en juego) no se adelanta en el hilo: su gancho va en
   la PRESENTACION.
-- El Sunday Night y el Monday Night lo dicen al empezar ("Sunday Night en
-  Denver.", "Cierra el Monday Night:"). Confirma en web cuales son.
+- El Sunday Night (el ultimo `Sunday` del TXT) lo dice al empezar: "Sunday
+  Night en Denver."
+
+## La previa del Monday Night (post del LUNES, fuera del hilo)
+
+Cada partido `Monday` del TXT lleva su propia seccion, detras del hilo:
+`## LUNES — Previa del Monday Night: 16 PHI @ CHI`, con `IMAGEN:` su PNG y DOS
+alternativas (`**[A]**` y `**[B]**`) con angulos distintos. Empieza con
+"Monday Night en Chicago." y lleva las cuentas de los dos equipos. Las bajas,
+como en el hilo: solo verificadas; si el titular de un QB no esta confirmado,
+no lo nombres y anotalo en la verificacion para revisarlo el lunes.
 
 ## Cada tuit
 
