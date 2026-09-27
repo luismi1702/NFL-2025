@@ -2,35 +2,22 @@
 
 ---
 
-## [2026-09-27] — Una cola por jornada y viernes y domingo automaticos
+## [2026-09-27] — Una cola por jornada, viernes y domingo automaticos y estilo real de la cuenta
 
 **Que se hizo:**
-- **Cola de posts por jornada** (`cola_posts.py`): cada `wNN/cola_posts.html` lleva
-  SOLO lo de su carpeta, en el orden del calendario (viernes TNF → sabado duelo →
-  domingo hilo → lunes → martes → miercoles → jueves), con tarjeta PENDIENTE para
-  cada dia sin post. Lee cualquier `textos/borradores_*.md`. Los batch la rehacen
-  siempre. Antes el hilo del domingo no entraba y la pagina vivia en `w{N-1}`
-- **Batch del viernes 9:00** (tarea nueva "NFL2025 batch viernes"): resumen y ficha
-  del TNF, `destacados_tnf.txt` y `borradores_viernes.md`. Se para si el TNF aun no
-  esta en el PBP
-- **Batch del sabado** escribe tambien el hilo de previas: `Previas.py` deja
-  `previas_numeros_*.txt` (los numeros de los PNG con rangos y conteos) y `claude -p`
-  redacta `borradores_domingo.md`. Probado sobre una copia de w03: 3,5 min, bien
-- **Estilo real de la cuenta** leido en x.com/CuartayDato y guardado en
-  `docs/post-ejemplos.md`: parrafos con linea en blanco, todo hilo abre con
-  presentacion, el dato empieza por "Dato de la semana📕", horas de publicacion
-- **Hilo de previas de la semana 3** (14 partidos + presentacion) verificado contra
-  `Previas.py` y en web (Daniels, Dart, Caleb Williams, Collins, Bosa fuera)
+- **Cola por jornada** (`cola_posts.py`): cada `wNN/cola_posts.html` lleva solo lo de su carpeta, en orden de calendario (viernes TNF → jueves bot), con tarjeta PENDIENTE para los dias sin post, el `NN` del PNG delante de cada tarjeta y los hilos en el orden de sus PNG. Los batch la rehacen siempre
+- **Batch del viernes 9:00** (tarea nueva): resumen, ficha y destacados del TNF + `borradores_viernes.md`. Se para si el TNF aun no esta en el PBP
+- **Batch del sabado** redacta el hilo: `Previas.py` deja `previas_numeros_*.txt` (numeros de los PNG, rangos, conteos y dia de cada partido) y `claude -p` escribe `borradores_domingo.md`. Probado sobre copia de w03 (3,5 min, bien)
+- **Estilo real** leido en x.com/CuartayDato (`docs/post-ejemplos.md`): parrafos con linea en blanco, todo hilo abre con presentacion (siempre DOS opciones), "Dato de la semana📕", horas de publicacion. Los prompts de lunes, martes, viernes y domingo lo aplican
+- **Hilo de previas**: todos los partidos del domingo (tambien el del duelo del sabado) en orden de PNG; el MNF sale del hilo y es un post del lunes
+- **Previas.py**: el record va detras del borde real del logo (SEA, NYJ y NE lo pisaban)
+- **Publicado**: hilo de previas de la semana 3 (presentacion + 14 partidos), verificado contra `Previas.py` y en web
 
-**Archivos modificados:** `cola_posts.py`, `semana_auto.py`, `Previas.py`,
-`borradores_prompt.md`, `borradores_prompt_lunes.md`, `borradores_prompt_viernes.md`
-(nuevo), `borradores_prompt_domingo.md` (nuevo), `CLAUDE.md`,
-`docs/calendario-posts.md`, `docs/post-ejemplos.md`
+**Archivos modificados:** `cola_posts.py`, `semana_auto.py`, `Previas.py`, `borradores_prompt.md`, `borradores_prompt_lunes.md`, `borradores_prompt_viernes.md` (nuevo), `borradores_prompt_domingo.md` (nuevo), `CLAUDE.md`, `docs/calendario-posts.md`, `docs/post-ejemplos.md`, `docs/decisiones.md`
 
 **Pendiente:**
-- Primer batch del viernes real: 2-oct 9:00. Revisar `auto_log.txt` ese dia
-- El hilo automatico incluye el partido del duelo (no lo abre), como dice el
-  calendario; el de hoy se hizo sin BAL-DAL
+- Lunes 28: confirmar el QB de Chicago (Bagent o Keenum) antes de publicar la previa del MNF
+- Viernes 2-oct 9:00: primer batch del viernes real; revisar `salidas/auto_log.txt`
 
 ## [2026-09-25/26] — Viernes y sábado de la semana 3: TNF, podcasts y duelo en Río
 

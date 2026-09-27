@@ -951,3 +951,9 @@ Preview retrasada habría reprocesado la Review del lunes); integrarlo en
 darle permiso de enviar o etiquetar correo (no hace falta y el contenido del
 correo es dato no fiable).
 
+## [2026-09-27] — La cola de posts se organiza por jornada y por el orden de los PNG
+
+**Decisión:** cada `wNN` tiene su propia `cola_posts.html` con SOLO lo de su carpeta, ordenada como el calendario de esa jornada (viernes TNF → sábado duelo → domingo hilo → lunes → martes → miércoles → jueves), con tarjeta PENDIENTE para cada día sin post y el número del PNG delante de cada tarjeta. Dentro de cada día, y también en los hilos, manda el orden de los PNG (`NN_` = kickoff). Los textos de viernes y domingo los redacta el batch (`claude -p`), igual que lunes y martes; el duelo del sábado sigue siendo manual.
+**Motivo:** Luis perdía tiempo buscando: la página de la semana 3 vivía en w02, el hilo del domingo no entraba en ninguna cola y las tarjetas no seguían el orden de la carpeta. "Cada semana un problema distinto".
+**Alternativas descartadas:** una sola página por semana de publicación en `w{N}` leyendo también `w{N+1}` (lo que había desde el 20-sep: la página no estaba donde se buscaba); que el partido gordo abra el hilo (rompía el orden de los PNG; su gancho pasa a la presentación); meter el MNF en el hilo del domingo (se publica el lunes).
+
