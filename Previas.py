@@ -247,13 +247,19 @@ def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path, pie="
     logo_y = 0.927
     for x_center, abbr in [(xA, team_a), (xB, team_b)]:
         img, z = load_logo(abbr, 0.10)
+        x_rec = x_center + 0.072
         if img is not None:
             ab = AnnotationBbox(OffsetImage(img, zoom=z, resample=True), (x_center, logo_y),
                                 frameon=False, xycoords=ax.transAxes)
             ax.add_artist(ab)
+            # El record va detras del borde REAL del logo: con una x fija, los
+            # logos anchos (SEA, NYJ, NE) lo pisaban (Luis, 27-sep-2026)
+            caja = ab.get_window_extent(fig.canvas.get_renderer())
+            borde = ax.transAxes.inverted().transform((caja.x1, caja.y0))[0]
+            x_rec = max(x_rec, borde + 0.012)
         rec = record_equipo(abbr)
         if rec:
-            ax.text(x_center + 0.072, logo_y, rec, transform=ax.transAxes,
+            ax.text(x_rec, logo_y, rec, transform=ax.transAxes,
                     ha="left", va="center", fontsize=9.5,
                     fontweight="bold", color=SUBINK)
 
