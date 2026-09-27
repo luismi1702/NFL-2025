@@ -120,8 +120,10 @@ Verificación:
 - record 2-0 de CIN: previas_numeros
 ````
 
-Una sola alternativa por tuit (`**[A]**`): en un hilo Luis no elige entre
-dos. En el bloque `post`, el texto del tuit y NADA mas. Tras el bloque, la
+La PRESENTACION lleva DOS alternativas (`**[A]**` y `**[B]**`) con ganchos
+distintos (Luis, 27-sep-2026). Cada previa, una sola (`**[A]**`). En la
+presentacion, cada gancho tiene que decir de QUE es el ranking: "la 2ª y la
+3ª mejor defensa", nunca "dos de las tres mejores" a secas. En el bloque `post`, el texto del tuit y NADA mas. Tras el bloque, la
 linea `Verificación:` con de donde sale cada numero y cada hecho.
 
 Si `previas_numeros_*.txt` falta o esta vacio, dilo en el markdown y no

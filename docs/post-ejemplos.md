@@ -82,7 +82,8 @@ Formato que usa en TODOS (manda sobre lo que diga un prompt):
 - Tuits de ~200-250 caracteres: dos datos, una frase de cierre corta (`Mal cóctel para los Colts.`, `Trece puntos y medio de línea lo dicen todo.`, `Si alguien pasa de 20, gana.`).
 
 TODO HILO abre con una pequeña presentacion (Luis, 27-sep-2026): que se
-cuenta y por que engancha, en dos o tres frases, sin tabla de numeros. Asi
+cuenta y por que engancha, en dos o tres frases, sin tabla de numeros. Y
+SIEMPRE se le dan a Luis DOS opciones de presentacion, con ganchos distintos. Asi
 abren el de previas, el de MVPs (el 1/5 anuncia los cuatro nombres) y el del
 duelo ("La NFL aterriza en Brasil de nuevo: Ravens-Cowboys en el Maracanã...").
 

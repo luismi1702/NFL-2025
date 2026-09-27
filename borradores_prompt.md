@@ -180,7 +180,8 @@ Las secciones, con estos titulos exactos:
   es el mismo jugador que ya sale en otra categoria, el 5/5 va con el
   segundo rookie y lo dices. El lider de ataque sera muchas veces un QB: en
   este hilo si se puede centrar en el (es la categoria). Una alternativa por
-  tuit basta; dos solo en el 1/5.
+  tuit basta, salvo el 1/5, la presentacion, que lleva SIEMPRE dos con
+  ganchos distintos (Luis, 27-sep-2026: toda presentacion de hilo, dos opciones).
 - El Monday Night lleva DOS posts, uno por equipo (decidido por Luis el
   18-sep-2026 para TNF, SNF y MNF: en los partidos grandes se publica a los dos
   lados). Cada seccion cuenta el partido desde SU equipo, con su angulo y las
