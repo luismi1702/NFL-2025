@@ -32,11 +32,13 @@ lado. En la linea `IMAGEN:` va SOLO el nombre del fichero, sin carpeta.
   "Semana N en la NFL." + tres ganchos de la jornada con nombres propios +
   "Una previa por partido, con los datos de las semanas 1 a N-1 🧵" + `#NFL`.
   Es el que se publico el 20-sep-2026 (esta en `docs/post-ejemplos.md`).
-- Despues, un tuit por partido por jugar (sin el TNF), en orden de kickoff
-  (`NN_`), salvo el primero.
-- **La primera previa es la del partido gordo**: el que mejor historia tenga
-  con los numeros (dos invictos, dos extremos que chocan, un duelo
-  divisional con algo en juego). Nunca el partido del duelo del sabado.
+- Despues, un tuit por partido por jugar (sin el TNF), **en el orden EXACTO
+  de los PNG** (`02_`, `03_`, `04_`...), sin saltos ni adelantos: Luis los
+  busca en la carpeta por ese numero (27-sep-2026). El titulo de la seccion
+  lleva el `NN` del PNG: `## DOMINGO — Hilo de previas 1/14: 02 LAC @ BUF`.
+- El partido gordo (dos invictos, dos extremos que chocan, un duelo
+  divisional con algo en juego) no se adelanta en el hilo: su gancho va en
+  la PRESENTACION.
 - El Sunday Night y el Monday Night lo dicen al empezar ("Sunday Night en
   Denver.", "Cierra el Monday Night:"). Confirma en web cuales son.
 
@@ -105,19 +107,19 @@ Una previa por partido, con los datos de las semanas 1 y 2 🧵
 Verificación:
 - los tres ganchos: previas_numeros (BUF, LV, CIN y PIT)
 
-## DOMINGO — Hilo de previas 1/14: CIN @ PIT
-IMAGEN: 09_preview_CIN_vs_PIT_2026_w03.png
+## DOMINGO — Hilo de previas 1/14: 02 LAC @ BUF
+IMAGEN: 02_preview_LAC_vs_BUF_2026_w03.png
 
 **[A]** (268 chars)
 ```post
 Texto del tuit, tal cual se publica.
 
-#NFL | #Bengals #Steelers | @jungla_es @cortinadeacero
+#NFL | #Chargers #Bills | @BoltLand_cast @EstampidaBills
 ```
 
 Verificación:
-- 2ª y 3ª defensa en EPA por jugada: previas_numeros, CIN y PIT
-- record 2-0 de CIN: previas_numeros
+- BUF 1º en EPA/jugada (+0,34): previas_numeros, BUF
+- record 0-2 de LAC: previas_numeros
 ````
 
 La PRESENTACION lleva DOS alternativas (`**[A]**` y `**[B]**`) con ganchos

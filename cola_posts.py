@@ -76,6 +76,15 @@ def indexar(carpetas, dir_html):
     return idx
 
 
+def numero_png(sec):
+    """El NN_ del PNG delante del titulo, para encontrar la imagen en la
+    carpeta sin buscar (Luis, 27-sep-2026). Si el titulo ya lo lleva, nada."""
+    m = re.match(r"(\d\d)_", sec["imagenes"][0]) if sec["imagenes"] else None
+    if not m or f" {m.group(1)} " in f" {sec['titulo']} ":
+        return ""
+    return f'<span class="letra">{m.group(1)}</span> · '
+
+
 def tarjeta(sec, post, idx, imagenes):
     texto = post["texto"]
     n = len(texto)
@@ -92,7 +101,7 @@ def tarjeta(sec, post, idx, imagenes):
     return f"""
   <article class="card">
     <header>
-      <h2>{html.escape(sec["titulo"])} <span class="letra">[{post["letra"]}]</span></h2>
+      <h2>{numero_png(sec)}{html.escape(sec["titulo"])} <span class="letra">[{post["letra"]}]</span></h2>
       <button class="copiar" data-id="p{idx}">Copiar</button>
     </header>
     {img}
@@ -146,10 +155,11 @@ def orden(indexada):
     fichero: 01_, 02_... por kickoff, luego dato_semana, power_rankings...).
     Los posts sin imagen van al final de su dia, en el orden del markdown."""
     i, sec = indexada
-    # Un hilo se publica en el orden del markdown (abre el partido gordo, no
-    # el 01_ del kickoff)
+    # Un hilo va en el orden de sus PNG (01_, 02_... por kickoff), igual que
+    # la carpeta, y la presentacion, que no lleva imagen, delante (Luis,
+    # 27-sep-2026: no quiere buscar el PNG de cada tarjeta)
     if "hilo" in sec["titulo"].lower():
-        return (dia_de(sec), 0, "", i)
+        return (dia_de(sec), 0, sec["imagenes"][0].lower() if sec["imagenes"] else "", i)
     if not sec["imagenes"]:
         return (dia_de(sec), 1, "", i)
     return (dia_de(sec), 0, sec["imagenes"][0].lower(), i)
@@ -208,7 +218,7 @@ def construir(md, dir_semana, season, week, imagenes=None):
                 for n in sec["imagenes"] if n.lower() in imagenes)
             tarjetas.append(f"""
   <article class="card">
-    <header><h2>{html.escape(sec["titulo"])}</h2></header>
+    <header><h2>{numero_png(sec)}{html.escape(sec["titulo"])}</h2></header>
     {fotos}
     <p class="falta">{html.escape(sec.get("nota", "Este partido no tiene post en los borradores."))}</p>
   </article>""")
