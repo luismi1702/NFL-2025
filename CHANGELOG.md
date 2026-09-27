@@ -2,6 +2,39 @@
 
 ---
 
+## [2026-09-25/26] — Viernes y sábado de la semana 3: TNF, podcasts y duelo en Río
+
+**Qué se hizo:**
+- **Rutina del boletín de SumerSports** (tarde del 24): `semana_auto.py --dia boletin`
+  + tarea "NFL2025 boletin SumerSports" (lun 15:00/17:00, jue 16:00/18:00, horas
+  sacadas de los envíos reales). Probado con la Preview de la sem. 3: bueno
+- **Publicado viernes**: análisis del TNF ATL 35-14 GB por los dos lados, respuesta
+  a Rubén Ibeas (GB 40% → 36% → 21% bajo centro, y la shotgun no protege más a Love:
+  23% frente a 25% de golpes o sacks) y reacción a PepeDiario: desde la lesión de
+  Parsons GB va 1-6 (9-3-1 con él), 19 → 29 puntos encajados. Luis: "buen trabajo"
+- **Podcasts de la semana** (El Nickel por YouTube, 100 Yardas por RSS, PepeDiario con
+  la sesión de Luis en Chrome; Whisper `base`). Una pieza por programa. Ecos de la
+  NFL sin episodio nuevo. Descartado: "los Bengals no conceden carreras explosivas"
+  (cierto a 15+ yardas, pero hay otros cuatro equipos igual)
+- **Publicado sábado**: hilo del duelo BAL @ DAL en Río (3 tuits, 2 PNG) con la
+  mención a El Nickel y el 17 de 25 en 3er down de Dallas, el peor de la NFL
+- **PNG sin título ni subtítulo**: Luis lo pidió por segunda vez. Regla en CLAUDE.md
+  y en memoria. Al regenerar se coló el TNF en la media de la liga: los datos del
+  duelo quedan congelados en sem. 1-2 para que texto e imagen coincidan
+- Pendiente de usar: Seattle, 31 partidos seguidos sin un corredor de 100 yardas
+  (dicho en 100 Yardas, exacto en el PBP), para la previa de SEA @ WAS
+
+**Archivos modificados:** `CLAUDE.md`, `docs/decisiones.md`; sin git: `lab/bal_dal_*.py`,
+`lab/gb_ol_*.py`, `salidas/2026/w03/` (partidos del TNF, PNG del duelo, `ideas_boletin.md`)
+
+**Pendiente:**
+- Martes 29: primer batch con el bot v7 (picks de la sem. 4, SIN balance de la 3) y
+  el contenders tracker saltándose hasta la sem. 5
+- Comprobar el lunes a las 15:00 que la rutina del boletín escribe la Review sola
+- Pieza temática: el play action funciona aunque no corras (corr. 0,02)
+
+---
+
 ## [2026-09-24] — Manning bot v7, contenders al batch y el jueves de ATL @ GB
 
 **Qué se hizo:**

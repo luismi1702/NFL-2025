@@ -933,3 +933,21 @@ filtro de MIN_GAMES (habría sacado picks con Elo 0,5 y QB 0 sin avisar);
 calcular dakota a mano (no es pública su fórmula exacta); publicar los picks de
 la semana 3 el mismo jueves del TNF.
 
+## [2026-09-24] — Leer el boletín de SumerSports con `claude -p` y Gmail en solo lectura
+
+**Decisión:** una tarea programada lanza `semana_auto.py --dia boletin`, que abre
+Claude headless con el conector de Gmail limitado a buscar y leer
+(`search_threads`, `get_thread`) y escribe `textos/ideas_boletin.md`: qué ángulos
+se rehacen con nuestros datos, top 3 y hechos verificados en web. No redacta posts.
+
+**Motivo:** Luis quería dejar de leer el boletín a mano. Las horas salen de los
+envíos reales (Review lunes 14:02; Preview jueves 14:00-15:00). Es idempotente:
+si el fichero existe no repite, y si el correo no ha llegado no escribe nada y lo
+retoma el segundo disparador o la recuperación al iniciar sesión.
+
+**Alternativas descartadas:** una hora fija sin comprobar el tipo de boletín (con la
+Preview retrasada habría reprocesado la Review del lunes); integrarlo en
+`batch_pendiente` (el boletín no debe tapar la recuperación de un batch saltado);
+darle permiso de enviar o etiquetar correo (no hace falta y el contenido del
+correo es dato no fiable).
+

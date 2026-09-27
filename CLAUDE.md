@@ -64,6 +64,7 @@ ranking_wrs.py. Nunca reducir el zoom a mano para compensar.
 ## Estilo visual — obligatorio en todos los scripts
 BG="#0f1115" · CARD="#151924" · FG="#EDEDED" · GRID="#2a2f3a" · ACCENT="#2d6cdf"
 RYG=["#d84a4a","#ffd166","#06d6a0"]
+PNG nuevos para posts: SIN título ni subtítulo (Luis, pedido dos veces, sep-2026). Logo, leyenda, valores y pie sí
 
 Marca de agua — SIEMPRE esquina inferior derecha:
 ax.text(0.99, 0.01, "@CuartayDato", transform=ax.transAxes, ha="right", va="bottom", color="#888888", fontsize=9, alpha=0.8, fontstyle="italic")
