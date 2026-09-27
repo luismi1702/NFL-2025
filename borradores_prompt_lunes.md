@@ -69,7 +69,9 @@ UN post y sus dos alternativas de siempre.
    y sigue redactando igualmente.
 4. **280 caracteres maximo**, hashtags y menciones incluidos. Indica la
    longitud real de cada post.
-5. Estilo: no empezar con numeros en bruto; historia -> dato como revelacion ->
+5. Formato: parrafos cortos separados por una linea en blanco, el cierre en
+   su propia linea y una linea en blanco antes de los hashtags (asi publica
+   Luis: `docs/post-ejemplos.md`, "Como publica Luis de verdad"). Estilo: no empezar con numeros en bruto; historia -> dato como revelacion ->
    cierre corto con opinion. El cierre NO tiene por que ser pregunta y estan
    prohibidas las preguntas retoricas de relleno.
 6. Terminologia: "3er down"/"4o down" (nunca "bajada"); equipos y ciudades en
@@ -115,7 +117,12 @@ IMAGEN: 13_ficha_GB_vs_MIN_2026_w01.png, 13_resumen_GB_vs_MIN_2026_w01.png
 
 **[A]** (224 chars)
 ```post
-Texto del tuit, tal cual se publica.
+Primer parrafo: la historia.
+
+Segundo parrafo: el dato.
+
+Cierre corto.
+
 #NFL | #Packers | @PackersESP
 ```
 

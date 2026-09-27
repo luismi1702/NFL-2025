@@ -15,9 +15,9 @@ automatiza.
 | Miercoles | Power Rankings | power_rankings | batch martes |
 | Miercoles | MVPs de la jornada: HILO de 5 (apertura + ataque, defensa, especiales, rookie) | MVPsSemana (TXT, sin PNG) | batch martes |
 | Jueves | Bot: balance jornada anterior + picks (gancho: previa TNF) | Manning_bot --no-retrain | batch martes (2 TXT) |
-| Viernes | Analisis del TNF jugado la noche anterior (resumen + ficha) | resumen_partido + ficha_tactica | manual (el PBP del TNF sale la misma noche) |
+| Viernes | Analisis del TNF jugado la noche anterior (resumen + ficha) | resumen_partido + ficha_tactica + destacados | batch viernes 9:00 → `borradores_viernes.md` |
 | Sabado | Pieza de DUELO: un partido del domingo a fondo (p.ej. Johnson vs Flores, hilo) | lab/ + PBP, FTN, participation historica | manual |
-| Domingo AM | HILO de la jornada: una previa por partido, el gordo abre | Previas modo jornada | batch sabado 23:00 |
+| Domingo AM | HILO de la jornada: una previa por partido, el gordo abre | Previas modo jornada (+ `previas_numeros_*.txt`) | batch sabado 23:00 → PNG y `borradores_domingo.md` |
 | Quincenal | Pieza tematica rotatoria (presion, PROE, rankings posicion...) | grupo B del catalogo | manual |
 
 - Posts de partido: UNO por partido, desde el lado con mejor historia (gane o
@@ -47,8 +47,16 @@ automatiza.
 - Cada pieza vive en la carpeta de la JORNADA DE LA QUE HABLA (20-sep-2026):
   lunes a jueves en `w{N}` (hablan de la jornada jugada) y viernes, sabado y
   domingo en `w{N+1}`, junto a los PNG que usan (analisis del TNF, pieza de
-  duelo y hilo de previas). `cola_posts.py` lee las dos carpetas y monta una
-  sola pagina, en la de `w{N}`.
+  duelo y hilo de previas). CADA `w{N}` tiene su propia `cola_posts.html` con
+  SOLO lo de su carpeta (27-sep-2026, Luis): nace el sabado con las previas y
+  la rehacen todos los batch, haya borradores o no. Entra cualquier
+  `textos/borradores_*.md` (lunes, posts, domingo...).
+  La pagina sigue el calendario de la jornada: VIERNES (TNF, partido 01) →
+  SABADO (duelo, PNG `duelo_*`) → DOMINGO (hilo) → LUNES → MARTES →
+  MIERCOLES → JUEVES. Cada dia sale siempre: con su post o con una tarjeta
+  PENDIENTE que dice que toca y trae sus PNG. Los textos manuales (viernes,
+  sabado, domingo) van en `textos/borradores_{dia}.md` con el formato de
+  siempre (`## DIA — titulo`, `IMAGEN:`, bloque ```post).
 - El viernes se abrio el 18-sep-2026 (Luis): analisis del TNF de la noche
   anterior, con los PNG de resumen_partido y ficha_tactica del partido. El PBP
   del jueves esta publicado el viernes por la manana; FTN todavia no, asi que
@@ -77,8 +85,16 @@ automatiza.
   → estado_datos.txt, dato PNG, power rankings PNG, mvps_semana.txt,
   bot_balance.txt, bot_picks.txt en `salidas/{año}/w{NN}/`, y desde la
   semana 5 el contenders tracker (PNG + contenders.txt)
+- **"NFL2025 batch viernes"** — viernes **9:00** (creada el 27-sep-2026):
+  `python semana_auto.py --dia viernes` → resumen y ficha del TNF (el unico
+  partido de la jornada en el PBP a esa hora), `destacados_tnf.txt`,
+  `borradores_viernes.md` (prompt `borradores_prompt_viernes.md`: dos posts,
+  uno por equipo, con dos alternativas) y la cola. Si el TNF aun no esta en el
+  PBP, no genera nada y lo dice en el log
 - **"NFL2025 previas sabado"** — sabado 23:00: `python semana_auto.py --dia domingo`
-  → un PNG por partido de la PROXIMA jornada + PDF combinado
+  → un PNG por partido de la PROXIMA jornada + PDF combinado +
+  `previas_numeros_*.txt` (los numeros de los PNG, con rangos y conteos) +
+  `borradores_domingo.md` (prompt `borradores_prompt_domingo.md`) + la cola
 
 - **"NFL2025 boletin SumerSports"** — lunes 15:00 y 17:00, jueves 16:00 y
   18:00: `python semana_auto.py --dia boletin` (24-sep-2026). Lee con `claude -p`

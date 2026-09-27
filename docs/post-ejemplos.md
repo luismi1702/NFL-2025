@@ -54,6 +54,83 @@ Los MVPs EPA de la semana 18: Devin Bush le devolvió a Burrow una pick six de 9
 ("Los MVPs EPA de la semana 18:") y enumera tres jugadores sin jerarquía. Es un
 listado, no una historia. El dato no revela nada porque nunca hubo tensión.
 
+## Como publica Luis de verdad (leido en x.com/CuartayDato el 27-sep-2026)
+
+Semana 2 de 2026, de la previa del TNF al duelo del sabado (hora de Madrid):
+
+| Dia | Hora | Que |
+|---|---|---|
+| Jueves | ~11:30 | Previa del TNF: post + respuesta con un dato mas |
+| Viernes | ~10:30 | Analisis del TNF desde UN lado (el que tiene historia) + a media tarde un post suelto de contexto (Parsons, 13:27) |
+| Sabado | ~16:00 | Duelo: hilo de 3 (contexto del partido → dato del ataque → dato de la defensa rival) |
+| Domingo | ~12:45 | Hilo de previas: un tuit por partido, seguidos en 5 minutos |
+| Lunes | ~14:00 | Posts de partido, uno detras de otro |
+| Martes | ~20:50 | Monday Night + dato de la semana |
+| Miercoles | ~12:45 | Power Rankings + hilo de MVPs |
+
+Formato que usa en TODOS (manda sobre lo que diga un prompt):
+- **Parrafos cortos separados por una linea en blanco**, y otra linea en
+  blanco antes de los hashtags. Nunca un bloque unico: es lo que mas cambia
+  Luis al publicar un borrador (el dato del 22-sep salio del batch en un solo
+  parrafo y lo publico partido en cuatro).
+- El cierre de opinion va en su propia linea: `Con Shanahan a los mandos da igual quien juegue.`
+- Rankings en ordinal y en prosa: `30º ataque`, `la 2ª mejor defensa`, `31º contra el pase`. Nunca `#12`.
+- Decimales: en el hilo de previas los escribe con COMA (`-0,30`); en el dato
+  de la semana y los posts de partido ha dejado el PUNTO del borrador
+  (`+1.06`). Cualquiera vale, pero el mismo en todo el post.
+- Cierre: `#NFL | #Equipo1 #Equipo2 |` y las menciones detras. En el hilo de previas, los DOS equipos y sus cuentas.
+- Tuits de ~200-250 caracteres: dos datos, una frase de cierre corta (`Mal cóctel para los Colts.`, `Trece puntos y medio de línea lo dicen todo.`, `Si alguien pasa de 20, gana.`).
+
+TODO HILO abre con una pequeña presentacion (Luis, 27-sep-2026): que se
+cuenta y por que engancha, en dos o tres frases, sin tabla de numeros. Asi
+abren el de previas, el de MVPs (el 1/5 anuncia los cuatro nombres) y el del
+duelo ("La NFL aterriza en Brasil de nuevo: Ravens-Cowboys en el Maracanã...").
+
+Hilo de previas: ABRE CON UNA PRESENTACION sin imagen, con tres ganchos de la
+jornada, y luego un tuit por partido con su PNG, seguidos en unos 10 minutos
+(20-sep-2026, publicado tal cual):
+```
+Semana 2 en la NFL. Kansas City recibe a Indianapolis con la mejor defensa de la jornada 1, Jacksonville llega como el ataque más eficiente de la liga y Chicago viene de meter 59 puntos.
+
+Una previa por partido, con los datos de la semana 1 🧵
+
+#NFL
+```
+
+Dato de la semana: primera linea `Dato de la semana📕`, linea en blanco y la
+historia en parrafos (22-sep-2026, publicado):
+```
+Dato de la semana📕
+
+Con la mitad de los WR en la enfermería San Francisco pasó por encima de Miami: +1.06 EPA por jugada de pase.
+
+Seattle y los Rams, segundos, con +0.60.
+
+Con Shanahan a los mandos da igual quien juegue.
+
+#NFL | #49ers | @49ers_Spain @LaMinaPodcast
+```
+
+Ejemplo real de un tuit del hilo de previas (20-sep-2026):
+```
+Pittsburgh ganó a Atlanta con el 30º ataque de la jornada (-0,30) y la 2ª mejor defensa (-0,32), 1ª contra el pase (-0,61).
+
+El equipo más contradictorio de la semana 1 visita New England.
+
+#NFL | #Steelers #Patriots | @cortinadeacero @PatriotsMadrid
+```
+
+Ejemplo real del analisis del TNF (25-sep-2026):
+```
+Llegaba con el peor ataque de la NFL en EPA por jugada y se fue de Lambeau con 502 yardas y +0,33 por jugada.
+
+Atlanta corrió 39 veces para 244 yardas y 3 TD, con éxito en el 64% de las carreras.
+
+El 35-14 se hizo por tierra.
+
+#NFL | #Falcons
+```
+
 ## Reglas
 
 - No empezar con números en bruto ni con la estructura del visual.

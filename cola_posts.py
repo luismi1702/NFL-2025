@@ -25,7 +25,8 @@ import sys
 
 RAIZ = os.path.dirname(os.path.abspath(__file__))
 LIMITE = 280
-ORIGENES = ["borradores_lunes.md", "borradores_posts.md"]
+# Orden en la pagina de los que existan; cualquier otro borradores_*.md entra detras
+ORIGENES = ["borradores_lunes.md", "borradores_posts.md", "borradores_domingo.md"]
 
 BG, CARD, FG, GRID, ACCENT = "#0f1115", "#151924", "#EDEDED", "#2a2f3a", "#2d6cdf"
 OK, AVISO, MAL = "#06d6a0", "#ffd166", "#d84a4a"
@@ -103,17 +104,38 @@ def tarjeta(sec, post, idx, imagenes):
   </article>"""
 
 
-DIAS = [("lunes", "LUNES"), ("martes", "MARTES"), ("mi", "MIÉRCOLES"),
-        ("jueves", "JUEVES"), ("viernes", "VIERNES"),
-        ("sábado", "SÁBADO"), ("sabado", "SÁBADO"),
-        ("domingo", "DOMINGO")]
+# La semana de publicacion de una jornada, en el orden del calendario
+# (docs/calendario-posts.md; Luis, 27-sep-2026): empieza el viernes con el
+# analisis del TNF y acaba el jueves con el bot, que ya mira a la siguiente.
+# Cada dia sale SIEMPRE: con sus posts o con una tarjeta PENDIENTE.
+DIAS = [(("viernes",), "VIERNES"), (("sábado", "sabado"), "SÁBADO"),
+        (("domingo",), "DOMINGO"), (("lunes",), "LUNES"),
+        (("martes",), "MARTES"), (("mi",), "MIÉRCOLES"), (("jueves",), "JUEVES")]
+VIERNES, SABADO, DOMINGO, LUNES = 0, 1, 2, 3
+
+# Que toca cada dia (calendario-posts.md) y que PNG de la carpeta lo ilustran
+CALENDARIO = [
+    "Análisis del TNF jugado el jueves: resumen + ficha del partido 01 (manual).",
+    "Pieza de DUELO: un partido del domingo a fondo, en hilo (manual, lab/). "
+    "Ese partido no abre el hilo de previas.",
+    "HILO de la jornada: una previa por partido, abre el gordo. PNG en previas/; "
+    "el texto va en textos/borradores_domingo.md.",
+    "Un post por partido jugado, sin el MNF (batch lunes 10:00).",
+    "Dato de la semana + Monday Night, dos posts, uno por equipo (batch martes 8:00).",
+    "Power Rankings + hilo de MVPs de la jornada (batch martes).",
+    "Bot: balance de la jornada + picks de la siguiente, gancho previa del TNF (batch martes).",
+]
+PNG_DEL_DIA = [r"^01_(ficha|resumen)_", r"^duelo_", None, None,
+               r"^dato_semana", r"^power_rankings", None]
 
 
 def dia_de(sec):
-    """Indice del dia de publicacion segun el titulo; las tarjetas 'SIN POST'
-    son partidos, asi que van con el lunes."""
+    """Indice del dia de publicacion segun el titulo. Las tarjetas 'SIN POST'
+    son partidos: el 01 es el TNF (viernes) y el resto van con el lunes."""
+    if "dia" in sec:
+        return sec["dia"]
     if sec.get("hueco"):
-        return 0
+        return VIERNES if sec["imagenes"][0].startswith("01_") else LUNES
     t = sec["titulo"].lower()
     return next((k for k, (d, _) in enumerate(DIAS) if t.startswith(d)), len(DIAS))
 
@@ -124,6 +146,10 @@ def orden(indexada):
     fichero: 01_, 02_... por kickoff, luego dato_semana, power_rankings...).
     Los posts sin imagen van al final de su dia, en el orden del markdown."""
     i, sec = indexada
+    # Un hilo se publica en el orden del markdown (abre el partido gordo, no
+    # el 01_ del kickoff)
+    if "hilo" in sec["titulo"].lower():
+        return (dia_de(sec), 0, "", i)
     if not sec["imagenes"]:
         return (dia_de(sec), 1, "", i)
     return (dia_de(sec), 0, sec["imagenes"][0].lower(), i)
@@ -145,8 +171,23 @@ def construir(md, dir_semana, season, week, imagenes=None):
         if not m or f.lower() in usadas:
             continue
         resumen = f.replace("_ficha_", "_resumen_")
-        secciones.append({"titulo": f"SIN POST — {m.group(2)} vs {m.group(3)}",
+        titulo = (f"Análisis del TNF — {m.group(2)} vs {m.group(3)}"
+                  if m.group(1) == "01" else f"SIN POST — {m.group(2)} vs {m.group(3)}")
+        secciones.append({"titulo": titulo,
                           "imagenes": [f, resumen], "posts": [], "hueco": True})
+    # Cada dia del calendario tiene al menos una tarjeta: si nadie ha escrito
+    # su post, sale PENDIENTE con lo que toca y los PNG que ya haya
+    ocupados = {dia_de(s) for s in secciones if s["posts"] or s.get("hueco")}
+    for k, (_, nombre) in enumerate(DIAS):
+        if k in ocupados:
+            continue
+        pat = PNG_DEL_DIA[k]
+        fotos = sorted((os.path.basename(v) for v in imagenes.values()
+                        if pat and re.match(pat, os.path.basename(v))
+                        and v.lower().endswith(".png")), key=str.lower)
+        secciones.append({"titulo": f"{nombre} — PENDIENTE", "imagenes": fotos,
+                          "posts": [], "hueco": True, "dia": k,
+                          "nota": CALENDARIO[k]})
     secciones = [s for _, s in sorted(enumerate(secciones), key=orden)]
     tarjetas, idx, vacias = [], 0, []
     dia_actual = None
@@ -169,12 +210,11 @@ def construir(md, dir_semana, season, week, imagenes=None):
   <article class="card">
     <header><h2>{html.escape(sec["titulo"])}</h2></header>
     {fotos}
-    <p class="falta">Este partido no tiene post en los borradores.</p>
+    <p class="falta">{html.escape(sec.get("nota", "Este partido no tiene post en los borradores."))}</p>
   </article>""")
             continue
         if not sec["posts"]:
-            if sec["titulo"].lower().startswith(("lunes", "martes", "mi", "jueves",
-                                                 "domingo")):
+            if dia_de(sec) < len(DIAS):
                 vacias.append(sec["titulo"])
             continue
         for post in sec["posts"]:
@@ -315,23 +355,27 @@ def main():
         return os.path.join(RAIZ, "salidas", str(season), f"w{int(w):02d}")
 
     dir_semana = carpeta(week)
-    # Los del lunes (partidos) y los del martes (dato, MNF, PR, MVPs, bot) van
-    # en ficheros separados para que un batch no borre al otro; la cola los
-    # junta en orden de publicacion.
-    # Tambien entra la carpeta de la jornada SIGUIENTE: viernes (analisis del
-    # TNF), sabado (pieza de duelo) y domingo (hilo de previas) hablan ya de
-    # ella y viven ahi con sus PNG (decidido el 20-sep-2026). Asi la pagina
-    # sigue siendo una sola para toda la semana de publicacion.
-    # textos/ desde el 21-sep-2026; la ruta plana sigue valiendo para las
-    # semanas archivadas antes del cambio
-    origenes = [os.path.join(carpeta(w), sub, f)
-                for w in (week, int(week) + 1)
-                for sub in ("textos", "")
-                for f in ORIGENES]
-    origenes = [o for o in origenes if os.path.exists(o)]
+    # UNA cola por semana, en su carpeta y con SOLO lo de su carpeta (Luis,
+    # 27-sep-2026): w03/cola_posts.html lleva viernes, sabado y domingo de la
+    # jornada 3 (TNF, duelo, hilo de previas) y lunes a jueves despues de
+    # jugarla. Entra cualquier textos/borradores_*.md (lunes, posts, domingo,
+    # los que vengan) menos las copias _previo. La ruta plana sigue valiendo
+    # para las semanas archivadas antes del 21-sep-2026.
+    origenes = []
+    for sub in ("textos", ""):
+        d = os.path.join(dir_semana, sub)
+        if not os.path.isdir(d):
+            continue
+        propios = sorted(f for f in os.listdir(d)
+                         if f.startswith("borradores_") and f.endswith(".md")
+                         and "_previo" not in f and "_prompt" not in f)
+        # lunes y posts primero, como siempre; el resto detras
+        propios.sort(key=lambda f: (ORIGENES.index(f) if f in ORIGENES else 99, f))
+        origenes += [os.path.join(d, f) for f in propios]
     if not origenes:
-        print(f"No hay borradores en {dir_semana} ({', '.join(ORIGENES)}).")
-        return 1
+        # Sin textos todavia la pagina se genera igual: es el espejo de la
+        # carpeta y cada partido sale con su tarjeta SIN POST
+        print(f"Sin borradores en {dir_semana}: pagina solo con las imagenes.")
 
     trozos = [io.open(o, encoding="utf-8").read() for o in origenes]
     # El banner de datos sin verificar de cualquiera de los dos va arriba

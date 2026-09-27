@@ -116,13 +116,23 @@ IMAGEN: dato_semana_outlier_2026_w03.png
 
 **[A]** (224 chars)
 ```post
-Texto del tuit, tal cual se publica.
+Dato de la semana📕
+
+Primer parrafo: la historia y el dato.
+
+Segundo parrafo: el contexto.
+
+Cierre corto con opinion.
+
 #NFL | #Bucs | @Bucs_es
 ```
 
 **[B]** (238 chars)
 ```post
+Dato de la semana📕
+
 La otra alternativa, con un angulo distinto.
+
 #NFL | #Bucs | @Bucs_es
 ```
 
@@ -145,6 +155,16 @@ Las secciones, con estos titulos exactos:
 - `## JUEVES — Bot: balance + picks`
 
 - Dos alternativas por post con ángulos distintos, no la misma frase retocada.
+- FORMATO de TODOS los posts (como los publica Luis, ver "Como publica Luis de
+  verdad" en `docs/post-ejemplos.md`): parrafos cortos separados por una
+  linea en blanco, el cierre de opinion en su propia linea y una linea en
+  blanco antes de los hashtags. Nunca un bloque unico.
+- El dato de la semana empieza SIEMPRE con la linea `Dato de la semana📕`,
+  una linea en blanco y la historia. Publicado el 22-sep-2026:
+  `Dato de la semana📕` / (blanco) / `Con la mitad de los WR en la enfermería
+  San Francisco pasó por encima de Miami: +1.06 EPA por jugada de pase.` /
+  (blanco) / `Seattle y los Rams, segundos, con +0.60.` / (blanco) / `Con
+  Shanahan a los mandos da igual quien juegue.` / (blanco) / hashtags.
 - El post del jueves abre con el balance de la jornada anterior ("el bot fue
   X-Y") y remata con los picks destacados; si el TNF de esta semana está en
   los picks, úsalo de gancho.

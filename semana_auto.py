@@ -101,8 +101,10 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
     # su mera existencia contaria como exito aunque claude no escribiera nada
     # Cada dia en su fichero: cuando compartian borradores_posts.md, el batch
     # del martes borraba los posts de partido del lunes antes de publicarlos
-    destino = os.path.join(txt_dir, "borradores_lunes.md"
-                           if "lunes" in prompt_file else "borradores_posts.md")
+    # borradores_prompt_{dia}.md escribe borradores_{dia}.md (lunes, viernes,
+    # domingo); el prompt de siempre, el del martes, borradores_posts.md
+    dia_prompt = os.path.basename(prompt_file)[len("borradores_prompt"):-3].lstrip("_")
+    destino = os.path.join(txt_dir, f"borradores_{dia_prompt or 'posts'}.md")
     # No se borra: se aparta a _previo.md. Ahora que un batch muerto se
     # relanza (21-sep-2026), lo que hubiera ahi puede ser trabajo verificado
     # a mano, y el relanzamiento no puede llevarselo por delante
@@ -326,7 +328,8 @@ def fichas(SEASON, W):
 
 # Hora de cada tarea programada: (dia de la semana, hora, minuto). El batch
 # "domingo" se lanza el SABADO por la noche.
-HORARIO = {"lunes": (0, 10, 0), "martes": (1, 8, 0), "domingo": (5, 23, 0)}
+HORARIO = {"lunes": (0, 10, 0), "martes": (1, 8, 0), "viernes": (4, 9, 0),
+           "domingo": (5, 23, 0)}
 
 
 INTENTOS_MAX = 2   # el original y UN relanzamiento: ni bucle ni gasto doble
@@ -406,10 +409,39 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
                        captura=os.path.join(txt_dir, "destacados.txt")))
         hay_borradores = borradores(txt_dir, W, "borradores_prompt_lunes.md")
         ok.append(hay_borradores)
-        if hay_borradores:
-            ok.append(paso("cola de posts (copiar y pegar)",
-                           ["cola_posts.py", "--season", str(SEASON),
-                            "--week", str(W)]))
+        # La cola se rehace SIEMPRE: sin borradores sale igual, como espejo de
+        # la carpeta (27-sep-2026)
+        ok.append(paso("cola de posts (copiar y pegar)",
+                       ["cola_posts.py", "--season", str(SEASON),
+                        "--week", str(W)]))
+
+    elif dia == "viernes":
+        # VIERNES (27-sep-2026): el TNF de anoche. A esta hora la jornada W
+        # solo tiene ese partido en el PBP, asi que resumenes() y fichas()
+        # sacan solo el 01_ y destacados rastrea solo el TNF. El lunes se
+        # regenera todo con la jornada entera. FTN no esta todavia.
+        # Si nflverse aun no ha subido el TNF, W es la jornada ANTERIOR entera
+        # y esto la rehace y escribe el viernes en su carpeta: se para.
+        from pbp_loader import cargar_pbp
+        pbp_w, _ = cargar_pbp(SEASON, columns=["week", "game_id"],
+                              solo_reg=False, avisar=False)
+        n_w = pbp_w.loc[pbp_w["week"] == W, "game_id"].nunique()
+        if n_w > 2:
+            log(f"-> viernes: la semana {W} ya tiene {n_w} partidos, el TNF "
+                f"de anoche no esta en el PBP todavia — no se genera nada")
+            ok.append(False)
+            return
+        ok.append(paso("estado de datos", ["estado_datos.py"],
+                       captura=os.path.join(txt_dir, "estado_datos.txt")))
+        ok.append(resumenes(SEASON, W))
+        ok.append(fichas(SEASON, W))
+        ok.append(paso("destacados del TNF",
+                       ["destacados.py", "--season", str(SEASON), "--week", str(W)],
+                       captura=os.path.join(txt_dir, "destacados_tnf.txt")))
+        ok.append(borradores(txt_dir, W, "borradores_prompt_viernes.md"))
+        ok.append(paso("cola de posts (copiar y pegar)",
+                       ["cola_posts.py", "--season", str(SEASON),
+                        "--week", str(W)]))
 
     elif dia == "martes":
         # Semaforo de fuentes primero: si algo esta caido, que quede en el log
@@ -453,12 +485,11 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
         # sigue siendo de Luis (verificacion triple del CLAUDE.md)
         hay_borradores = borradores(txt_dir, W)
         ok.append(hay_borradores)
-        # NIVEL 2.5: pagina de copiar y pegar a partir de esos borradores.
-        # Sin borradores no hay nada que maquetar, asi que no cuenta como fallo.
-        if hay_borradores:
-            ok.append(paso("cola de posts (copiar y pegar)",
-                           ["cola_posts.py", "--season", str(SEASON),
-                            "--week", str(W)]))
+        # NIVEL 2.5: pagina de copiar y pegar. Se rehace SIEMPRE, con o sin
+        # borradores (27-sep-2026)
+        ok.append(paso("cola de posts (copiar y pegar)",
+                       ["cola_posts.py", "--season", str(SEASON),
+                        "--week", str(W)]))
 
     else:  # domingo (se lanza el sabado por la noche)
         # Previas de TODA la proxima jornada para el hilo del domingo.
@@ -472,11 +503,22 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
         ok.append(paso("previas de la jornada",
                        ["Previas.py", "--week", str(WP)],
                        stdin_text="j\n\n\n", timeout=2400))
+        # El texto del hilo (27-sep-2026): claude -p lee los numeros que deja
+        # Previas.py en previas_numeros_*.txt y busca las bajas en web
+        txt_wp = os.path.join(RAIZ, "salidas", str(SEASON), f"w{WP:02d}", "textos")
+        os.makedirs(txt_wp, exist_ok=True)
+        ok.append(borradores(txt_wp, WP, "borradores_prompt_domingo.md"))
+        # Cada jornada tiene su cola en su carpeta (Luis, 27-sep-2026): nace
+        # aqui con las previas y el hilo, y la completan los batch del lunes
+        # y el martes
+        ok.append(paso("cola de posts de la jornada",
+                       ["cola_posts.py", "--season", str(SEASON),
+                        "--week", str(WP)]))
 
 
 def main():
     ap = argparse.ArgumentParser(description="Batch semanal de generacion de PNGs")
-    ap.add_argument("--dia", choices=["lunes", "martes", "domingo", "boletin"])
+    ap.add_argument("--dia", choices=["lunes", "martes", "viernes", "domingo", "boletin"])
     ap.add_argument("--recuperar", action="store_true",
                     help="al iniciar sesion: lanza el ultimo batch si se salto")
     args = ap.parse_args()

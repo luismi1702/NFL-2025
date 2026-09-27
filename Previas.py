@@ -474,6 +474,49 @@ if __name__ == "__main__":
                 plt.close(fig)
                 print(f"  → {out_png}")
         print(f"\nPDF combinado: {pdf_path}  ({len(matchups)} partidos)")
+
+        # Los mismos numeros de los PNG en texto, para el redactor del hilo
+        # del domingo (claude -p no ejecuta codigo: lee esto). Añade lo que
+        # el PNG no ve: cuantas visitas a la red zone hay detras de cada % y
+        # cuantos FG detras del FG% (27-sep-2026: el 0% de FG de LA era 0/1)
+        rz = drv_df[drv_df["entered_rz"]]
+        rz_of = rz.groupby("posteam")["td_for"].agg(["sum", "size"])
+        rz_df = rz.groupby("defteam")["td_for"].agg(["sum", "size"])
+        fga = stats_df[pd.to_numeric(stats_df.get("field_goal_attempt"), errors="coerce") == 1]
+        fg_n = fga.groupby("posteam")["field_goal_result"].agg(
+            hechos=lambda s: int((s == "made").sum()), intentos="size")
+        pct = {"Éxito (%)", "Explosivas (%)", "%RedZone", "Éxito permitido (%)",
+               "Explosivas permitidas (%)", "%RedZone permitido", "FG%"}
+        lineas = [f"NUMEROS DE LAS PREVIAS — semana {week_num} de {SEASON}",
+                  f"Stats de las semanas 1-{week_num - 1}; rango 1 = el mejor de 32 "
+                  "(en defensa, 1 = la que menos concede). Mismos numeros que los PNG.",
+                  "Orden: kickoff (el NN_ del PNG).", ""]
+        for n, (away, home) in enumerate(matchups, 1):
+            lineas.append(f"== {n:02d} {away} @ {home} — "
+                          f"{os.path.basename(salida(nombre_preview(away, home, SEASON, week_num), SEASON, week_num))}")
+            for t in (away, home):
+                lineas.append(f"  {t} ({record_equipo(t) or '?'})")
+                for titulo, tabla, rangos in (("ATAQUE", off, off_ranks),
+                                              ("DEFENSA", deff, deff_ranks),
+                                              ("ESPECIALES", st, st_ranks)):
+                    celdas = [f"{c} {fmt_val(tabla.loc[t, c], c in pct)} ({int(rangos.loc[t, c])}º)"
+                              for c in tabla.columns if t in tabla.index]
+                    lineas.append(f"    {titulo}: " + " · ".join(celdas))
+                ro = rz_of.loc[t] if t in rz_of.index else None
+                rd = rz_df.loc[t] if t in rz_df.index else None
+                fg = fg_n.loc[t] if t in fg_n.index else None
+                lineas.append(
+                    "    CONTEO: red zone ataque "
+                    + (f"{int(ro['sum'])} TD en {int(ro['size'])} visitas" if ro is not None else "sin visitas")
+                    + " · red zone rival "
+                    + (f"{int(rd['sum'])} TD en {int(rd['size'])} visitas" if rd is not None else "sin visitas")
+                    + " · FG "
+                    + (f"{fg['hechos']}/{fg['intentos']}" if fg is not None else "0/0"))
+            lineas.append("")
+        txt_path = salida(f"previas_numeros_{SEASON}.txt", SEASON, week_num)
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lineas))
+        print(f"Numeros para el hilo: {txt_path}")
     else:
         away, home = matchups[0]
         out_png = salida(nombre_preview(away, home, SEASON, week), SEASON, week)

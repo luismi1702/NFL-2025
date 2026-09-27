@@ -89,6 +89,7 @@ plt.savefig("output.png", dpi=200, bbox_inches="tight", facecolor=BG)
 Estructura (TEMPORADA, lo que se publica hoy): [gancho: historia, nombres propios] → [dato como revelación] → [cierre corto con opinión] → [#NFL | #Equipo | @cuentas]
 Estructura (DRAFT, solo en la ventana de abril): [historia del equipo] → [dato como revelación] → [pregunta ilusionante 🤔] → [#NFLDraft #Equipo]
 - No empezar con números en bruto
+- Todo HILO abre con una pequeña presentación (qué se cuenta y el gancho, 2-3 frases); el hilo de previas, sin imagen y con 🧵. Ver docs/post-ejemplos.md
 - No centrar en el QB salvo que el visual sea de QBs
 - Cierre ilusionante: en draft es pregunta (el draft vende ilusión); en temporada, frase corta con opinión
 - No usar "jugadores de franquicia"
