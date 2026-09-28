@@ -208,4 +208,9 @@ Las secciones, con estos titulos exactos:
 - Si algún fichero falta o está vacío, dilo en su sección y no inventes: deja
   la sección sin bloques `post` y explica por qué en la verificación.
 
+CLARIDAD (Luis, 28-sep-2026): que lo entienda un aficionado español a la
+primera. Nada de palabras en inglés que no sean del juego ("nor'easter" ->
+"temporal de lluvia y viento") ni metáforas vacías ("cambiar de piel"): di qué
+cambió exactamente ("jugaron el 53% con el QB bajo centro").
+
 EMPIEZA AHORA: lee los ficheros listados, haz las verificaciones y escribe `{DIR}/borradores_posts.md`. No termines sin haberlo escrito.

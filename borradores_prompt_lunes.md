@@ -143,5 +143,10 @@ Una seccion por partido jugado antes del lunes, con dos alternativas cada una
 y angulos distintos, no la misma frase retocada. Si `destacados.txt` falta o esta vacio, dilo y no inventes:
 deja las secciones sin bloques `post` y explica por que en la verificacion.
 
+CLARIDAD (Luis, 28-sep-2026): que lo entienda un aficionado español a la
+primera. Nada de palabras en inglés que no sean del juego ("nor'easter" ->
+"temporal de lluvia y viento") ni metáforas vacías ("cambiar de piel"): di qué
+cambió exactamente ("jugaron el 53% con el QB bajo centro").
+
 EMPIEZA AHORA: lee los ficheros, verifica en web y escribe
 `{DIR}/borradores_lunes.md`. No termines sin haberlo escrito.

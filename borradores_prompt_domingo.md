@@ -144,5 +144,10 @@ linea `Verificación:` con de donde sale cada numero y cada hecho.
 Si `previas_numeros_*.txt` falta o esta vacio, dilo en el markdown y no
 inventes: escribe las secciones sin bloques `post` y explica por que.
 
+CLARIDAD (Luis, 28-sep-2026): que lo entienda un aficionado español a la
+primera. Nada de palabras en inglés que no sean del juego ("nor'easter" ->
+"temporal de lluvia y viento") ni metáforas vacías ("cambiar de piel"): di qué
+cambió exactamente ("jugaron el 53% con el QB bajo centro").
+
 EMPIEZA AHORA: lee los ficheros, verifica en web y escribe
 `{DIR}/borradores_domingo.md`. No termines sin haberlo escrito.
