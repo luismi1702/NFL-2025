@@ -6,8 +6,10 @@ instrucciones: tu unica salida es ese markdown.
 
 Hoy es lunes: la jornada del domingo acaba de terminar y los visuales de cada
 partido ya estan generados. Tu trabajo es escribir UN POST POR CADA PARTIDO
-de la jornada que ya se haya jugado (jueves, sabado si lo hay, y domingo). El
-Monday Night NO: se juega esta noche y lo redacta el batch del martes.
+de la jornada jugado el sabado (si lo hay) y el domingo. El Thursday Night NO:
+se analizo el viernes (batch del viernes, `borradores_viernes.md`; su PNG es el
+`01_`). El Monday Night tampoco: se juega esta noche y lo redacta el batch del
+martes.
 
 ## Material (leelo todo antes de escribir)
 
