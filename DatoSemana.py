@@ -12,6 +12,20 @@ from matplotlib.colors import LinearSegmentedColormap
 
 # === Config ===
 SEASON    = season_cli()   # None = auto-detectar última temporada
+
+
+def excluir_cli():
+    """--excluir SF,ATL: equipos que no pueden ser el dato (Luis, 29-sep-2026:
+    el ataque de SF ya fue el dato de la semana 2 y salio en los posts del
+    lunes). Se descartan como outlier, pero siguen en el grafico."""
+    import argparse
+    ap = argparse.ArgumentParser(add_help=False)
+    ap.add_argument("--excluir", default="")
+    args, _ = ap.parse_known_args()
+    return {x.strip().upper() for x in args.excluir.split(",") if x.strip()}
+
+
+EXCLUIR = excluir_cli()
 LOGOS_DIR = "logos"
 
 # Estilo
@@ -277,6 +291,9 @@ if __name__ == "__main__":
             continue
         # elegir el más extremo por |z|, encogido por tamaño de muestra
         rz_aj = rz * rz.index.map(lambda t: penalizacion_muestra(counts.get(t, 0)))
+        rz_aj = rz_aj[~rz_aj.index.isin(EXCLUIR)]
+        if rz_aj.empty:
+            continue
         out_team = rz_aj.abs().idxmax()
         z = float(rz_aj.loc[out_team])
         if (best is None) or (abs(z) > abs(best[0])):
@@ -293,7 +310,7 @@ if __name__ == "__main__":
         s_def, title_def, cnt_def = voltear_a_defensa(dfw, key)
         s_def = s_def.dropna()
         if len(s_def) >= 6:
-            rival = s_def.idxmin()          # menos EPA permitido = mejor defensa
+            rival = s_def.drop(list(EXCLUIR), errors="ignore").idxmin()  # menos EPA permitido = mejor defensa
             print(f"Outlier -> {out_team} hundido en '{title}' (z={z:+.2f})")
             print(f"Reencuadrado como defensa: {rival} en '{title_def}'")
             series, title, hib, fmt, counts, out_team = (

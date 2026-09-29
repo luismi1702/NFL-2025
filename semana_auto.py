@@ -449,7 +449,19 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
                        captura=os.path.join(txt_dir, "estado_datos.txt")))
         # MARTES: dato de la semana + los resumenes de TODA la jornada
         # (cual se publica lo eliges tu; generarlos todos no cuesta decision)
-        ok.append(paso("dato de la semana", ["DatoSemana.py", "--week", str(W)],
+        # El equipo del dato de la semana anterior no puede repetir (29-sep-2026:
+        # salio SF dos semanas seguidas). Se lee del TXT de w{W-1}
+        excl = []
+        previo = os.path.join(RAIZ, "salidas", str(SEASON), f"w{W - 1:02d}",
+                              "textos", "dato_semana.txt")
+        if os.path.exists(previo):
+            import re
+            hits = re.findall(r"(?:-> |defensa: )([A-Z]{2,3}) en",
+                              io.open(previo, encoding="utf-8", errors="replace").read())
+            if hits:
+                excl = ["--excluir", hits[-1]]
+                log(f"   dato: se excluye {hits[-1]} (fue el dato de la semana {W - 1})")
+        ok.append(paso("dato de la semana", ["DatoSemana.py", "--week", str(W)] + excl,
                        captura=os.path.join(txt_dir, "dato_semana.txt")))
         # Se regeneran resumenes Y fichas: el lunes faltaba el Monday Night, que
         # a estas horas ya esta publicado. Los demas partidos salen identicos.
