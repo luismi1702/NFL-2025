@@ -957,3 +957,15 @@ correo es dato no fiable).
 **Motivo:** Luis perdía tiempo buscando: la página de la semana 3 vivía en w02, el hilo del domingo no entraba en ninguna cola y las tarjetas no seguían el orden de la carpeta. "Cada semana un problema distinto".
 **Alternativas descartadas:** una sola página por semana de publicación en `w{N}` leyendo también `w{N+1}` (lo que había desde el 20-sep: la página no estaba donde se buscaba); que el partido gordo abra el hilo (rompía el orden de los PNG; su gancho pasa a la presentación); meter el MNF en el hilo del domingo (se publica el lunes).
 
+## [2026-09-30] — Nada de la jornada sin leer el boletín de SumerSports
+
+**Decisión:** ninguna previa ni post de la jornada se propone ni se publica sin haber leído su boletín de SumerSports: la Preview del jueves (`ideas_boletin_preview.md`) para viernes-domingo y la previa del MNF, la Review del lunes (`ideas_boletin_review.md`) para lunes-jueves. Se aplica en `cola_posts.py`: las tarjetas salen BLOQUEADAS, sin botón de copiar, hasta que existe el fichero, y la rutina del boletín rehace la cola al terminar. Rige desde la semana 3 de 2026.
+**Motivo:** Luis quiere que el boletín ("Stats & Scheme") informe cada pieza antes de salir. Al montarlo apareció que la Review del 28-sep no se había leído: Preview y Review de una misma jornada compartían `ideas_boletin.md` y la segunda se daba por hecha.
+**Alternativas descartadas:** solo avisar con un banner amarillo sin bloquear (Luis eligió bloquear previas y posts); bloquear solo las previas; mantener la Review a las 15:00 (llega entre las 13:00 y las 14:00 y los posts del lunes salen a las 14:00: se pasó a 14:15 y 15:30).
+
+## [2026-09-30] — Crédito de equipos especiales en los MVPs
+
+**Decisión:** en `MVPsSemana.py`, un TD de retorno del propio retornador cuenta aunque la jugada lleve una penalty aplicada (si la penalty hubiera anulado el retorno no habría TD: es posterior), y el punter no recibe el EPA de un punt que el retornador rival suelta y recupera su equipo (muff).
+**Motivo:** en la semana 3 el líder de especiales era Gillikin (ARI) por un muff de SF (+5.96 de sus +6.67) y el punt return TD de 86 yds de M.Price (MIN) quedaba fuera por una antideportiva cobrada después de anotar. La semana 2 no cambia.
+**Alternativas descartadas:** repartir el EPA dentro de la jugada (haría falta un modelo de EP propio, como ya se descartó el 22-sep); elegir a mano otro protagonista cada semana sin tocar el script.
+

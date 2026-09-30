@@ -2,6 +2,22 @@
 
 ---
 
+## [2026-09-28/30] — Semana 3 publicada, boletín como candado y MVPs bien acreditados
+
+**Que se hizo:**
+- **Publicado**: posts de partido (lunes), dato + MNF con la defensa de Chicago (martes), Power Rankings + hilo de MVPs (miércoles). Verificados contra script: facetas CIN/LA 8 de 11 con `ficha_tactica.py`, números del MNF y del ranking contra sus PNG
+- **Regla nueva — boletín de SumerSports ("Stats & Scheme")**: la cola marca BLOQUEADO, sin botón de copiar, viernes-domingo y la previa del MNF hasta leer la Preview, y lunes-jueves hasta leer la Review. Preview y Review en ficheros separados (la Review del 28-sep no se había leído por compartir nombre). La Review se busca a las 14:15 y 15:30 (tarea reprogramada)
+- **Dato de la semana**: `DatoSemana.py --excluir`; el batch del martes excluye solo el equipo del dato anterior (SF salía dos semanas seguidas). El de la semana 3 pasó a la defensa de WAS contra la carrera
+- **MVPs**: un TD de retorno con penalty posterior ya cuenta (M.Price, punt return de 86 yds) y el punter no se lleva el muff del rival (Gillikin). Prompt: línea "MVP X: Nombre" y aviso si el líder repite
+- **Prompts**: el lunes ya no redacta el TNF; regla de claridad (sin anglicismos ni metáforas vacías) en los cuatro
+- **Podcasts**: El Nickel y 100 Yardas transcritos (Whisper `base`); la pieza de Maye con/sin AJ Brown se descartó ("no hay chicha"); 100 Yardas no dio nada que pasara el listón
+
+**Archivos modificados:** `cola_posts.py`, `semana_auto.py`, `DatoSemana.py`, `MVPsSemana.py`, `borradores_prompt.md`, `borradores_prompt_lunes.md`, `borradores_prompt_viernes.md`, `borradores_prompt_domingo.md`, `ideas_boletin_prompt.md`, `CLAUDE.md`, `docs/calendario-posts.md`, `docs/decisiones.md`
+
+**Pendiente:**
+- Viernes 2-oct 9:00: primer batch del viernes real; revisar `salidas/auto_log.txt`
+- Los PNG del dato y del power ranking siguen con título y subtítulo (la regla dice sin título): decidir si se quitan
+
 ## [2026-09-27] — Una cola por jornada, viernes y domingo automaticos y estilo real de la cuenta
 
 **Que se hizo:**
