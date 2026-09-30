@@ -131,6 +131,15 @@ def descartes_retorno(d, ret_col):
     con_penalty = (_serie(d, "penalty").fillna(0) == 1) & (
         _serie(d, "penalty_yards").fillna(0) > 0
     )
+    # Salvo el TD del propio retornador: si la penalty hubiera anulado el
+    # retorno no habria TD, asi que es posterior a la jugada (antideportiva
+    # tras anotar, cobrada en el kickoff siguiente). El 29-sep-2026 esto
+    # dejaba fuera el punt return de 86 yds de M.Price (MIN) en la semana 3
+    td_propio = (_serie(d, "touchdown").fillna(0) == 1) & (
+        d["td_player_name"].fillna("").str.strip() == ret
+        if "td_player_name" in d.columns else False
+    ) & (ret != "")
+    con_penalty = con_penalty & ~td_propio
 
     return {
         "sin retorno (fair catch, touchback, downed, fuera)": sin_retorno,
@@ -188,7 +197,13 @@ def calc_st(d, play_type, kr_ret, pr_ret, kicker, punter, posteam, defteam,
 
     _add(base[base[play_type] == "field_goal"],  kicker, posteam)
     _add(base[base[play_type] == "extra_point"], kicker, posteam)
-    _add(base[base[play_type] == "punt"],        punter, posteam)
+    # Un punt que el retornador rival suelta y recupera el equipo que patea
+    # (muff) vale un monton de EPA que no es del punter: es el error del
+    # retornador y el merito de quien cae encima. Semana 3 de 2026: Gillikin
+    # (ARI) +6.670, de los que +5.96 eran un muff de S.Neal (SF)
+    punts = base[base[play_type] == "punt"]
+    muff = (_serie(punts, "fumble_lost").fillna(0) == 1)
+    _add(punts[~muff],                           punter, posteam)
 
     return credits
 

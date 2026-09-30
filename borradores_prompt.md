@@ -173,6 +173,13 @@ Las secciones, con estos titulos exactos:
   24-sep-2026): el post del jueves 1-oct NO lleva balance de la semana 3 (esos
   picks no salieron), solo los picks de la 4 presentados como estreno. El
   primer balance público es el de la semana 4, en el jueves siguiente.
+- Cada tuit de MVP (2/5 a 5/5) empieza con la linea `MVP Ataque: Nombre
+  Apellido` (o `MVP Defensa:`, `MVP Equipos especiales:`, `MVP Rookie:`) y una
+  linea en blanco: asi los publica Luis, con una foto del jugador que pone el.
+  Si el lider ya fue MVP de esa categoria la semana anterior (mira
+  `../../w{W-1}/textos/mvps_semana.txt`), cuentalo como historia ("Segunda
+  semana seguida") y anota en la verificacion el 2º del top-3 como
+  alternativa (Luis, 30-sep-2026).
 - Los MVPs son un HILO de cinco tuits. El 1/5 abre (sin menciones, pieza de
   liga) y anuncia los cuatro nombres. Cada uno de los otros cuatro cuenta a
   UN jugador, el lider de su categoria en `mvps_semana.txt`: que hizo (en
