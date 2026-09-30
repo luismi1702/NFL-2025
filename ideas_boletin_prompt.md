@@ -38,7 +38,7 @@ NO tenemos:
 
 ## 3. Qué escribir
 
-Fichero: `{DIR}/ideas_boletin.md` (en español, equipos y ciudades en inglés,
+Fichero: `{DIR}/ideas_boletin_{tipo}.md` (en español, equipos y ciudades en inglés,
 "3er down", nunca "bajada"). Estructura:
 
 ```

@@ -85,7 +85,25 @@ def numero_png(sec):
     return f'<span class="letra">{m.group(1)}</span> · '
 
 
-def tarjeta(sec, post, idx, imagenes):
+# REGLA (Luis, 30-sep-2026): ninguna previa ni post de la jornada sale sin
+# haber leido antes el boletin de SumerSports ("Stats & Scheme"). La Preview
+# (jueves) desbloquea viernes, sabado, domingo y la previa del MNF; la Review
+# (lunes) desbloquea de lunes a jueves. Hasta que existe su
+# textos/ideas_boletin_{tipo}.md, la tarjeta sale sin boton de copiar.
+BOLETIN_DESDE = (2026, 3)   # las semanas archivadas antes de la regla, libres
+
+
+def boletin_que_falta(sec, dir_semana, season, week):
+    """'Preview' o 'Review' si a esa tarjeta le falta su boletin; si no, ''."""
+    if (season, week) < BOLETIN_DESDE:
+        return ""
+    tipo = ("preview" if dia_de(sec) in (VIERNES, SABADO, DOMINGO)
+            or "previa" in sec["titulo"].lower() else "review")
+    ok = os.path.exists(os.path.join(dir_semana, "textos", f"ideas_boletin_{tipo}.md"))
+    return "" if ok else tipo.capitalize()
+
+
+def tarjeta(sec, post, idx, imagenes, falta=""):
     texto = post["texto"]
     n = len(texto)
     color = OK if n <= LIMITE else MAL
@@ -102,7 +120,7 @@ def tarjeta(sec, post, idx, imagenes):
   <article class="card">
     <header>
       <h2>{numero_png(sec)}{html.escape(sec["titulo"])} <span class="letra">[{post["letra"]}]</span></h2>
-      <button class="copiar" data-id="p{idx}">Copiar</button>
+      {'<span class="bloqueo">🔒 BLOQUEADO</span>' if falta else f'<button class="copiar" data-id="p{idx}">Copiar</button>'}
     </header>
     {img}
     <pre class="post" id="p{idx}">{html.escape(texto)}</pre>
@@ -200,6 +218,7 @@ def construir(md, dir_semana, season, week, imagenes=None):
                           "nota": CALENDARIO[k]})
     secciones = [s for _, s in sorted(enumerate(secciones), key=orden)]
     tarjetas, idx, vacias = [], 0, []
+    bloqueadas = set()
     dia_actual = None
     n_tarjetas = 0
     for sec in secciones:
@@ -228,11 +247,20 @@ def construir(md, dir_semana, season, week, imagenes=None):
                 vacias.append(sec["titulo"])
             continue
         for post in sec["posts"]:
-            tarjetas.append(tarjeta(sec, post, idx, imagenes))
+            falta = boletin_que_falta(sec, dir_semana, season, week)
+            if falta:
+                bloqueadas.add(falta)
+            tarjetas.append(tarjeta(sec, post, idx, imagenes, falta))
             idx += 1
             n_tarjetas += 1
 
     aviso = ""
+    aviso_bloq = ""
+    for tipo in sorted(bloqueadas):
+        aviso_bloq += (f'<div class="banner">🔒 BLOQUEADO: falta leer la {tipo} de '
+                  f'SumerSports. Sin ella no se publica nada de su parte de la '
+                  f'semana (tarjetas sin boton de copiar). Se desbloquea sola '
+                  f'cuando la rutina deja textos/ideas_boletin_{tipo.lower()}.md</div>')
     if banner:
         aviso = ('<div class="banner">⛔ DATOS SIN VERIFICAR — '
                  'no publicar sin revisar la frescura de las fuentes</div>')
@@ -285,6 +313,8 @@ def construir(md, dir_semana, season, week, imagenes=None):
   .chars {{ font-weight:600; }}
   .img-nombre {{ font-family:ui-monospace,monospace; }}
   .falta {{ color:{AVISO}; font-size:13px; }}
+  .bloqueo {{ background:{MAL}; color:#1a1a1a; font-weight:700; border-radius:6px;
+              padding:6px 12px; font-size:12px; flex:0 0 auto; }}
   .pie {{ color:#888; font-size:12px; margin-top:24px; font-style:italic; }}
 </style>
 </head>
@@ -292,7 +322,7 @@ def construir(md, dir_semana, season, week, imagenes=None):
 <h1>Cola de posts — NFL {season}, semana {week}</h1>
 <p class="sub">Copiar, pegar en X y arrastrar la imagen desde esta misma carpeta.
 Los borradores son borradores: la verificacion triple sigue siendo tuya.</p>
-{aviso}
+{aviso_bloq}{aviso}
 <div class="grid">{"".join(tarjetas)}
 </div>
 <p class="pie">Generado por cola_posts.py desde borradores_posts.md — @CuartayDato</p>

@@ -131,6 +131,9 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
                 f.write("\n--- STDERR ---\n" + r.stderr)
         if r.returncode == 0 and os.path.exists(destino):
             log(f"   OK -> {destino}")
+            # La cola de la jornada se desbloquea al leer el boletin
+            paso("cola de posts (desbloqueo)",
+                 ["cola_posts.py", "--season", str(SEASON), "--week", str(W)])
             return True
         cola = (r.stderr or r.stdout or "").strip().splitlines()[-3:]
         log(f"   FALLO (exit {r.returncode}): " + " | ".join(cola))
@@ -147,7 +150,10 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
 # las 14:02 (14 y 21-sep) y la Preview los jueves a las 14:03 y 15:04 (17 y
 # 24-sep; la de la semana 1 fue el miercoles, con el TNF de apertura el
 # jueves). Se lee una hora despues y la tarea reintenta dos horas mas tarde.
-BOLETIN_HORAS = {"review": (0, 15, 0), "preview": (3, 16, 0)}    # (dia, h, m)
+# Review: llega los lunes entre las 13:00 y las 14:00 (hora de Madrid) y los
+# posts del lunes salen a las 14:00 y NO pueden salir sin leerla (regla del
+# 30-sep-2026), asi que se busca a las 14:15
+BOLETIN_HORAS = {"review": (0, 14, 15), "preview": (3, 16, 0)}    # (dia, h, m)
 BOLETIN_TOOLS = ["Read", "Glob", "Grep", "Write", "WebSearch",
                  "mcp__claude_ai_Gmail__search_threads",
                  "mcp__claude_ai_Gmail__get_thread"]
@@ -188,7 +194,10 @@ def boletin(SEASON):
         log("-> boletin: sin jornada a la que asignarlo — paso omitido")
         return True
     txt_dir = os.path.join(RAIZ, "salidas", str(SEASON), f"w{W:02d}", "textos")
-    destino = os.path.join(txt_dir, "ideas_boletin.md")
+    # Uno por tipo: con un solo ideas_boletin.md la Review del lunes veia el
+    # fichero de la Preview del jueves (misma jornada) y no se leia nunca
+    # (paso el 28-sep-2026)
+    destino = os.path.join(txt_dir, f"ideas_boletin_{tipo}.md")
     if os.path.exists(destino):
         log(f"-> boletin {tipo}: ya estaba hecho ({destino})")
         return True
@@ -201,6 +210,7 @@ def boletin(SEASON):
                       encoding="utf-8").read()
               .replace("{DIR}", txt_dir.replace(os.sep, "/"))
               .replace("{TIPO}", tipo.capitalize())
+              .replace("{tipo}", tipo)
               .replace("{FECHA}", str(date.today())))
     log(f"-> boletin {tipo} (semana {W}): claude -p con Gmail en solo lectura")
     try:
@@ -209,7 +219,7 @@ def boletin(SEASON):
                            cwd=RAIZ, input=prompt, capture_output=True,
                            text=True, encoding="utf-8", errors="replace",
                            timeout=1800)
-        with io.open(os.path.join(txt_dir, "ideas_boletin_stdout.log"), "w",
+        with io.open(os.path.join(txt_dir, f"ideas_boletin_{tipo}_stdout.log"), "w",
                      encoding="utf-8") as f:
             f.write(r.stdout or "")
             if r.stderr:

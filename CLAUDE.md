@@ -84,6 +84,7 @@ plt.savefig("output.png", dpi=200, bbox_inches="tight", facecolor=BG)
   en cualquier web generalista, no aporta (así se descartó la clasificación, el
   parte de lesiones y el QBR). Ver docs/backlog.md
 - SIEMPRE buscar web antes de escribir cualquier post — nunca asumir datos del modelo actualizados
+- REGLA (30-sep-2026): ninguna previa ni post de la jornada se propone ni se publica sin haber leído el boletín de SumerSports ("Stats & Scheme"): la Preview del jueves (`textos/ideas_boletin_preview.md`) para viernes-domingo y la previa del MNF, la Review del lunes (`ideas_boletin_review.md`) para lunes-jueves. La cola los marca BLOQUEADO sin botón de copiar hasta que existe el fichero. Si falta, leerlo antes (`python semana_auto.py --dia boletin`)
 
 ## Posts X (@CuartayDato) — 280 chars máximo
 Estructura (TEMPORADA, lo que se publica hoy): [gancho: historia, nombres propios] → [dato como revelación] → [cierre corto con opinión] → [#NFL | #Equipo | @cuentas]

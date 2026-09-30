@@ -96,8 +96,11 @@ automatiza.
   `previas_numeros_*.txt` (los numeros de los PNG, con rangos y conteos) +
   `borradores_domingo.md` (prompt `borradores_prompt_domingo.md`) + la cola
 
-- **"NFL2025 boletin SumerSports"** — lunes 15:00 y 17:00, jueves 16:00 y
-  18:00: `python semana_auto.py --dia boletin` (24-sep-2026). Lee con `claude -p`
+- **"NFL2025 boletin SumerSports"** — lunes 14:15 y 15:30 (antes 15:00 y 17:00: la
+  Review llega entre las 13:00 y las 14:00 y los posts del lunes salen a las 14:00),
+  jueves 16:00 y 18:00. Deja `ideas_boletin_review.md` o `ideas_boletin_preview.md`
+  (uno por tipo desde el 30-sep-2026: con un solo fichero la Review no se leia) y
+  REHACE LA COLA, que queda BLOQUEADA hasta entonces (regla del 30-sep-2026): `python semana_auto.py --dia boletin` (24-sep-2026). Lee con `claude -p`
   el boletin de SumerSports (Gmail de cuartaydato, solo buscar y leer) y deja
   `textos/ideas_boletin.md`: resumen, que angulos se rehacen con nuestros datos
   y cuales no, top 3 y hechos verificados en web. La Review (lunes 14:02) va a
