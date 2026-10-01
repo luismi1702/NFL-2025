@@ -25,6 +25,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 from pbp_loader import (cargar_pbp, salida, season_cli, week_cli, sello,
                         orden_partido)
+from estilo import *   # noqa: F401,F403  (estilo comun, docs/estilo-visual.md)
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 SEASON = season_cli()
@@ -191,96 +192,98 @@ print(f"\n{'='*70}")
 print(f"  FICHA TACTICA: {away} {pts[away]:.0f} - {pts[home]:.0f} {home} | "
       f"semana {week} NFL {SEASON}")
 print(f"{'='*70}")
-for etiqueta, clave, f, hb, _sec in METRICAS:
+for etq, clave, f, hb, _sec in METRICAS:
     gana = mejor(clave, hb)
-    fila = f"  {etiqueta:24}"
+    fila = f"  {etq:24}"
     for t in (team_a, team_b):
         marca = " <" if gana == t else "  "
         fila += f" | {t} {fmt(vals[t][clave], f):>7}{marca}"
     print(fila)
 
-# ── PNG ────────────────────────────────────────────────────────────────────────
-secciones = []
-for _, _, _, _, sec in METRICAS:
-    if sec not in secciones:
-        secciones.append(sec)
-filas_total = len(METRICAS) + len(secciones)
+# ── PNG (estilo docs/estilo-visual.md) ─────────────────────────────────────────
+def nombre_equipo(team):
+    """Ciudad para el titular; los equipos que comparten ciudad, por su apodo."""
+    try:
+        eq = pd.read_parquet("pbp_cache/teams.parquet").set_index("team_abbr")
+        if team in ("LA", "LAC", "NYG", "NYJ"):
+            return "los " + eq.loc[team, "team_nick"]
+        return eq.loc[team, "team_name"].replace(" " + eq.loc[team, "team_nick"], "")
+    except Exception:
+        return team
 
-fig, ax = plt.subplots(figsize=(11.5, 0.62 * filas_total + 3.1), facecolor=BG)
-ax.set_facecolor(BG)
-ax.axis("off")
-ax.set_xlim(0, 10)
-ax.set_ylim(0, filas_total + 3.0)
 
-techo = filas_total + 3.0
+def titular_ficha():
+    """Facetas ganadas CONTADAS por el script (nunca a ojo: ver CLAUDE.md, punto 4)."""
+    con_ganador = [m for m in METRICAS if m[3] is not None]
+    n = len(con_ganador)
+    ganadas = {t: sum(mejor(m[1], m[3]) == t for m in con_ganador) for t in (team_a, team_b)}
+    if pts[home] == pts[away]:
+        return None
+    gan_partido = home if pts[home] > pts[away] else away
+    per_partido = away if gan_partido == home else home
+    if ganadas[per_partido] > ganadas[gan_partido]:
+        s = f"{nombre_equipo(per_partido)} ganó {ganadas[per_partido]} de las {n} facetas y perdió el partido."
+    else:
+        t = max(ganadas, key=ganadas.get)
+        if ganadas[t] < 8:
+            return None
+        s = f"{nombre_equipo(t)} ganó {ganadas[t]} de las {n} facetas del partido."
+    return s[0].upper() + s[1:]
 
-# Cabecera
-ax.add_patch(plt.Rectangle((0, techo - 1.85), 10, 1.85, color=CARD, zorder=0))
-ax.text(5.0, techo - 0.62, f"{away}  {pts[away]:.0f} - {pts[home]:.0f}  {home}",
-        ha="center", va="center", fontsize=19, fontweight="bold", color=FG, zorder=2)
-ax.text(5.0, techo - 1.12, f"FICHA TACTICA  ·  semana {week} | NFL {SEASON}",
-        ha="center", va="center", fontsize=10, color="#9aa3b5",
-        fontstyle="italic", zorder=2)
-ax.text(5.0, techo - 1.55,
-        "en verde, el equipo que gana cada faceta",
-        ha="center", va="center", fontsize=8.5, color="#6b7280", zorder=2)
 
-for t, x in ((team_a, 1.15), (team_b, 8.85)):
-    logo = load_logo(t, zoom=0.052)
-    if logo is not None:
-        ax.add_artist(AnnotationBbox(logo, (x, techo - 0.95), frameon=False, zorder=3))
-    ax.text(x, techo - 1.62, t, ha="center", va="center", fontsize=12,
-            fontweight="bold", color=FG, zorder=3)
+COLP = colores_pareja(team_a, team_b)
+fig = lienzo()
+antetitulo(fig, f"Ficha táctica · semana {week} · {away} {pts[away]:.0f} - {pts[home]:.0f} {home}")
+tit = titular_ficha()
+y = (titular(fig, tit, y=0.925) - 0.025) if tit else 0.905
+y_top = y
 
-# Filas
-y = techo - 2.25
+# Cabecera: cada equipo en su lado
+yc = y - 0.04
+for t, x, ha in ((team_a, L + 0.03, "left"), (team_b, R - 0.03, "right")):
+    poner_logo(fig, t, x + (0.015 if ha == "left" else -0.015), yc, zoom=0.02)
+    fig.text(x + (0.055 if ha == "left" else -0.055), yc, t, family=TXT, weight="bold",
+             size=10, color=COLP[t], va="center", ha=ha)
+fig.text(0.5, yc, "en blanco, quien gana cada faceta", family=TXT, size=7, color=GRIS2,
+         ha="center", va="center")
+
+y = yc - 0.045
 sec_actual = None
-BAR_MAX = 2.05          # largo maximo de la barra de percentil
-for etiqueta, clave, f, hb, sec in METRICAS:
+CENTRO, HUECO, BAR_MAX = 0.5, 0.135, 0.17      # etiqueta en el centro, barras a los lados
+for etiq, clave, f, hb, sec in METRICAS:
     if sec != sec_actual:
         sec_actual = sec
-        ax.text(5.0, y, sec, ha="center", va="center", fontsize=8.5,
-                fontweight="bold", color="#5c6473", zorder=3)
-        ax.plot([0.35, 3.6], [y, y], color=GRID, linewidth=0.8, zorder=1)
-        ax.plot([6.4, 9.65], [y, y], color=GRID, linewidth=0.8, zorder=1)
-        y -= 1.0
-
-    ax.text(5.0, y, etiqueta, ha="center", va="center", fontsize=9.5,
-            color="#cfd6e4", zorder=3)
-
+        linea_h(fig, y + 0.012)
+        etiqueta(fig, sec.capitalize() if sec != "IDENTIDAD" else "Identidad (sin ganador)",
+                 CENTRO, y - 0.006, ha="center")
+        y -= 0.034
+    nombre = (etiq.replace(" / ", " por ").replace("2o", "2º").replace("4o", "4º")
+              .replace("Exito", "Éxito").replace("Red Zone", "red zone"))
+    fig.text(CENTRO, y, nombre, family=TXT, size=7.6, color=GRIS1, ha="center", va="center")
     gana = mejor(clave, hb)
     for t, signo in ((team_a, -1), (team_b, 1)):
         v = vals[t][clave]
-        # El largo es la magnitud y el COLOR el signo: sin esto, el -0.80 en
-        # Red Zone de un equipo salia como la barra mas larga de la ficha, que
-        # es justo su peor casilla. Un EPA negativo va en rojo aunque gane la
-        # fila (puede ganarla siendo menos malo que el rival).
-        negativo = (f == "epa" and hb is not None and v is not None
-                    and not (isinstance(v, float) and np.isnan(v)) and v < 0)
-        col = ROJO if negativo else (VERDE if gana == t else NEUTRO)
-        borde = 3.75 if signo < 0 else 6.25
-        # El largo de la barra es el VALOR, no un percentil: los porcentajes
-        # sobre su escala natural (0-100) y el EPA sobre +-0.8, que cubre casi
-        # todo lo que se ve en un partido. Asi la barra no esconde un dato que
-        # el lector no puede ver.
-        if v is not None and not (isinstance(v, float) and np.isnan(v)):
+        vacio = v is None or (isinstance(v, float) and np.isnan(v))
+        neg = (not vacio) and f == "epa" and v < 0
+        if not vacio:
             frac = abs(v) / 100.0 if f == "pct" else min(abs(v), 0.8) / 0.8
             largo = BAR_MAX * min(frac, 1.0)
-            if largo > 0.02:
-                ax.add_patch(plt.Rectangle(
-                    (borde - largo if signo < 0 else borde, y - 0.16),
-                    largo, 0.3, color=col, alpha=0.85, zorder=2))
-        ax.text(borde - BAR_MAX - 0.12 if signo < 0 else borde + BAR_MAX + 0.12, y,
-                fmt(v, f), ha="right" if signo < 0 else "left", va="center",
-                fontsize=12, fontweight="bold", color=col, zorder=3)
-    y -= 1.0
+            x0 = CENTRO + signo * HUECO
+            col = NEUTRO if (neg or hb is None) else COLP[t]
+            if largo > 0.002:
+                fig.add_artist(Rectangle((x0 - largo if signo < 0 else x0, y - 0.0065), largo, 0.013,
+                                         transform=fig.transFigure, color=col, lw=0))
+        xt = CENTRO + signo * (HUECO + BAR_MAX + 0.015)
+        txt = "–" if vacio else (num(v) if f == "epa" else f"{v:.0f}%")
+        fig.text(xt, y, txt, family=TXT, size=9, weight="bold" if gana == t else "normal",
+                 color=FG if gana == t else GRIS1, ha="right" if signo < 0 else "left",
+                 va="center")
+    y -= 0.03
 
-ax.text(0.35, 0.35, f"Fuente: nflverse-data  ·  {sello(SEASON)}  ·  "
-                    f"{vals[team_a]['n']} y {vals[team_b]['n']} jugadas  ·  "
-                    f"identidad sin ganador: no es mejor ni peor",
-        ha="left", va="center", fontsize=7.5, color="#555555", fontstyle="italic")
-ax.text(9.65, 0.35, "@CuartayDato", ha="right", va="center", fontsize=9,
-        color="#888888", alpha=0.8, fontstyle="italic")
+tarjeta(fig, y + 0.005, y_top)
+pie(fig, f"{vals[team_a]['n']} y {vals[team_b]['n']} jugadas · Éxito = EPA > 0 · "
+         "Explosiva = pase de 20+ o carrera de 10+",
+    f"NFL {SEASON} · semana {week} · nflverse PBP")
 
 orden = orden_partido(SEASON, week, team_a, team_b)
 if orden:
@@ -290,6 +293,4 @@ else:
     nombre = f"ficha_{team_a}_vs_{team_b}_{SEASON}.png"
 
 out = salida(nombre, SEASON, week)
-fig.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
-plt.close(fig)
-print(f"\nGuardado: {out}")
+guardar(fig, out)

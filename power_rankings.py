@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from pbp_loader import cargar_pbp, salida, season_cli, week_cli, sello
+from estilo import *   # noqa: F401,F403  (estilo comun, docs/estilo-visual.md)
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
@@ -212,95 +213,66 @@ def records_hasta_semana(season, max_week):
 
 records = records_hasta_semana(SEASON, week)
 
-# ── PLOT ───────────────────────────────────────────────────────────────────────
-n_teams = len(stats)
-fig, ax = plt.subplots(figsize=(12, 11), facecolor=BG)
-ax.set_facecolor(BG)
+# ── PLOT (estilo docs/estilo-visual.md) ────────────────────────────────────────
+def nombre_equipo(team):
+    """Ciudad para el titular; los equipos que comparten ciudad, por su apodo."""
+    try:
+        eq = pd.read_parquet("pbp_cache/teams.parquet").set_index("team_abbr")
+        if team in ("LA", "LAC", "NYG", "NYJ"):
+            return "los " + eq.loc[team, "team_nick"]
+        return eq.loc[team, "team_name"].replace(" " + eq.loc[team, "team_nick"], "")
+    except Exception:
+        return team
 
-norm_color = Normalize(vmin=0.0, vmax=1.0)
-y_pos = np.arange(n_teams)
 
-# Draw bars
-for idx in range(n_teams):
-    comp = stats.loc[idx, "composite"]
-    color = RYG(norm_color(comp))
-    ax.barh(y_pos[idx], comp, color=color, height=0.70,
-            edgecolor="#1e2430", linewidth=0.5, zorder=2)
-
-# Midpoint reference
-ax.axvline(0.5, color=GRID, linewidth=0.8, linestyle=":", zorder=3)
-
-# ── LOGOS, RANK, VALUE ANNOTATIONS ────────────────────────────────────────────
 stats = stats.reset_index(drop=True)
-y_pos = np.arange(len(stats))
+n_teams = len(stats)
+rk_of = stats["off_epa"].rank(ascending=False, method="min").astype(int)
+rk_df = stats["def_epa"].rank(ascending=True, method="min").astype(int)
 
-x_min, x_max = 0.0, 1.05
-x_logo = -0.065
-x_rank = -0.115
+primero, ultimo = stats.loc[0, "team"], stats.loc[n_teams - 1, "team"]
+tit = f"{nombre_equipo(primero)} encabeza el ranking; {nombre_equipo(ultimo)} lo cierra."
+tit = tit[0].upper() + tit[1:]
 
-for idx in range(len(stats)):
+fig = lienzo()
+antetitulo(fig, f"Power rankings · semana {week}")
+y_top = titular(fig, tit, y=0.925) - 0.03
+
+por_col = (n_teams + 1) // 2
+alto_fila = (y_top - 0.15) / por_col
+ancho_col = (R - L) / 2
+for idx in range(n_teams):
+    col, fila_i = divmod(idx, por_col)
+    x0 = L + col * ancho_col + (0.012 if col else 0)
+    yy = y_top - 0.035 - fila_i * alto_fila
     team = stats.loc[idx, "team"]
-    y    = y_pos[idx]
-    comp = stats.loc[idx, "composite"]
-    off  = stats.loc[idx, "off_epa"]
-    deff = stats.loc[idx, "def_epa"]
-    st   = stats.loc[idx, "st_epa"]
     rank = idx + 1
-
-    # Rank number
-    ax.text(x_rank, y, f"#{rank}", ha="center", va="center",
-            fontsize=8.5, color="#aaaaaa", fontweight="bold", zorder=5)
-
-    # Logo
-    logo = load_logo(team, base_zoom=0.040)
-    if logo is not None:
-        ab = AnnotationBbox(logo, (x_logo, y), frameon=False, zorder=4)
-        ax.add_artist(ab)
-    else:
-        ax.text(x_logo, y, team, ha="center", va="center", fontsize=7, color=FG)
-
-    # Composite value + récord W-L
+    comp = stats.loc[idx, "composite"]
+    fig.text(x0 + 0.032, yy, f"{rank}", family=TXT, weight="bold", size=8,
+             color=color_rango(rank, n_teams), ha="right", va="center")
+    poner_logo(fig, team, x0 + 0.058, yy, zoom=0.0105)
+    fig.text(x0 + 0.083, yy + 0.006, team, family=TXT, weight="bold", size=7.6, color=FG,
+             va="center")
     rec = records.get(team, "")
-    ax.text(comp + 0.012, y, f"{comp:.3f}" + (f"   {rec}" if rec else ""),
-            ha="left", va="center", fontsize=8, color=FG, zorder=5)
+    fig.text(x0 + 0.083, yy - 0.0085, rec, family=TXT, size=6.2, color=GRIS1, va="center")
+    # barra de la puntuacion (0-100), gris: el juicio va en el numero del puesto
+    xb, wb = x0 + 0.145, 0.15
+    fig.add_artist(Rectangle((xb, yy - 0.004), wb, 0.008, transform=fig.transFigure,
+                             color=GRID, lw=0))
+    fig.add_artist(Rectangle((xb, yy - 0.004), wb * max(min(comp, 1), 0), 0.008,
+                             transform=fig.transFigure, color=GRIS1 if 5 < rank <= n_teams - 5
+                             else color_rango(rank, n_teams), lw=0))
+    fig.text(xb + wb + 0.008, yy, f"{comp * 100:.0f}", family=TXT, weight="semibold",
+             size=7.6, color=FG, va="center")
+    fig.text(xb + wb + 0.04, yy, f"A {rk_of[idx]}º · D {rk_df[idx]}º", family=TXT, size=6.2,
+             color=GRIS2, va="center")
+y_fin = y_top - 0.035 - (por_col - 1) * alto_fila - alto_fila / 2 - 0.01
+linea_v(fig, L + ancho_col + 0.002, y_fin + 0.015, y_top - 0.015)
 
-    # Off/Def EPA inside or near bar — texto oscuro sobre barras claras
-    bar_label = f"OF:{off:+.3f} DF:{deff:+.3f} ET:{st:+.1f}"
-    text_x = max(comp * 0.5, 0.05)
-    r, g, b, _ = RYG(norm_color(comp))
-    lum = 0.299 * r + 0.587 * g + 0.114 * b
-    ax.text(text_x, y, bar_label, ha="center", va="center",
-            fontsize=6.5, color="#0a0e13" if lum > 0.45 else "#EDEDED",
-            fontweight="bold", zorder=5)
-
-# ── AXES STYLING ───────────────────────────────────────────────────────────────
-ax.set_yticks([])   # sin ticks: los logos hacen de etiqueta
-ax.invert_yaxis()
-ax.set_xlim(-0.14, 1.10)
-ax.set_xlabel("Score compuesto (0-1)", color=FG, fontsize=11)
-ax.tick_params(colors=FG, labelsize=8)
-for spine in ax.spines.values():
-    spine.set_edgecolor(GRID)
-ax.grid(axis="x", color=GRID, linewidth=0.5, alpha=0.4)
-ax.set_axisbelow(True)
-ax.xaxis.label.set_color(FG)
-
-# (colorbar eliminado: el color es el propio score, ya visible en la barra)
-
-# ── TITLES ─────────────────────────────────────────────────────────────────────
-fig.text(0.5, 0.97, f"Power Rankings NFL {SEASON} \u2014 Semana {week}",
-         ha="center", va="top", fontsize=16, fontweight="bold", color=FG)
-fig.text(0.5, 0.92,
-         "35% EPA ofensivo + 35% EPA defensivo + 10% equipos especiales (EPA neto/partido) + 20% tendencia ofensiva \u00faltimas 3 semanas",
-         ha="center", va="top", fontsize=10, color="#888888", fontstyle="italic")
-fig.text(0.01, 0.01, f"Fuente: nflverse-data  \u00b7  {sello(SEASON)}",
-         ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-fig.text(0.99, 0.01, "@CuartayDato",
-         ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
-
-plt.tight_layout(rect=[0, 0.03, 1, 0.91])
+tarjeta(fig, y_fin, y_top)
+pie(fig, "Puntuación 0-100 (35% ataque, 35% defensa, 10% especiales, 20% tendencia) · "
+         "A/D = puesto en EPA de ataque y de defensa",
+    f"NFL {SEASON} · datos hasta sem. {week} · nflverse PBP")
 
 outfile = salida(f"power_rankings_{SEASON}.png", SEASON, week)
-fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
-plt.close(fig)
-print(f"Guardado: {outfile}")
+guardar(fig, outfile)

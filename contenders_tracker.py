@@ -267,139 +267,86 @@ def compute(sch: pd.DataFrame, season: int, max_week: int):
     return df, reg["week"].nunique()
 
 
-# ── VISUALIZACION ─────────────────────────────────────────────────────────────
+# ── VISUALIZACION (estilo docs/estilo-visual.md) ─────────────────────────────
+ETIQ_CORTA = {
+    "wins_pace": "Victorias", "ptdiff_pace": "Dif. puntos", "def_epa": "EPA def.",
+    "pts_allowed_pace": "Pts cedidos", "def_third_conv": "3er down ced.",
+    "pts_scored_pace": "Pts anotados", "ypa": "Yds/pase", "drive_score_rate": "Drives c/ pts",
+    "turnovers_def_pace": "Pérdidas forz.", "sacks_allowed_pace": "Sacks recib.",
+    "success_rate_def": "Éxito ced.", "yards_play_def": "Yds/jug. ced.",
+}
+
+
+def _nombre(team):
+    try:
+        eq = pd.read_parquet("pbp_cache/teams.parquet").set_index("team_abbr")
+        if team in ("LA", "LAC", "NYG", "NYJ"):
+            return "los " + eq.loc[team, "team_nick"]
+        return eq.loc[team, "team_name"].replace(" " + eq.loc[team, "team_nick"], "")
+    except Exception:
+        return team
+
+
 def render(df, season, week, n_weeks_played):
-    contenders = df[df["contender"]]
-    n_cont = len(contenders)
+    from estilo import (lienzo, guardar, antetitulo, titular, tarjeta, etiqueta, pie, poner_logo,
+                        color_equipo, L, R, TXT, FG, GRIS1, GRIS2, GRID, NEUTRO)
+    from matplotlib.patches import Rectangle, Ellipse
+    cont = df[df["contender"]]["team"].tolist()
+    if not cont:
+        mejor = df.iloc[0]
+        tit = (f"Ningún equipo cumple todavía las {TOTAL} marcas del peor campeón; "
+               f"{_nombre(mejor['team'])} cumple {int(mejor['n_ok'])}.")
+    elif len(cont) == 1:
+        tit = f"Solo {_nombre(cont[0])} cumple las {TOTAL} marcas del peor campeón."
+    else:
+        tit = f"{len(cont)} equipos cumplen las {TOTAL} marcas del peor campeón."
+    tit = tit[0].upper() + tit[1:]
 
-    metric_labels = [cfg["label"] for cfg in THRESHOLDS.values()]
-    metric_keys   = list(THRESHOLDS.keys())
-    n_metrics     = len(metric_keys)
+    fig = lienzo()
+    antetitulo(fig, f"Fórmula del campeón · semana {week}")
+    y_top = titular(fig, tit, y=0.925) - 0.03
 
-    n_rows = len(df)
-    fig_h  = max(12, n_rows * 0.38 + 3)
-    fig    = plt.figure(figsize=(16, fig_h), facecolor=BG)
-    gs     = gridspec.GridSpec(2, 1, figure=fig,
-                               height_ratios=[1, n_rows],
-                               hspace=0.02, top=0.97, bottom=0.02,
-                               left=0.01, right=0.99)
-
-    # ── Cabecera
-    ax_h = fig.add_subplot(gs[0])
-    ax_h.set_facecolor(BG)
-    ax_h.axis("off")
-    ax_h.text(0.5, 0.80, "Contenders Tracker",
-              ha="center", color=GOLD, fontsize=22, fontweight="bold",
-              transform=ax_h.transAxes)
-    ax_h.text(0.5, 0.45, f"Temporada {season}  ·  Semana {week}  ·  {n_weeks_played} jornadas jugadas",
-              ha="center", color=FG, fontsize=12, alpha=0.85,
-              transform=ax_h.transAxes)
-    ax_h.text(0.5, 0.10,
-              f"{n_cont} equipo{'s' if n_cont != 1 else ''} cumple{'n' if n_cont != 1 else ''} "
-              f"las {TOTAL} metricas simultaneamente",
-              ha="center", color=GREEN if n_cont > 0 else RED, fontsize=11,
-              fontweight="bold", transform=ax_h.transAxes)
-
-    # ── Tabla
-    ax = fig.add_subplot(gs[1])
-    ax.set_facecolor(BG)
-    ax.axis("off")
-
-    # Proporciones: logo | equipo | ok/total | metrica1 ... metrica12
-    LOGO_X  = 0.022
-    TEAM_X  = 0.065
-    SCORE_X = 0.115
-    COL_START = 0.155
-    COL_W     = (0.99 - COL_START) / n_metrics
-
-    ax.set_xlim(0, 1)
-    # -1.4 abajo: deja visible la fila de leyenda (chips en y=-0.85)
-    ax.set_ylim(-1.4, n_rows + 1)
-
-    # Cabeceras metricas
-    for j, lbl in enumerate(metric_labels):
-        x = COL_START + j * COL_W + COL_W / 2
-        short = lbl.replace(" (ritmo)", "").replace("Yds/", "Y/")
-        ax.text(x, n_rows + 0.65, short, ha="center", va="center",
-                color=GOLD, fontsize=6.2, fontweight="bold", rotation=30)
-
-    ax.axhline(n_rows + 0.1, color=GRID, lw=0.8, xmin=0.01, xmax=0.99)
-
-    prev_contender = None
+    keys = list(THRESHOLDS.keys())
+    n = len(df)
+    X_COLS = L + 0.20
+    col_w = (R - 0.01 - X_COLS) / len(keys)
+    y_head = y_top - 0.05
+    for j, k in enumerate(keys):
+        fig.text(X_COLS + (j + 0.5) * col_w, y_head, ETIQ_CORTA.get(k, k), family=TXT,
+                 size=5.6, color=GRIS1, rotation=50, ha="left", va="bottom",
+                 rotation_mode="anchor")
+    alto = (y_head - 0.16) / n
+    y = y_head - 0.02
     for i, (_, row) in enumerate(df.iterrows()):
-        y    = n_rows - i - 0.5
-        row_y = n_rows - i - 1
-        is_cont = row["contender"]
-
-        # Separador contenders / no contenders
-        if bool(prev_contender) and not is_cont:
-            ax.axhline(n_rows - i, color=GOLD, lw=1.5, xmin=0.01, xmax=0.99, alpha=0.7)
-        prev_contender = is_cont
-
-        # Fondo
-        bg = "#1a2535" if is_cont else (CARD if i % 2 == 0 else "#1a2030")
-        rect = plt.Rectangle((0.01, row_y), 0.98, 1, facecolor=bg, zorder=1)
-        ax.add_patch(rect)
-
-        # Logo
-        place_logo(ax, row["team"], LOGO_X, y, zoom=0.030, zorder=3)
-
-        # Equipo
-        team_col = GREEN if is_cont else FG
-        ax.text(TEAM_X, y, row["team"], ha="center", va="center",
-                color=team_col, fontsize=9, fontweight="bold" if is_cont else "normal", zorder=3)
-
-        # Score ok/total
-        score_col = GREEN if is_cont else (YELLOW if row["n_miss"] <= 2 else RED)
-        ax.text(SCORE_X, y, f"{int(row['n_ok'])}/{TOTAL}",
-                ha="center", va="center", color=score_col, fontsize=9,
-                fontweight="bold", zorder=3)
-
-        # Celdas por metrica
-        for j, metric in enumerate(metric_keys):
-            x    = COL_START + j * COL_W + COL_W / 2
-            val  = row.get(f"ok_{metric}", None)
-            if pd.isna(val):           # pd.isna y bool() para tolerar numpy bools
-                color, sym = DIM, "–"
-                tcol = "#666"
-            elif bool(val):
-                color, sym = "#06d6a0", "✓"
-                tcol = "#000"
+        yy = y - i * alto
+        es = bool(row["contender"])
+        if es:
+            fig.add_artist(Rectangle((L, yy - alto / 2), R - L, alto, transform=fig.transFigure,
+                                     color="#1e2433", lw=0, zorder=-0.5))
+        poner_logo(fig, row["team"], L + 0.02, yy, zoom=0.0085)
+        fig.text(L + 0.045, yy, row["team"], family=TXT, weight="bold" if es else "normal",
+                 size=7, color=color_equipo(row["team"]) if es else FG, va="center")
+        fig.text(L + 0.17, yy, f"{int(row['n_ok'])}/{TOTAL}", family=TXT, weight="bold",
+                 size=7, color=FG if es else GRIS1, va="center", ha="right")
+        for j, k in enumerate(keys):
+            cx = X_COLS + (j + 0.5) * col_w
+            v = row.get(f"ok_{k}", None)
+            if v is None or pd.isna(v):
+                fig.text(cx, yy, "–", family=TXT, size=6, color=GRIS2, ha="center", va="center")
             else:
-                color, sym = "#d84a4a", "✗"
-                tcol = FG
+                d = 0.0115                     # diametro en ancho de figura
+                asp = fig.get_figwidth() / fig.get_figheight()
+                fig.add_artist(Ellipse((cx, yy), d, d * asp, transform=fig.transFigure,
+                                       fc=FG if bool(v) else "none",
+                                       ec=FG if bool(v) else GRIS2, lw=0.9))
+    tarjeta(fig, y - (n - 1) * alto - alto / 2 - 0.01, y_top)
+    pie(fig, "Marca = el valor del peor campeón 2015-2025 · conteos a ritmo de 17 partidos · "
+             "punto blanco = cumple",
+        f"NFL {season} · datos hasta sem. {week} · nflverse")
 
-            cell_w = COL_W * 0.85
-            cell = FancyBboxPatch((x - cell_w/2, y - 0.35), cell_w, 0.70,
-                                  boxstyle="round,pad=0.01",
-                                  facecolor=color, alpha=0.85, zorder=2)
-            ax.add_patch(cell)
-            ax.text(x, y, sym, ha="center", va="center",
-                    color=tcol, fontsize=10, fontweight="bold", zorder=3)
-
-    # Leyenda (desplazada a la derecha para no pisar la fuente)
-    for lx, col, txt in [(0.30, GREEN, "CONTENDER"), (0.42, YELLOW, "fallan 1-2"),
-                          (0.54, RED, "fallan 3+"), (0.66, DIM, "sin datos")]:
-        chip = FancyBboxPatch((lx, -0.85), 0.07, 0.60,
-                              boxstyle="round,pad=0.01", facecolor=col, alpha=0.85, zorder=2)
-        ax.add_patch(chip)
-        ax.text(lx + 0.035, -0.55, txt, ha="center", va="center",
-                color="#000" if col in (GREEN, YELLOW) else FG, fontsize=7.5,
-                fontweight="bold", zorder=3)
-
-    fig.text(0.99, 0.005, "@CuartayDato", ha="right", va="bottom",
-             fontsize=9, color="#888888", alpha=0.8, fontstyle="italic")
-    fig.text(0.01, 0.005, f"NFL {season} · datos hasta sem. {week}  ·  Fuente: nflverse  ·  "
-             "Conteos prorrateados a ritmo 17 PJ",
-             ha="left", va="bottom", fontsize=7, color="#555555", fontstyle="italic")
-
-    # Archivado en salidas/{año}/wNN/liga/ como el resto de piezas de liga
-    # (antes caia en la raiz con nombre propio y el batch no lo encontraba)
     from pbp_loader import salida
     out = salida(f"contenders_{season}.png", season, week)
-    fig.savefig(out, dpi=180, bbox_inches="tight", facecolor=BG)
-    plt.close(fig)
-    print(f"Guardado: {out}")
+    guardar(fig, out)
     return out
 
 

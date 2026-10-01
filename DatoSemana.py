@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from pbp_loader import cargar_pbp, salida, season_cli, week_cli, sello
+from estilo import *   # noqa: F401,F403  (estilo comun, docs/estilo-visual.md)
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -162,97 +163,112 @@ def penalizacion_muestra(n, k=15):
     n = max(int(n), 1)
     return (n / (n + k)) ** 0.5
 
-# ---------- Plot ----------
+# ---------- Plot (estilo docs/estilo-visual.md) ----------
+# Frase del titular por metrica: (si es el MEJOR, si es el PEOR). {T} = equipo.
+FRASES = {
+    "EPA/jugada ofensivo (semana)": ("Ningún ataque sumó tanto por jugada como el de {T}.",
+                                     "Ningún ataque restó tanto por jugada como el de {T}."),
+    "EPA/carrera ofensivo (semana)": ("Ningún equipo corrió como {T}.",
+                                      "Ningún equipo corrió peor que {T}."),
+    "EPA/pase ofensivo (semana)": ("Ningún equipo pasó como {T}.",
+                                   "Ningún equipo pasó peor que {T}."),
+    "EPA/jugada equipos especiales (semana)": ("Nadie sacó tanto de los equipos especiales como {T}.",
+                                               "Ningunos especiales costaron tanto como los de {T}."),
+    "FG% (semana)": ("Nadie acertó tanto en los field goals como {T}.",
+                     "Nadie falló tanto en los field goals como {T}."),
+    "EPA/jugada permitido (semana)": ("Ninguna defensa concedió tan poco como la de {T}.",
+                                      "Ninguna defensa concedió tanto como la de {T}."),
+    "EPA/carrera permitido (semana)": ("Ninguna defensa paró la carrera como la de {T}.",
+                                       "Ninguna defensa sufrió tanto contra la carrera como la de {T}."),
+    "EPA/pase permitido (semana)": ("Ninguna defensa paró el pase como la de {T}.",
+                                    "Ninguna defensa sufrió tanto contra el pase como la de {T}."),
+}
+ETIQUETA = {k: k.replace(" (semana)", "").replace("EPA/", "EPA por ").replace(" ofensivo", "")
+            .replace(" permitido", " permitido").replace("FG%", "Acierto en field goals")
+            for k in FRASES}
+
+
+def nombre_equipo(team):
+    """Ciudad para el titular; los equipos que comparten ciudad, por su apodo."""
+    try:
+        eq = pd.read_parquet("pbp_cache/teams.parquet").set_index("team_abbr")
+        if team in ("LA", "LAC", "NYG", "NYJ"):
+            return "los " + eq.loc[team, "team_nick"]
+        return eq.loc[team, "team_name"].replace(" " + eq.loc[team, "team_nick"], "")
+    except Exception:
+        return team
+
+
+def fmt_v(v, title):
+    return f"{v:.0f}%" if title.startswith("FG%") else num(v)
+
+
 def plot_outlier(series, title, week, higher_is_better, fmt, counts, out_idx, outfile):
-    # Preparación
-    s = series.dropna()
-    # Orden (mejor arriba si higher_is_better)
-    s = s.sort_values(ascending=not higher_is_better)
-    teams = s.index.tolist(); vals = s.values
+    s = series.dropna().sort_values(ascending=not higher_is_better)    # el mejor primero
+    teams = s.index.tolist()
+    n = len(teams)
+    rk = teams.index(out_idx) + 1
+    T = nombre_equipo(out_idx)
+    # "Ninguna..." solo si de verdad es el 1º o el ultimo (el z va encogido por muestra)
+    if rk == 1:
+        tit = FRASES.get(title, ("", ""))[0].format(T=T)
+    elif rk == n:
+        tit = FRASES.get(title, ("", ""))[1].format(T=T)
+    else:
+        tit = ""
+    if not tit:
+        tit = f"{T}: {fmt_v(s.loc[out_idx], title)} {ETIQUETA.get(title, title).lower()}, {rk}º de {n}."
+    tit = tit[0].upper() + tit[1:]
 
-    fig, ax = plt.subplots(figsize=FIGSIZE, dpi=DPI)
-    fig.patch.set_facecolor(BG)
-    ax.set_facecolor(BG)
-    for spine in ax.spines.values():
-        spine.set_edgecolor(GRID)
-    ax.tick_params(colors=FG)
-    ax.xaxis.label.set_color(FG)
-
-    y = np.arange(len(s))
-    ranks = np.argsort(np.argsort(vals)) / max(len(vals) - 1, 1)
-    if not higher_is_better:
-        ranks = 1.0 - ranks
-    base_colors = [RYG(p) for p in ranks]
-
-    # Límites asimétricos
-    vmin, vmax = float(np.min(vals)), float(np.max(vals))
-    rng = max(vmax - vmin, 1e-6)
-    ax.set_xlim(vmin - 0.06*rng, vmax + 0.12*rng)
-
-    # Barras
-    bars = ax.barh(y, vals, color=base_colors, height=0.56, edgecolor="none")
-
-    # Outlier: contorno y anotación
-    if out_idx in s.index:
-        idx = teams.index(out_idx)
-        bars[idx].set_edgecolor("#ffffff")
-        bars[idx].set_linewidth(2.2)
-
-    # Texto de valores (negativos a la izquierda, fuera de la barra)
-    xr = ax.get_xlim()[1]
-    for yy, v, t in zip(y, vals, teams):
-        if v >= 0:
-            ax.text(min(v + 0.006*rng, xr - 0.01*rng), yy, fmt.format(v),
-                    va="center", ha="left", fontsize=10, color=FG)
-        else:
-            ax.text(v - 0.006*rng, yy, fmt.format(v),
-                    va="center", ha="right", fontsize=10, color=FG)
-
-    # Logos a la izquierda
-    xmin, xmax = ax.get_xlim()
-    x_logo = xmin - 0.075*(xmax - xmin)
-    ax.set_yticks([])
-    for yy, team in zip(y, teams):
-        im = logo_image(team, base_zoom=0.035)
-        if im is not None:
-            ab = AnnotationBbox(im, (x_logo, yy), frameon=False, xycoords=("data","data"))
-            ax.add_artist(ab)
-        else:
-            ax.text(xmin, yy, team, va="center", ha="left", fontsize=10, color=FG)
-
-    # Título y subtítulo
-    fig.text(0.5, 0.97, f"El Dato de la Semana {week}  |  NFL {SEASON}",
-             ha="center", va="top", fontsize=18, fontweight="bold", color=FG)
-    fig.text(0.5, 0.92, title,
-             ha="center", va="top", fontsize=11, color="#888888", fontstyle="italic")
-
-    # Outlier destacado
-    out_val = series.loc[out_idx]
+    fig = lienzo()
+    antetitulo(fig, f"Dato de la semana {week}")
+    y = titular(fig, tit, y=0.925) - 0.03
+    y_top = y
+    yc = y - 0.04
+    poner_logo(fig, out_idx, L + 0.035, yc, zoom=0.024)
+    fig.text(L + 0.085, yc, out_idx, family=TXT, weight="bold", size=9,
+             color=color_equipo(out_idx), va="center")
+    lado = "DEFENSA" if "permitido" in title else ("ESPECIALES" if ("especiales" in title or "FG" in title) else "ATAQUE")
+    fig.text(L + 0.15, yc, f"·  {lado}", family=TXT, weight="semibold", size=8.5, color=GRIS1,
+             va="center")
+    etiqueta(fig, ETIQUETA.get(title, title), L + 0.01, yc - 0.05)
+    numero(fig, fmt_v(s.loc[out_idx], title), L + 0.005, yc - 0.11)
+    fig.text(L + 0.43, yc - 0.095, f"{rk}º de {n}", family=TXT, weight="bold", size=9,
+             color=color_rango(rk, n), va="center")
     plays = int(counts.get(out_idx, 0)) if isinstance(counts, pd.Series) else 0
-    detalle = f"Outlier: {out_idx}  {fmt.format(out_val)}"
-    if plays:
-        detalle += f"  ({plays} jugadas)"
-    ax.text(0.01, 0.02, detalle, transform=ax.transAxes,
-            fontsize=10, color="#B9BDC7")
+    otro = teams[1] if rk == 1 else teams[0]
+    nota(fig, f"{plays} jugadas · {'el 2º' if rk == 1 else 'el 1º'}, {otro}, "
+              f"{fmt_v(s.loc[otro], title)}", L + 0.43, yc - 0.123)
 
-    # Ejes limpios
-    ax.grid(axis="x", linestyle="--", alpha=0.25, color=GRID)
-    ax.axvline(0, color=GRID, linewidth=1)
-    for spine in ["top", "right", "left"]:
-        ax.spines[spine].set_visible(False)
+    # Todos los equipos: gris; el protagonista en su color y el siguiente rotulado
+    etiqueta(fig, f"Los {n} equipos de la semana", L + 0.01, yc - 0.19)
+    alto = yc - 0.215 - 0.17
+    ax = estilo_ejes(fig.add_axes([L + 0.01, 0.17, R - L - 0.02, alto]), x=True)
+    vals = s.values
+    for i, (t, v) in enumerate(zip(teams, vals)):
+        yy = n - 1 - i
+        prota = t == out_idx
+        c = color_equipo(t) if prota else (GRIS1 if t == otro else NEUTRO)
+        ax.plot([0, v], [yy, yy], color=c, lw=1.6 if prota else 1.0, solid_capstyle="butt")
+        ax.scatter([v], [yy], s=26 if prota else 9, color=c, zorder=3, lw=0)
+        if prota or t == otro:
+            ax.text(v + (0.012 if v >= 0 else -0.012) * (max(abs(vals)) or 1), yy, t,
+                    family=TXT, weight="bold" if prota else "normal", size=7,
+                    color=c, va="center", ha="left" if v >= 0 else "right")
+    ax.axvline(0, color=GRID, lw=1)
+    span = max(abs(vals)) or 1
+    ax.set_xlim(min(0, vals.min()) - 0.15 * span, max(0, vals.max()) + 0.15 * span)
+    ax.set_ylim(-1, n)
+    ax.set_xticks([])
+    fig.text(L + 0.01, 0.155, "MEJOR" if not higher_is_better else "PEOR", family=TXT,
+             weight="medium", size=6.5, color=GRIS2, va="center")
+    fig.text(R - 0.01, 0.155, "PEOR" if not higher_is_better else "MEJOR", family=TXT,
+             weight="medium", size=6.5, color=GRIS2, va="center", ha="right")
 
-    # Fuente
-    # Sin coletilla "solo pases y carreras": la métrica puede ser de ST/FG
-    fig.text(0.01, 0.01, f"Fuente: nflverse-data  ·  {sello(SEASON)}",
-             ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-
-    # Firma
-    ax.text(0.99, 0.02, "@CuartayDato", transform=ax.transAxes,
-            ha="right", va="bottom", color="#888888", fontsize=9, alpha=0.85, fontstyle="italic")
-
-    plt.savefig(outfile, bbox_inches="tight", facecolor=BG)
-    plt.close(fig)
-    print(f"Guardado: {outfile}")
+    tarjeta(fig, 0.13, y_top)
+    pie(fig, f"{ETIQUETA.get(title, title)} en la semana {week}",
+        f"NFL {SEASON} · semana {week} · nflverse PBP")
+    guardar(fig, outfile)
 
 # ---------- Main ----------
 if __name__ == "__main__":
