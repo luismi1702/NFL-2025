@@ -507,6 +507,13 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
                        ["Manning_bot.py", "--no-retrain"],
                        captura=os.path.join(txt_dir, "bot_picks.txt"),
                        sin_muestra=3))
+        # PNG de los picks para el post del jueves (01-oct-2026). Lee el TXT
+        # de arriba; el dia de cada partido sale si ya estan las previas, y
+        # si no, se puede relanzar el jueves tras Previas.py
+        if os.path.exists(os.path.join(txt_dir, "bot_picks.txt")):
+            ok.append(paso("bot: PNG de los picks",
+                           ["manning_picks.py", "--season", str(SEASON),
+                            "--week", str(W + 1)]))
         # NIVEL 2: Claude Code headless redacta los borradores a partir de lo
         # generado. Solo puede leer, buscar en web y escribir; la publicacion
         # sigue siendo de Luis (verificacion triple del CLAUDE.md)

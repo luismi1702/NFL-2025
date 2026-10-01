@@ -168,6 +168,17 @@ Las secciones, con estos titulos exactos:
 - El post del jueves abre con el balance de la jornada anterior ("el bot fue
   X-Y") y remata con los picks destacados; si el TNF de esta semana está en
   los picks, úsalo de gancho.
+- Detras del post del bot va SIEMPRE, en respuesta, como funciona el bot y
+  por que no sirve para apostar (Luis, 01-oct-2026). Seccion
+  `## JUEVES — Bot: cómo funciona (respuesta al de los picks)`, `IMAGEN:
+  ninguna`, y este texto COPIADO TAL CUAL como unica alternativa [A] (Luis eligio la B el 01-oct-2026) (no se reescriben: los
+  numeros son el benchmark walk-forward 2022-2025 de la v7, docs/decisiones.md
+  24-sep-2026; solo cambian si se reentrena y se repite el benchmark):
+  Cómo funciona: Manning Bot aprende de cada partido desde 2015 (EPA, Elo, quarterback, equipos especiales) y de lo que dicen las apuestas. /  / En 2022-2025 acertó el 69,2%. Las cuotas, el 68,2%. /  / Eso es empatar con la casa, que además se queda su comisión. Para apostar, no sirve.
+  (cada " / " es un salto de linea; " /  / " es una linea en blanco)
+- El post del jueves lleva SIEMPRE la imagen de los picks (la hace
+  `manning_picks.py` en el mismo batch): `IMAGEN: manning_picks_{año}_w{NN}.png`,
+  con NN = {W} + 1 en dos cifras (es la jornada de los picks, no la jugada).
 - El balance SOLO se cuenta de jornadas cuyos picks se PUBLICARON. En 2026 el
   bot se estrena con los picks de la semana 4 (decidido por Luis el
   24-sep-2026): el post del jueves 1-oct NO lleva balance de la semana 3 (esos

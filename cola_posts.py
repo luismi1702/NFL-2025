@@ -164,7 +164,7 @@ CALENDARIO = [
     "Dato de la semana + Monday Night, dos posts, uno por equipo (batch martes 8:00).",
     "Power Rankings + hilo de MVPs de la jornada (batch martes).",
 ]
-PNG_DEL_DIA = [r"^01_preview_", r"^01_(ficha|resumen)_", r"^duelo_", None, None,
+PNG_DEL_DIA = [r"^(01_preview_|manning_picks_)", r"^01_(ficha|resumen)_", r"^duelo_", None, None,
                r"^dato_semana", r"^power_rankings"]
 
 

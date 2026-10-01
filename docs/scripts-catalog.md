@@ -55,6 +55,7 @@
 | oline_presion.py | Tasa de presión permitida por línea ofensiva |
 | oline_presion_origen.py | Por dónde cede presión cada OL. Enter = heatmap 32 (presión FTN + origen: interior DT/NT, exterior DE/OLB, blitz LB/DB, vía atribución de sacks+QB hits). Sigla = diagrama de campo con flechas de origen y los titulares de cada puesto. Nota: la presión cedida POR liniero concreto (LT vs RT) no existe en datos públicos — es charting de pago (PFF Premium Stats / SIS / FTN StatsHub) |
 | dline_presion_origen.py | Espejo defensivo: desde donde GENERA presion cada defensa. Enter = heatmap 32 (presiones por 100 dropbacks, total y por origen: las cuatro columnas suman la primera). Sigla = diagrama de campo con flechas convergiendo sobre el QB (grosor = % del reparto) y el mayor generador de cada origen en su puesto. Presiones reales de pfr_advstats (con hurries); clasificacion por depth_chart_position afinada con el peso (DE >=280 lb = interior) |
+| manning_picks.py | PNG de los picks de Manning Bot de una jornada (post del jueves): lee `w{N-1}/textos/bot_picks.txt`, ordena por kickoff con `previas_numeros` si existe; mascota de portada abajo. Va en el batch del martes. `--week N` = jornada de los picks |
 | cuarto_down.py | Conversiones en 4º down |
 | power_rankings.py | Composite: 35% EPA ofensivo + 35% defensivo + 10% equipos especiales (EPA neto/partido) + 20% tendencia ofensiva reciente (sin ajuste por rival) |
 | clutch_performance.py | Rendimiento en situaciones cerradas (4Q + OT, ≤7 pts). Un equipo o scatter 32 |
