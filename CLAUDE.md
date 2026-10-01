@@ -66,7 +66,7 @@ ranking_wrs.py. Nunca reducir el zoom a mano para compensar.
 ## Estilo visual — obligatorio en todos los scripts
 BG="#0f1115" · CARD="#151924" · FG="#EDEDED" · GRID="#2a2f3a" · ACCENT="#2d6cdf"
 RYG=["#d84a4a","#ffd166","#06d6a0"]
-PNG nuevos para posts: SIN título ni subtítulo (Luis, pedido dos veces, sep-2026). Logo, leyenda, valores y pie sí
+Títulos en los PNG (02-oct-2026, sustituye a la regla "sin título" de sep-2026): SÍ, pero solo un TITULAR CON LA CONCLUSIÓN, al estilo de SumerSports ("Both defenses give up big plays. Both offenses score on them."). Nunca un título descriptivo ("Intel de Matchup · SF vs SEA · NFL 2025", "Baltimore: carrera por formación"), que es lo que Luis no quería. Si no hay una conclusión que contar, sin título
 
 Marca de agua — SIEMPRE esquina inferior derecha:
 ax.text(0.99, 0.01, "@CuartayDato", transform=ax.transAxes, ha="right", va="bottom", color="#888888", fontsize=9, alpha=0.8, fontstyle="italic")
@@ -102,6 +102,7 @@ Estructura (DRAFT, solo en la ventana de abril): [historia del equipo] → [dato
 - Se etiqueta SIEMPRE a la afición del equipo del que va el post, gane o pierda. Única excepción: los equipos marcados *(pendiente)* en la tabla, que no tienen cuenta conocida
 - Terminología de jugadas: "proteger al QB" / "mejorar la protección de pase" / "pass pro", NUNCA "proteger al pasador". "Forzar turnovers", NUNCA "robar balones"
 - Reacción a podcasts (sep-2026): su ángulo, nuestros números recalculados con el PBP. UNA sola pieza por programa, y solo si de verdad mola. Mejor completar lo que dicen que corregirles. Los podcasts no están en `docs/cuentas-fans.md`: los etiqueta Luis a mano. Ver `docs/decisiones.md` (21-sep-2026)
+- REGLA (01-oct-2026): antes de transcribir un episodio, comprobar en `docs/podcasts_revisados.md` que no se ha escuchado ya (programa + fecha + título o ID de YouTube; 100 Yardas saca varios por semana). Al terminar de revisarlo, añadir su fila aunque no salga pieza
 
 ## Docs (leer cuando se necesiten)
 - Catálogo de scripts: docs/scripts-catalog.md

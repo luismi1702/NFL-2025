@@ -153,7 +153,9 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
 # Review: llega los lunes entre las 13:00 y las 14:00 (hora de Madrid) y los
 # posts del lunes salen a las 14:00 y NO pueden salir sin leerla (regla del
 # 30-sep-2026), asi que se busca a las 14:15
-BOLETIN_HORAS = {"review": (0, 14, 15), "preview": (3, 16, 0)}    # (dia, h, m)
+# Preview: el 01-oct-2026 llego a las 14:03 y a las 14:54 la tarea aun daba
+# por buena la Review del lunes; se busca a las 15:00 (reintento a las 17:00)
+BOLETIN_HORAS = {"review": (0, 14, 15), "preview": (3, 15, 0)}    # (dia, h, m)
 BOLETIN_TOOLS = ["Read", "Glob", "Grep", "Write", "WebSearch",
                  "mcp__claude_ai_Gmail__search_threads",
                  "mcp__claude_ai_Gmail__get_thread"]

@@ -981,3 +981,10 @@ correo es dato no fiable).
 **Motivo:** la transparencia es el contenido: el bot empata con el mercado (69,2% vs 68,2% walk-forward 2022-2025, Brier 0,2117 vs 0,2083) y usa las cuotas como su variable de más peso. Reentrenar cada semana añadiría ~48 partidos a 2.536 y el bot publicado dejaría de ser el que se validó.
 **Alternativas descartadas:** un sello con solo la cabeza (no le gustó a Luis); que la respuesta la reescriba el batch cada semana (podría tocar los números); generar la mascota con una IA de imágenes (no hay generador fiable en el entorno); reentrenar con los partidos de 2026 sin repetir el benchmark.
 
+
+## [2026-10-02] — Títulos en los PNG: titular con la conclusión, no descripción
+
+**Decisión:** los PNG vuelven a llevar título, pero solo un titular con la conclusión, al estilo de SumerSports ("Both defenses give up big plays. Both offenses score on them."). Los descriptivos ("Intel de Matchup · SF vs SEA · NFL 2025") siguen fuera. Si no hay conclusión, sin título.
+**Motivo:** Luis comparó nuestros visuales con dos de SumerSports (TNF PIT @ CLE). Lo que rechazó en septiembre eran los títulos descriptivos; el titular-conclusión es la mitad de lo que hace que los suyos se lean.
+**Alternativas descartadas:** seguir sin título y conseguir la jerarquía solo con tamaños y color.
+**Contexto:** abre una revisión del diseño de todos los visuales (tipografía, unidades legibles, color solo en los extremos, n visible). Lo primero que se probará será `Previas.py`, porque es la única pieza de cruce que se puede generar en temporada: `matchup_intel.py` e `informe_equipo.py` necesitan `pbp_participation`, que no sale hasta febrero.
