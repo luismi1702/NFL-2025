@@ -185,6 +185,11 @@ def orden(indexada):
     fichero: 01_, 02_... por kickoff, luego dato_semana, power_rankings...).
     Los posts sin imagen van al final de su dia, en el orden del markdown."""
     i, sec = indexada
+    # Hilo numerado ("Manning Bot 1/7", "2/7"...) con imagen en algun tuit:
+    # todos juntos, donde caeria su imagen, y en el orden de su numero
+    # (01-oct-2026: si no, los tuits sin imagen se iban al final del dia)
+    if "grupo" in sec:
+        return (dia_de(sec), 0, sec["grupo"], sec["k"])
     # Un hilo va en el orden de sus PNG (01_, 02_... por kickoff), igual que
     # la carpeta, y la presentacion, que no lleva imagen, delante (Luis,
     # 27-sep-2026: no quiere buscar el PNG de cada tarjeta)
@@ -237,6 +242,17 @@ def construir(md, dir_semana, season, week, imagenes=None):
         secciones.append({"titulo": f"{nombre} — PENDIENTE", "imagenes": fotos,
                           "posts": [], "hueco": True, "dia": k,
                           "nota": CALENDARIO[k]})
+    hilos = {}
+    for sec in secciones:
+        m = re.match(r"(.*?)(\d+)/(\d+)", sec["titulo"])
+        if m:
+            sec["k"] = int(m.group(2))
+            hilos.setdefault((dia_de(sec), m.group(1)), []).append(sec)
+    for tuits in hilos.values():
+        fotos = sorted(i.lower() for t in tuits for i in t["imagenes"])
+        for t in tuits:
+            if fotos:              # sin ninguna imagen, el orden de siempre
+                t["grupo"] = fotos[0]
     secciones = [s for _, s in sorted(enumerate(secciones), key=orden)]
     tarjetas, idx, vacias = [], 0, []
     bloqueadas = set()
