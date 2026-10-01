@@ -45,15 +45,22 @@ automatiza.
   el nombre del PNG: `cola_posts.py` lo busca en los cajones de las DOS semanas
   y escribe la ruta relativa. El PDF de previas ya no cae en la raíz del repo.
 - Cada pieza vive en la carpeta de la JORNADA DE LA QUE HABLA (20-sep-2026):
-  lunes a jueves en `w{N}` (hablan de la jornada jugada) y viernes, sabado y
-  domingo en `w{N+1}`, junto a los PNG que usan (analisis del TNF, pieza de
-  duelo y hilo de previas). CADA `w{N}` tiene su propia `cola_posts.html` con
+  la semana de publicacion va de JUEVES a MIERCOLES (Luis, 01-oct-2026). La
+  jornada N abre el jueves con la previa del TNF y los picks del bot de N, y
+  cierra el miercoles con rankings y MVPs de N. El post del bot lo redacta el
+  batch del martes en `w{N-1}/textos/borradores_posts.md`; `cola_posts.py` lo
+  lleva a la cola de `w{N}` y lo quita de la de `w{N-1}`. El batch del martes
+  crea ya la carpeta y la cola de `w{N}` para que el jueves exista. La previa
+  del TNF se escribe a mano en `w{N}/textos/borradores_jueves.md` con la
+  imagen de siempre: `01_preview_*` de `Previas.py --week N` (el jueves hay
+  que lanzarlo a mano; el batch del sabado la rehace con el resto). El jueves lo desbloquea la Review de
+  `w{N-1}`; la Review del lunes rehace las dos colas. CADA `w{N}` tiene su propia `cola_posts.html` con
   SOLO lo de su carpeta (27-sep-2026, Luis): nace el sabado con las previas y
   la rehacen todos los batch, haya borradores o no. Entra cualquier
   `textos/borradores_*.md` (lunes, posts, domingo...).
-  La pagina sigue el calendario de la jornada: VIERNES (TNF, partido 01) →
-  SABADO (duelo, PNG `duelo_*`) → DOMINGO (hilo) → LUNES → MARTES →
-  MIERCOLES → JUEVES. Cada dia sale siempre: con su post o con una tarjeta
+  La pagina sigue el calendario de la jornada: JUEVES (previa del TNF + bot)
+  → VIERNES (TNF, partido 01) → SABADO (duelo, PNG `duelo_*`) → DOMINGO
+  (hilo) → LUNES → MARTES → MIERCOLES. Cada dia sale siempre: con su post o con una tarjeta
   PENDIENTE que dice que toca y trae sus PNG. Los textos manuales (viernes,
   sabado, domingo) van en `textos/borradores_{dia}.md` con el formato de
   siempre (`## DIA — titulo`, `IMAGEN:`, bloque ```post).

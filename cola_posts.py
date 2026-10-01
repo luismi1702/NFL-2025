@@ -97,8 +97,16 @@ def boletin_que_falta(sec, dir_semana, season, week):
     """'Preview' o 'Review' si a esa tarjeta le falta su boletin; si no, ''."""
     if (season, week) < BOLETIN_DESDE:
         return ""
-    tipo = ("preview" if dia_de(sec) in (VIERNES, SABADO, DOMINGO)
-            or "previa" in sec["titulo"].lower() else "review")
+    d = dia_de(sec)
+    if d == JUEVES:
+        # El jueves sale antes de la Preview (llega a las 14:00-15:00) y habla
+        # de lo jugado: lo desbloquea la Review del lunes, que vive en la
+        # carpeta de la jornada ANTERIOR
+        tipo = "review"
+        dir_semana = os.path.join(os.path.dirname(dir_semana), f"w{week - 1:02d}")
+    else:
+        tipo = ("preview" if d in (VIERNES, SABADO, DOMINGO)
+                or "previa" in sec["titulo"].lower() else "review")
     ok = os.path.exists(os.path.join(dir_semana, "textos", f"ideas_boletin_{tipo}.md"))
     return "" if ok else tipo.capitalize()
 
@@ -132,16 +140,21 @@ def tarjeta(sec, post, idx, imagenes, falta=""):
 
 
 # La semana de publicacion de una jornada, en el orden del calendario
-# (docs/calendario-posts.md; Luis, 27-sep-2026): empieza el viernes con el
-# analisis del TNF y acaba el jueves con el bot, que ya mira a la siguiente.
+# (docs/calendario-posts.md): va de JUEVES a MIERCOLES (Luis, 01-oct-2026).
+# Empieza con la previa del TNF y los picks del bot de ESA jornada y acaba el
+# miercoles con rankings y MVPs. Hasta entonces iba de viernes a jueves y el
+# jueves, que ya habla de la jornada siguiente, caia en la carpeta anterior.
 # Cada dia sale SIEMPRE: con sus posts o con una tarjeta PENDIENTE.
-DIAS = [(("viernes",), "VIERNES"), (("sábado", "sabado"), "SÁBADO"),
-        (("domingo",), "DOMINGO"), (("lunes",), "LUNES"),
-        (("martes",), "MARTES"), (("mi",), "MIÉRCOLES"), (("jueves",), "JUEVES")]
-VIERNES, SABADO, DOMINGO, LUNES = 0, 1, 2, 3
+DIAS = [(("jueves",), "JUEVES"), (("viernes",), "VIERNES"),
+        (("sábado", "sabado"), "SÁBADO"), (("domingo",), "DOMINGO"),
+        (("lunes",), "LUNES"), (("martes",), "MARTES"), (("mi",), "MIÉRCOLES")]
+JUEVES, VIERNES, SABADO, DOMINGO, LUNES = 0, 1, 2, 3, 4
 
 # Que toca cada dia (calendario-posts.md) y que PNG de la carpeta lo ilustran
 CALENDARIO = [
+    "Previa del TNF (la 01_preview de Previas.py) + picks del bot de esta jornada "
+    "(y balance de la anterior). Los picks los redacta el batch del martes de la "
+    "semana anterior; la previa, a mano en textos/borradores_jueves.md.",
     "Análisis del TNF jugado el jueves: resumen + ficha del partido 01 (manual).",
     "Pieza de DUELO: un partido del domingo a fondo, en hilo (manual, lab/). "
     "Ese partido no abre el hilo de previas.",
@@ -150,10 +163,9 @@ CALENDARIO = [
     "Un post por partido jugado, sin el MNF (batch lunes 10:00).",
     "Dato de la semana + Monday Night, dos posts, uno por equipo (batch martes 8:00).",
     "Power Rankings + hilo de MVPs de la jornada (batch martes).",
-    "Bot: balance de la jornada + picks de la siguiente, gancho previa del TNF (batch martes).",
 ]
-PNG_DEL_DIA = [r"^01_(ficha|resumen)_", r"^duelo_", None, None,
-               r"^dato_semana", r"^power_rankings", None]
+PNG_DEL_DIA = [r"^01_preview_", r"^01_(ficha|resumen)_", r"^duelo_", None, None,
+               r"^dato_semana", r"^power_rankings"]
 
 
 def dia_de(sec):
@@ -181,6 +193,15 @@ def orden(indexada):
     if not sec["imagenes"]:
         return (dia_de(sec), 1, "", i)
     return (dia_de(sec), 0, sec["imagenes"][0].lower(), i)
+
+
+def solo_jueves(md, quedarse):
+    """Las secciones '## JUEVES ...' del markdown (quedarse=True) o todo lo
+    demas (False). La cabecera de antes de la primera seccion va con 'todo
+    lo demas', que es donde estaba."""
+    trozos = re.split(r"(?m)^(?=## +)", md)
+    es_jueves = [t.lower().startswith("## jueves") for t in trozos]
+    return "".join(t for t, j in zip(trozos, es_jueves) if j == quedarse)
 
 
 def construir(md, dir_semana, season, week, imagenes=None):
@@ -395,10 +416,10 @@ def main():
         return os.path.join(RAIZ, "salidas", str(season), f"w{int(w):02d}")
 
     dir_semana = carpeta(week)
-    # UNA cola por semana, en su carpeta y con SOLO lo de su carpeta (Luis,
-    # 27-sep-2026): w03/cola_posts.html lleva viernes, sabado y domingo de la
-    # jornada 3 (TNF, duelo, hilo de previas) y lunes a jueves despues de
-    # jugarla. Entra cualquier textos/borradores_*.md (lunes, posts, domingo,
+    # UNA cola por semana, en su carpeta (Luis, 27-sep-2026): w04/cola_posts.html
+    # lleva de jueves a domingo de la jornada 4 (previa del TNF y bot, analisis
+    # del TNF, duelo, hilo de previas) y de lunes a miercoles despues de
+    # jugarla (01-oct-2026). Entra cualquier textos/borradores_*.md (lunes, posts, domingo,
     # los que vengan) menos las copias _previo. La ruta plana sigue valiendo
     # para las semanas archivadas antes del 21-sep-2026.
     origenes = []
@@ -417,13 +438,32 @@ def main():
         # carpeta y cada partido sale con su tarjeta SIN POST
         print(f"Sin borradores en {dir_semana}: pagina solo con las imagenes.")
 
-    trozos = [io.open(o, encoding="utf-8").read() for o in origenes]
+    # Jueves a miercoles (01-oct-2026): el batch del martes de la jornada N-1
+    # deja el post del bot (picks de N) en la carpeta de N-1, porque es la
+    # ultima jugada. Ese JUEVES se publica en la semana N: aqui se trae el de
+    # la carpeta anterior y se quita el de esta, que es el de la siguiente.
+    # Lo que se escriba a mano en borradores_jueves.md se queda donde esta.
+    trozos = [solo_jueves(io.open(o, encoding="utf-8").read(), False)
+              if os.path.basename(o) != "borradores_jueves.md"
+              else io.open(o, encoding="utf-8").read() for o in origenes]
+    anterior = os.path.join(carpeta(int(week) - 1), "textos")
+    if os.path.isdir(anterior):
+        for f in sorted(os.listdir(anterior)):
+            if (f.startswith("borradores_") and f.endswith(".md")
+                    and "_previo" not in f and f != "borradores_jueves.md"):
+                jue = solo_jueves(io.open(os.path.join(anterior, f),
+                                          encoding="utf-8").read(), True)
+                if jue.strip():
+                    trozos.append(jue)
+                    origenes.append(os.path.join(anterior, f) + " (jueves)")
     # El banner de datos sin verificar de cualquiera de los dos va arriba
     banner = any(t.lstrip().startswith("⛔") for t in trozos)
     md = ("⛔ DATOS SIN VERIFICAR" + chr(10) if banner else "") + (2 * chr(10)).join(trozos)
     print("Borradores: " + ", ".join(
         os.path.join(os.path.basename(os.path.dirname(o)), os.path.basename(o))
         for o in origenes))
+    # La carpeta de la jornada siguiente nace aqui el martes, con el jueves
+    os.makedirs(dir_semana, exist_ok=True)
     destino = os.path.join(dir_semana, "cola_posts.html")
     io.open(destino, "w", encoding="utf-8", newline="\n").write(
         construir(md, dir_semana, season, int(week)))

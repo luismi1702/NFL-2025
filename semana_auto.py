@@ -226,6 +226,11 @@ def boletin(SEASON):
                 f.write("\n--- STDERR ---\n" + r.stderr)
         if r.returncode == 0 and os.path.exists(destino):
             log(f"   OK -> {destino}")
+            # Desbloquea su cola; la Review, ademas, el JUEVES de la jornada
+            # siguiente, que ya vive en la cola de W+1 (01-oct-2026)
+            for w in ([W, W + 1] if tipo == "review" else [W]):
+                paso(f"cola de posts w{w:02d} (desbloqueo)",
+                     ["cola_posts.py", "--season", str(SEASON), "--week", str(w)])
             return True
         if r.returncode == 0 and "SIN CORREO" in (r.stdout or ""):
             # Aun no ha llegado: sin fichero, asi el reintento o la
@@ -512,6 +517,12 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
         ok.append(paso("cola de posts (copiar y pegar)",
                        ["cola_posts.py", "--season", str(SEASON),
                         "--week", str(W)]))
+        # La semana de la cola va de jueves a miercoles (01-oct-2026): el
+        # post del bot que se acaba de redactar es el JUEVES de la jornada
+        # W+1, asi que su carpeta y su cola nacen hoy
+        ok.append(paso("cola de la jornada siguiente (jueves)",
+                       ["cola_posts.py", "--season", str(SEASON),
+                        "--week", str(W + 1)]))
 
     else:  # domingo (se lanza el sabado por la noche)
         # Previas de TODA la proxima jornada para el hilo del domingo.
