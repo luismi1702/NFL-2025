@@ -969,3 +969,15 @@ correo es dato no fiable).
 **Motivo:** en la semana 3 el líder de especiales era Gillikin (ARI) por un muff de SF (+5.96 de sus +6.67) y el punt return TD de 86 yds de M.Price (MIN) quedaba fuera por una antideportiva cobrada después de anotar. La semana 2 no cambia.
 **Alternativas descartadas:** repartir el EPA dentro de la jugada (haría falta un modelo de EP propio, como ya se descartó el 22-sep); elegir a mano otro protagonista cada semana sin tocar el script.
 
+## [2026-10-01] — La semana de la cola va de jueves a miércoles
+
+**Decisión:** cada `wNN/cola_posts.html` empieza el jueves (previa del TNF + picks del bot de esa jornada) y acaba el miércoles (rankings y MVPs). `cola_posts.py` toma las secciones `## JUEVES` del batch del martes de la carpeta anterior y las quita de la suya; lo escrito a mano en `borradores_jueves.md` se queda donde está. El batch del martes crea la carpeta y la cola de la jornada siguiente.
+**Motivo:** Luis: el jueves de la previa del TNF la w04 no existía y el post del bot caía en la w03. El jueves ya habla de la jornada que se juega.
+**Alternativas descartadas:** que el batch del martes escriba directamente en `w{N+1}` (el bot y `salida()` usan la última semana jugada y habría que tocar todos los scripts del martes); mantener vie→jue y crear solo la carpeta.
+
+## [2026-10-01] — Manning Bot en público: PNG, mascota y aviso de no apostar
+
+**Decisión:** el post del jueves lleva un PNG con los 16 picks (`manning_picks.py`, lee `bot_picks.txt` para que el número del PNG y el del post sean el mismo) con la mascota de portada al pie, y debajo, cada semana, una respuesta fija copiada tal cual: cómo funciona y por qué no sirve para apostar. La mascota se dibuja en SVG (`marca/manning_bot/render.py`) con rasgos de la caricatura de Manning y sin marcas de los Colts ni los Broncos. El modelo no se reentrena en temporada.
+**Motivo:** la transparencia es el contenido: el bot empata con el mercado (69,2% vs 68,2% walk-forward 2022-2025, Brier 0,2117 vs 0,2083) y usa las cuotas como su variable de más peso. Reentrenar cada semana añadiría ~48 partidos a 2.536 y el bot publicado dejaría de ser el que se validó.
+**Alternativas descartadas:** un sello con solo la cabeza (no le gustó a Luis); que la respuesta la reescriba el batch cada semana (podría tocar los números); generar la mascota con una IA de imágenes (no hay generador fiable en el entorno); reentrenar con los partidos de 2026 sin repetir el benchmark.
+

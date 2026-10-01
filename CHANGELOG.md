@@ -2,6 +2,21 @@
 
 ---
 
+## [2026-10-01] — Semana de jueves a miércoles, previa del TNF y estreno de Manning Bot
+
+**Que se hizo:**
+- **Cola de jueves a miércoles**: la jornada N abre el jueves con la previa del TNF y los picks del bot de N. El post del bot que redacta el martes en `w{N-1}` pasa solo a la cola de `w{N}`; el batch del martes ya crea la carpeta y la cola de `w{N}`. El jueves lo desbloquea la Review de `w{N-1}`
+- **Previa del TNF PIT @ CLE** con la ficha de siempre (`Previas.py --week 4`, que deja ya las 16 previas). El ángulo del boletín (7 de Cleveland con 3+ presiones) no lo confirmó PFR (solo 1; CLE es 28º en presión): se contó el 9º/64º/68º de 71 de Pittsburgh desde 2022 y los 4 sacks de Graham (`lab/pit_cle_tnf.py`)
+- **Manning Bot**: mascota (Manning robot con OMAHA!, `marca/manning_bot/`), PNG de los picks `manning_picks.py` (en el batch del martes), respuesta fija semanal "cómo funciona / no sirve para apostar" (69,2% vs 68,2% del mercado) e hilo de 7 tuits para anclar
+- **Cola**: los hilos numerados "N/M" salen juntos y en orden aunque solo un tuit lleve imagen
+
+**Archivos modificados:** `cola_posts.py`, `semana_auto.py`, `borradores_prompt.md`, `manning_picks.py` (nuevo), `marca/manning_bot/` (nuevo), `docs/calendario-posts.md`, `docs/scripts-catalog.md`, `docs/decisiones.md`, `CLAUDE.md`
+
+**Pendiente:**
+- Publicar hoy: previa del TNF (elegir A/B), hilo del bot (elegir presentación A/B) y anclarlo, picks (A/B) en respuesta al 7/7
+- Viernes 2-oct 9:00: primer batch del viernes real; revisar `salidas/auto_log.txt`
+- Jueves 8-oct: primer balance público del bot; comprobar que el batch del martes deja `manning_picks_2026_w05.png` y la respuesta fija en la cola de la w05
+
 ## [2026-09-28/30] — Semana 3 publicada, boletín como candado y MVPs bien acreditados
 
 **Que se hizo:**

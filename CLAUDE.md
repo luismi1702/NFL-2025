@@ -50,6 +50,8 @@ plt.savefig(salida(f"mi_grafico_{SEASON}.png", SEASON), ...)
   `liga/` (power rankings, dato de la semana, bajo centro, piezas temáticas)
   y `textos/` (borradores, destacados, estado de datos, logs). `cola_posts.html`
   se queda en la raíz de la semana: es la puerta de entrada
+- La semana de la cola va de JUEVES a MIÉRCOLES (oct-2026): el jueves (previa
+  del TNF + picks del bot) vive en la carpeta de la jornada que se juega
 - La semana por defecto es hasta donde llegan los DATOS (ultima_semana()), no
   una pedida por teclado; los scripts de semana concreta la pasan explicita
 - Estampar `sello(SEASON)` en el pie del PNG ("NFL 2026 · datos hasta sem. 7")
