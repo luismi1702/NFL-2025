@@ -12,10 +12,17 @@ previa por partido de la semana {W}. Los PNG de cada previa ya estan hechos.
 `{DIR}` es el cajon `textos/` de la carpeta de la jornada. Los PNG estan al
 lado. En la linea `IMAGEN:` va SOLO el nombre del fichero, sin carpeta.
 
-- `{DIR}/previas_numeros_*.txt` — **tu unica fuente de numeros**. Los mismos
-  que se ven en los PNG, con el rango de cada metrica (1º = el mejor de 32; en
-  defensa, 1º = la que menos concede), el record de cada equipo y los CONTEOS
-  que hay detras de cada % (visitas a la red zone, FG intentados).
+- `{DIR}/previas_numeros_*.txt` — **tu unica fuente de numeros**, con el
+  rango de cada metrica (1º = el mejor de 32; en defensa, 1º = la que menos
+  concede), el record de cada equipo, los CONTEOS que hay detras de cada %
+  (visitas a la red zone, FG intentados) y el TITULAR que lleva cada PNG.
+  **Desde oct-2026 el PNG solo enseña seis cruces** (EPA por jugada, jugadas
+  con éxito, EPA por pase, EPA por carrera, explosivas, TD en red zone) y el
+  FG%. El tuit usa SOLO esas metricas, para que el numero del texto y el de la
+  imagen sean el mismo (regla de CLAUDE.md). El 1er down, el 3er/4º down y la
+  distancia en 3er down del TXT no salen en la imagen: no se usan.
+  El tuit no puede contradecir el titular del PNG; puede contarlo con otras
+  palabras o elegir otro cruce de la imagen.
 - `{DIR}/../previas/NN_preview_VIS_vs_LOC_*.png` — un PNG por partido.
 - El DIA de cada partido esta en su linea `== NN` del TXT (Thursday, Sunday,
   Monday...), sacado del calendario oficial. Manda sobre todo lo demas:
@@ -64,10 +71,10 @@ no lo nombres y anotalo en la verificacion para revisarlo el lunes.
   opinion. 200-260 caracteres. Ejemplos de cierre de la cuenta: "Mal cóctel
   para los Colts.", "Si alguien pasa de 20, gana.", "Partido de pocos puntos."
 - Que los angulos varien a lo largo del hilo: no catorce tuits de EPA por
-  jugada. Hay red zone, explosivas, 1er down, 3er y 4º down, especiales.
+  jugada. Hay pase, carrera, éxito, red zone, explosivas y field goals.
 - Estilo de la cuenta, obligatorio:
-  - Decimales con COMA y con signo en EPA: `+0,34`, `-0,25`. Porcentajes con
-    coma y un decimal como en el PNG (`22,9%`) o redondos si queda mejor.
+  - Decimales con COMA y con signo en EPA: `+0,34`, `-0,25`. Porcentajes
+    redondos, como en el PNG (`57%`).
   - Rangos en ordinal y en prosa: `30º ataque`, `la 2ª mejor defensa`, `la
     peor defensa de la NFL contra el pase`. NUNCA `#12`.
   - Un % pequeño se cuenta con su conteo: "8 visitas a la red zone y las 8
@@ -75,7 +82,7 @@ no lo nombres y anotalo en la verificacion para revisarlo el lunes.
     un solo intento, red zone con 1 visita) NO se usa.
 - Terminologia: "3er down"/"4º down" (nunca "bajada"); equipos y ciudades en
   ingles (New England); "proteger al QB"; "forzar turnovers"; nada de
-  "jugadores de franquicia". "EPA downs tardios" del TXT es 3er y 4º down.
+  "jugadores de franquicia".
 - No centrar el tuit en el QB. Una baja de QB se cuenta en una frase si
   cambia el partido.
 - Nada de preguntas retoricas de relleno.

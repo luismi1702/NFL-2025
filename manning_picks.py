@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 from pbp_loader import salida, sello, season_cli, week_cli, temporada_actual, proxima_semana
+from estilo import *   # noqa: F401,F403  (estilo comun, docs/estilo-visual.md)
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 SEASON = season_cli() or temporada_actual()
@@ -89,69 +90,68 @@ if os.path.exists(ruta_orden):
 else:
     print("  (sin previas_numeros: orden del bot, sin dia)")
 
-# ── FIGURA ────────────────────────────────────────────────────────────────────
+# ── FIGURA (estilo docs/estilo-visual.md; el naranja LED es la marca del bot) ──
+def nombre_equipo(team):
+    try:
+        import pandas as pd
+        eq = pd.read_parquet("pbp_cache/teams.parquet").set_index("team_abbr")
+        if team in ("LA", "LAC", "NYG", "NYJ"):
+            return "los " + eq.loc[team, "team_nick"]
+        return eq.loc[team, "team_name"].replace(" " + eq.loc[team, "team_nick"], "")
+    except Exception:
+        return team
+
+
 n = len(orden)
-fig = plt.figure(figsize=(9, 0.62 * n + 2.2))
-fig.patch.set_facecolor(BG)
-alto_mascota = 1.55 / (0.62 * n + 2.2)          # fraccion de la figura
-ax = fig.add_axes([0.03, alto_mascota + 0.02, 0.94, 1 - alto_mascota - 0.03])
-ax.set_facecolor(BG)
-ax.set_xlim(0, 100)
-ax.set_ylim(-0.6, n - 0.4)
-ax.axis("off")
+seguro = max(orden, key=lambda k: max(picks[k]["p_home"], picks[k]["p_away"]))
+r0 = picks[seguro]
+p0 = max(r0["p_home"], r0["p_away"])
+tit = f"Su pick más claro: {nombre_equipo(r0['pick'])}, con un {p0:.0f}% de opciones."
 
-X0, X1 = 32, 70                                  # la barra de probabilidad
-for i, (a, h) in enumerate(orden):
-    y = n - 1 - i
-    r = picks[(a, h)]
-    gana_local = r["pick"] == h
-    ax.add_patch(plt.Rectangle((0.5, y - 0.44), 99, 0.88, color=CARD, zorder=0, lw=0))
-    ax.text(4.5, y, r["dia"], color="#888888", fontsize=9, ha="center", va="center",
-            fontweight="bold")
-    # visitante
-    lo = load_logo(a, 0.026, 1.0 if not gana_local else 0.35)
-    if lo:
-        ax.add_artist(AnnotationBbox(lo, (13, y), frameon=False))
-    ax.text(21, y, a, color=FG if not gana_local else "#6b7280", fontsize=12,
-            fontweight="bold" if not gana_local else "normal", ha="left", va="center")
-    # local
-    lo = load_logo(h, 0.026, 1.0 if gana_local else 0.35)
-    if lo:
-        ax.add_artist(AnnotationBbox(lo, (91, y), frameon=False))
-    ax.text(83, y, h, color=FG if gana_local else "#6b7280", fontsize=12,
-            fontweight="bold" if gana_local else "normal", ha="right", va="center")
-    # barra: el visitante desde la izquierda, el local desde la derecha
-    corte = X0 + (X1 - X0) * r["p_away"] / 100
-    ax.add_patch(plt.Rectangle((X0, y - 0.22), corte - X0, 0.44,
-                               color=APAGADO if gana_local else LED, lw=0, zorder=2))
-    ax.add_patch(plt.Rectangle((corte, y - 0.22), X1 - corte, 0.44,
-                               color=LED if gana_local else APAGADO, lw=0, zorder=2))
-    ax.plot([corte, corte], [y - 0.3, y + 0.3], color=BG, lw=2.5, zorder=3)
-    # Un tramo de menos del 15% no tiene sitio para su numero: va por fuera
-    fuera_a, fuera_h = r["p_away"] < 15, r["p_home"] < 15
-    ax.text(X0 - 0.8 if fuera_a else X0 + 0.8, y, f"{r['p_away']:.1f}%",
-            color="#888888" if fuera_a else (BG if not gana_local else FG),
-            fontsize=9.5, fontweight="bold", ha="right" if fuera_a else "left",
-            va="center", zorder=4)
-    ax.text(X1 + 0.8 if fuera_h else X1 - 0.8, y, f"{r['p_home']:.1f}%",
-            color="#888888" if fuera_h else (BG if gana_local else FG),
-            fontsize=9.5, fontweight="bold", ha="left" if fuera_h else "right",
-            va="center", zorder=4)
-
-# Leyenda minima: que lado es cual
-ax.text(X0, n - 0.42, "VISITANTE", color="#888888", fontsize=7.5, ha="left", va="bottom")
-ax.text(X1, n - 0.42, "LOCAL", color="#888888", fontsize=7.5, ha="right", va="bottom")
-
-# Mascota abajo, pequeña, y el pie
+fig = lienzo()
+antetitulo(fig, f"Manning Bot · picks de la semana {WEEK}")
+y_top = titular(fig, tit, y=0.925, ancho=R - L - 0.17) - 0.03
 if os.path.exists(MASCOTA):
-    axm = fig.add_axes([0.40, 0.005, 0.20, alto_mascota])
+    axm = fig.add_axes([R - 0.15, y_top + 0.005, 0.16, 0.945 - y_top])
     axm.imshow(plt.imread(MASCOTA))
     axm.axis("off")
-fig.text(0.03, 0.012, sello(SEASON) + f" · picks de la semana {WEEK}", color="#888888",
-         fontsize=8, ha="left", va="bottom")
-fig.text(0.97, 0.012, "@CuartayDato", color="#888888", fontsize=9, alpha=0.8,
-         fontstyle="italic", ha="right", va="bottom")
+
+alto = (y_top - 0.16) / n
+X0, X1 = 0.36, 0.72                       # la barra de probabilidad
+etiqueta(fig, "Visitante", X0, y_top - 0.02)
+etiqueta(fig, "Local", X1, y_top - 0.02, ha="right")
+for i, (a, h) in enumerate(orden):
+    y = y_top - 0.05 - i * alto
+    r = picks[(a, h)]
+    gana_local = r["pick"] == h
+    fig.text(L + 0.01, y, r["dia"], family=TXT, weight="semibold", size=7, color=GRIS2,
+             va="center")
+    for t, xl, xt, ha, es_pick in ((a, L + 0.085, L + 0.12, "left", not gana_local),
+                                   (h, R - 0.035, R - 0.07, "right", gana_local)):
+        lo = load_logo(t, 0.0115, 1.0 if es_pick else 0.35)
+        if lo:
+            fig.add_artist(AnnotationBbox(lo, (xl, y), xycoords="figure fraction", frameon=False))
+        fig.text(xt, y, t, family=TXT, weight="bold" if es_pick else "normal", size=8.5,
+                 color=FG if es_pick else GRIS2, ha=ha, va="center")
+    corte = X0 + (X1 - X0) * r["p_away"] / 100
+    for x_ini, x_fin, encendido in ((X0, corte, not gana_local), (corte, X1, gana_local)):
+        fig.add_artist(Rectangle((x_ini, y - 0.009), x_fin - x_ini, 0.018,
+                                 transform=fig.transFigure,
+                                 color=LED if encendido else APAGADO, lw=0))
+    fig.add_artist(Rectangle((corte - 0.001, y - 0.012), 0.002, 0.024,
+                             transform=fig.transFigure, color=CARD, lw=0))
+    # un tramo de menos del 15% no tiene sitio para su numero: va por fuera
+    for p, x_in, x_out, ha_in, ha_out, encendido in (
+            (r["p_away"], X0 + 0.008, X0 - 0.008, "left", "right", not gana_local),
+            (r["p_home"], X1 - 0.008, X1 + 0.008, "right", "left", gana_local)):
+        fuera = p < 15
+        fig.text(x_out if fuera else x_in, y, f"{p:.0f}%", family=TXT, weight="bold", size=7.5,
+                 color=GRIS1 if fuera else (BG if encendido else FG),
+                 ha=ha_out if fuera else ha_in, va="center")
+
+tarjeta(fig, y_top - 0.05 - (n - 1) * alto - alto / 2 - 0.005, y_top)
+pie(fig, "Probabilidad de victoria según el modelo; en naranja, el pick",
+    f"NFL {SEASON} · datos hasta sem. {WEEK - 1} · picks de la semana {WEEK}")
 
 out = salida(f"manning_picks_{SEASON}.png", SEASON, week=WEEK)
-plt.savefig(out, dpi=200, bbox_inches="tight", facecolor=BG)
-print(f"Guardado: {out}")
+guardar(fig, out)

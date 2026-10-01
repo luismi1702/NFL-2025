@@ -10,6 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pbp_loader import (cargar_pbp, salida, season_cli, week_cli, sello,
                         orden_partido)
+from estilo import *   # noqa: F401,F403  (estilo comun, docs/estilo-visual.md)
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
@@ -20,7 +21,7 @@ FG     = "#EDEDED"
 GRID   = "#2a2f3a"
 DPI    = 170
 LOGOS_DIR    = "logos"
-RYG = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
+RYG_CMAP = LinearSegmentedColormap.from_list("ryg", ["#d84a4a", "#ffd166", "#06d6a0"])
 
 # ── HELPERS ────────────────────────────────────────────────────────────────────
 def to_num(df, cols):
@@ -322,180 +323,203 @@ if top3_plays:
               f"{play['desc']} -> WPA {play['wpa']:+.3f} | EPA {epa_str}")
     print()
 
-# ── PNG INFOGRAPHIC ────────────────────────────────────────────────────────────
-fig, ax = plt.subplots(figsize=(10, 10.6), facecolor=BG)
-fig.subplots_adjust(left=0.02, right=0.98, top=0.995, bottom=0.005)
-ax.set_facecolor(BG)
-ax.axis("off")
-ax.set_xlim(0, 10)
-ax.set_ylim(0, 10.6)
-
-# Marcador final (home_score/away_score son el resultado final en nflverse)
+# ── PNG RESUMEN (estilo docs/estilo-visual.md) ─────────────────────────────────
+home_g = game_df[home_col].dropna().iloc[0] if home_col else team_a
+away_g = team_b if home_g == team_a else team_a
 try:
     _hs = int(pd.to_numeric(game_df["home_score"], errors="coerce").max())
     _as = int(pd.to_numeric(game_df["away_score"], errors="coerce").max())
-    _home = game_df[home_col].dropna().iloc[0] if home_col else None
-    score_a = _hs if team_a == _home else _as
-    score_b = _as if team_a == _home else _hs
-    titulo = f"{team_a}  {score_a} - {score_b}  {team_b}"
 except Exception:
-    titulo = f"{team_a}  vs  {team_b}"
+    _hs = _as = None
+marcador = {home_g: _hs, away_g: _as}
+titulo = (f"{team_a}  {marcador[team_a]} - {marcador[team_b]}  {team_b}"
+          if _hs is not None else f"{team_a}  vs  {team_b}")
 
-# Title bar
-ax.add_patch(plt.Rectangle((0, 9.6), 10, 1.0, color="#151924", zorder=0))
-ax.text(5.0, 10.15, titulo,
-        ha="center", va="center", fontsize=18, fontweight="bold", color=FG, zorder=1)
-ax.text(5.0, 9.78, f"Semana {week} | NFL {SEASON}",
-        ha="center", va="center", fontsize=10, color="#888888", fontstyle="italic", zorder=1)
 
-# Column backgrounds
-ax.add_patch(plt.Rectangle((0.15, 3.62), 4.40, 5.75, color="#151924", zorder=0,
-                            linewidth=0, alpha=0.6))
-ax.add_patch(plt.Rectangle((5.45, 3.62), 4.40, 5.75, color="#151924", zorder=0,
-                            linewidth=0, alpha=0.6))
+def nombre_equipo(team):
+    """Ciudad para el titular; los equipos que comparten ciudad, por su apodo."""
+    try:
+        eq = pd.read_parquet("pbp_cache/teams.parquet").set_index("team_abbr")
+        if team in ("LA", "LAC", "NYG", "NYJ"):
+            return "los " + eq.loc[team, "team_nick"]
+        return eq.loc[team, "team_name"].replace(" " + eq.loc[team, "team_nick"], "")
+    except Exception:
+        return team
 
-col_x = {"left": 2.35, "right": 7.65}
-teams_order = [team_a, team_b]
-col_sides   = ["left", "right"]
-col_anchor  = [0.55, 5.75]   # left edge x for text columns
 
-for team, side, anchor_x in zip(teams_order, col_sides, col_anchor):
-    cx = col_x[side]
-    s  = team_stats[team]
+def _cap(s):
+    return s[0].upper() + s[1:]
 
-    # Logo
-    logo = load_logo(team, base_zoom=0.11)
-    if logo is not None:
-        ab = AnnotationBbox(logo, (cx, 8.85), frameon=False, zorder=3)
-        ax.add_artist(ab)
-    else:
-        ax.text(cx, 8.85, team, ha="center", va="center",
-                fontsize=22, fontweight="bold", color=FG, zorder=3)
 
-    # Team name label
-    ax.text(cx, 8.28, team, ha="center", va="center",
-            fontsize=14, fontweight="bold", color=FG, zorder=3)
+def titular_resumen():
+    """Plantillas que solo afirman hechos del partido; None si no hay historia."""
+    if _hs is None or _hs == _as:
+        return None
+    W = home_g if _hs > _as else away_g
+    Lz = away_g if W == home_g else home_g
+    sw, sl = team_stats[W], team_stats[Lz]
+    nW, nL = nombre_equipo(W), nombre_equipo(Lz)
+    # 1. Remontada: la probabilidad del ganador llego a bajar del 20%
+    if wp_col and game_df[wp_col].notna().any():
+        wp_home = pd.to_numeric(game_df[wp_col], errors="coerce").dropna()
+        wp_w = wp_home if W == home_g else 1 - wp_home
+        minimo = float(wp_w.min())
+        if minimo < 0.20:
+            return _cap(f"{nW} remontó: llegó a tener solo un {minimo * 100:.0f}% de opciones de ganar.")
+    # 2. Gano con peor EPA por jugada
+    if (pd.notna(sw["off_epa_play"]) and pd.notna(sl["off_epa_play"])
+            and sw["off_epa_play"] < sl["off_epa_play"] - 0.05):
+        return _cap(f"{nW} ganó con peor EPA por jugada que {nL}: "
+                    f"{num(sw['off_epa_play'])} contra {num(sl['off_epa_play'])}.")
+    # 3. Las perdidas
+    if sl["turnovers"] - sw["turnovers"] >= 2:
+        return _cap(f"{nL} lo perdió con {sl['turnovers']} pérdidas de balón; {nW} cometió "
+                    f"{sw['turnovers']}.")
+    # 4. Paliza
+    if abs(_hs - _as) >= 17:
+        return _cap(f"{nW} ganó de {abs(_hs - _as)} a {nL}.")
+    return None
 
-    # EPA/jugada
-    epa_c = epa_color(s["off_epa_play"])
-    sign  = "+" if not pd.isna(s["off_epa_play"]) and s["off_epa_play"] >= 0 else ""
-    ax.text(cx, 7.94, "EPA / jugada", ha="center", va="center",
-            fontsize=8, color="#888888", zorder=3)
-    ax.text(cx, 7.64, f"{sign}{s['off_epa_play']:.3f}" if not pd.isna(s["off_epa_play"]) else "N/D",
-            ha="center", va="center", fontsize=15, fontweight="bold", color=epa_c, zorder=3)
 
-    # Total EPA + jugadas (una línea)
-    epa_tot_c = epa_color(s["off_epa_total"])
-    sign_t    = "+" if not pd.isna(s["off_epa_total"]) and s["off_epa_total"] >= 0 else ""
-    tot_s     = f"{sign_t}{s['off_epa_total']:.1f}" if not pd.isna(s["off_epa_total"]) else "N/D"
-    ax.text(cx, 7.28, f"EPA total {tot_s}  ·  {s['n_plays']} jugadas",
-            ha="center", va="center", fontsize=8.5, color="#aaaaaa", zorder=3)
+COLP = colores_pareja(team_a, team_b)
+fig = lienzo()
+antetitulo(fig, f"Final · semana {week}")
+tit = titular_resumen()
+y = (titular(fig, tit, y=0.925) - 0.025) if tit else 0.905
 
-    # ── Boxscore ─────────────────────────────────────────────────────────
-    ax.plot([anchor_x + 0.05, anchor_x + 3.85], [7.04, 7.04],
-            color=GRID, linewidth=0.7, alpha=0.7, zorder=2)
+# Marcador: el ganador en FG, el perdedor en gris
+y_top = y
+yc = y - 0.06
+for x, t, ha in ((L + 0.03, team_a, "left"), (R - 0.03, team_b, "right")):
+    gana = _hs is not None and marcador[t] == max(_hs, _as) and _hs != _as
+    poner_logo(fig, t, x + (0.02 if ha == "left" else -0.02), yc, zoom=0.03)
+    xs = x + 0.10 if ha == "left" else x - 0.10
+    fig.text(xs, yc + 0.012, t, family=TXT, weight="bold", size=10, color=COLP[t],
+             va="center", ha=ha)
+    fig.text(xs, yc - 0.016, "local" if t == home_g else "visitante", family=TXT, size=7.5,
+             color=GRIS1, va="center", ha=ha)
+    if _hs is not None:
+        numero(fig, str(marcador[t]), 0.44 if ha == "left" else 0.56, yc, size=40,
+               color=FG if gana else GRIS2, ha="right" if ha == "left" else "left")
+fig.text(0.5, yc, "–", family=DISP, weight="bold", size=24, color=GRIS2, ha="center",
+         va="center")
 
-    ypc_s = f"{s['ypc']:.1f}" if not pd.isna(s["ypc"]) else "—"
-    ep_s  = f"{s['epa_pass']:+.2f}" if not pd.isna(s["epa_pass"]) else "—"
-    er_s  = f"{s['epa_run']:+.2f}"  if not pd.isna(s["epa_run"])  else "—"
-    filas = [
-        ("Yardas totales",  f"{s['total_yds']}"),
-        ("Pase",            f"{s['comp']}/{s['att']} · {s['pass_yds']} yds · {s['pass_td']} TD · {s['ints']} INT"),
-        ("Carrera",         f"{s['rush_att']} att · {s['rush_yds']} yds · {ypc_s} ypc · {s['rush_td']} TD"),
-        ("EPA pase / carr.", f"{ep_s} / {er_s}"),
-        ("3er down",        f"{s['tdc']}/{s['tdc'] + s['tdf']}"),
-        ("Red Zone",        f"{s['rz_tds']} TD / {s['rz_trips']} viajes"),
-        ("Turnovers · Sacks", f"{s['turnovers']} · {s['sacks']}"),
-        ("Explosivas",      f"{s['explosivas']}"),
-    ]
-    for i, (lbl, val) in enumerate(filas):
-        fy = 6.78 - i * 0.315
-        ax.text(anchor_x + 0.05, fy, lbl, ha="left", va="center",
-                fontsize=7.5, color="#888888", zorder=3)
-        ax.text(anchor_x + 3.85, fy, val, ha="right", va="center",
-                fontsize=7.5, color=FG, fontweight="bold", zorder=3)
+# Boxscore: misma etiqueta en el centro, cada equipo a su lado; el que gana la
+# fila en FG negrita, el otro en gris (aqui no hay rangos: no hay verde ni rojo)
+y = yc - 0.062
+linea_h(fig, y + 0.02)
+sa, sb = team_stats[team_a], team_stats[team_b]
 
-    # ── Líderes EPA ──────────────────────────────────────────────────────
-    ax.plot([anchor_x + 0.05, anchor_x + 3.85], [4.42, 4.42],
-            color=GRID, linewidth=0.7, alpha=0.7, zorder=2)
 
-    def _lider(nombre, epa):
-        e = f" {epa:+.1f}" if not pd.isna(epa) else ""
-        return f"{nombre}{e}"
+def fila(lbl, va, vb, txt_a, txt_b, mayor_mejor=True):
+    global y
+    mejor_a = (va > vb) if mayor_mejor else (va < vb)
+    mejor_b = (vb > va) if mayor_mejor else (vb < va)
+    if pd.isna(va) or pd.isna(vb):
+        mejor_a = mejor_b = False
+    fig.text(0.5, y, lbl, family=TXT, size=7.5, color=GRIS1, ha="center", va="center")
+    for xv, txt_v, mejor, ha in ((L + 0.01, txt_a, mejor_a, "left"), (R - 0.01, txt_b, mejor_b, "right")):
+        fig.text(xv, y, txt_v, family=TXT, size=9, weight="bold" if mejor else "normal",
+                 color=FG if mejor else GRIS1, ha=ha, va="center")
+    y -= 0.029
 
-    ax.text(anchor_x + 0.05, 4.16,
-            f"QB {_lider(s['qb_name'], s['qb_epa'])}   ·   RB {_lider(s['rb_name'], s['rb_epa'])}",
-            ha="left", va="center", fontsize=7.3, color=FG, zorder=3)
-    ax.text(anchor_x + 0.05, 3.88,
-            f"WR/TE {_lider(s['wr_name'], s['wr_epa'])}   (EPA sumado del partido)",
-            ha="left", va="center", fontsize=7.3, color="#aaaaaa", zorder=3)
 
-# ── WIN PROBABILITY ─────────────────────────────────────────────────────
-home_g = game_df[home_col].dropna().iloc[0] if home_col else team_a
-away_g = team_b if home_g == team_a else team_a
+def _tdpct(s):
+    tot = s["tdc"] + s["tdf"]
+    return s["tdc"] / tot if tot else float("nan")
 
-_wp_nota = "con la línea de apuestas" if wp_col == "vegas_home_wp" else "sin línea pregame"
-ax.text(5.0, 3.42, f"WIN PROBABILITY {_wp_nota}  ·  curva = {home_g}  ·  ● = Top-3 jugadas por |WPA|",
-        ha="center", va="center", fontsize=8, color="#888888",
-        fontweight="bold", zorder=2)
 
-wp_ax = fig.add_axes([0.075, 0.128, 0.85, 0.170], facecolor="#10141c")
+fila("EPA por jugada", sa["off_epa_play"], sb["off_epa_play"],
+     num(sa["off_epa_play"]) if pd.notna(sa["off_epa_play"]) else "–",
+     num(sb["off_epa_play"]) if pd.notna(sb["off_epa_play"]) else "–")
+fila("Yardas", sa["total_yds"], sb["total_yds"], str(sa["total_yds"]), str(sb["total_yds"]))
+fila("Pase", sa["pass_yds"], sb["pass_yds"],
+     f"{sa['comp']}/{sa['att']} · {sa['pass_yds']} yds", f"{sb['comp']}/{sb['att']} · {sb['pass_yds']} yds")
+fila("Carrera", sa["rush_yds"], sb["rush_yds"],
+     f"{sa['rush_att']} · {sa['rush_yds']} yds", f"{sb['rush_att']} · {sb['rush_yds']} yds")
+fila("3er down", _tdpct(sa), _tdpct(sb), f"{sa['tdc']}/{sa['tdc'] + sa['tdf']}",
+     f"{sb['tdc']}/{sb['tdc'] + sb['tdf']}")
+fila("Red zone (TD)", sa["rz_tds"] / sa["rz_trips"] if sa["rz_trips"] else float("nan"),
+     sb["rz_tds"] / sb["rz_trips"] if sb["rz_trips"] else float("nan"),
+     f"{sa['rz_tds']}/{sa['rz_trips']}", f"{sb['rz_tds']}/{sb['rz_trips']}")
+fila("Pérdidas", sa["turnovers"], sb["turnovers"], str(sa["turnovers"]), str(sb["turnovers"]),
+     mayor_mejor=False)
+fila("Sacks recibidos", sa["sacks"], sb["sacks"], str(sa["sacks"]), str(sb["sacks"]),
+     mayor_mejor=False)
+fila("Explosivas", sa["explosivas"], sb["explosivas"], str(sa["explosivas"]),
+     str(sb["explosivas"]))
+
+# Lideres (EPA sumado): una linea por equipo
+linea_h(fig, y + 0.012)
+y -= 0.012
+etiqueta(fig, "Líderes · EPA sumado", 0.5, y, ha="center")
+y -= 0.03
+
+
+def _lider(pos, nombre, epa):
+    if not nombre or pd.isna(epa):
+        return None
+    return f"{pos} {nombre} {num(epa, 1)}"
+
+
+for i, (pos, k) in enumerate((("QB", "qb"), ("RB", "rb"), ("WR/TE", "wr"))):
+    for xv, s, ha in ((L + 0.01, sa, "left"), (R - 0.01, sb, "right")):
+        t = _lider(pos, s[f"{k}_name"], s[f"{k}_epa"])
+        if t:
+            fig.text(xv, y, t, family=TXT, size=7.8, color=FG if i == 0 else GRIS1, ha=ha,
+                     va="center")
+    y -= 0.022
+
+# Probabilidad de victoria del local, con las tres jugadas de mas |WPA|
+y -= 0.008
+linea_h(fig, y + 0.012)
+y -= 0.012
+_wp_nota = "con la línea de apuestas" if wp_col == "vegas_home_wp" else "sin línea previa"
+etiqueta(fig, f"Probabilidad de victoria de {home_g} ({_wp_nota})", L + 0.01, y)
+alto_wp = 0.095
+wp_ax = estilo_ejes(fig.add_axes([L + 0.06, y - 0.02 - alto_wp, R - L - 0.07, alto_wp]), x=False)
 if wp_col and game_df[wp_col].notna().any():
     wpd = (game_df.dropna(subset=[wp_col, "game_seconds_remaining"])
            .sort_values("game_seconds_remaining", ascending=False))
     xw = 3600 - wpd["game_seconds_remaining"]
     yw = wpd[wp_col] * 100
     x_max = max(3600.0, float(xw.max()))
-
-    wp_ax.fill_between(xw, 50, yw, where=(yw >= 50), color="#4e9af1", alpha=0.16, zorder=2)
-    wp_ax.fill_between(xw, 50, yw, where=(yw < 50),  color="#d84a4a", alpha=0.16, zorder=2)
-    wp_ax.plot(xw, yw, color="#4e9af1", linewidth=1.6, zorder=3)
-    wp_ax.axhline(50, color=GRID, linewidth=0.8, linestyle="--", alpha=0.8, zorder=1)
-    for q in (900, 1800, 2700, 3600):
-        if q < x_max:
-            wp_ax.axvline(q, color=GRID, linewidth=0.6, alpha=0.5, zorder=1)
-    for qi, q_lbl in enumerate(["Q1", "Q2", "Q3", "Q4"]):
-        wp_ax.text(450 + qi * 900, 4, q_lbl, ha="center", va="bottom",
-                   color="#555555", fontsize=6.5, zorder=2)
-    if x_max > 3600:
-        wp_ax.text((3600 + x_max) / 2, 4, "OT", ha="center", va="bottom",
-                   color="#555555", fontsize=6.5, zorder=2)
-
-    # Top-3 jugadas sobre la curva
+    ch, ca = COLP[home_g], COLP[away_g]
+    wp_ax.fill_between(xw, 50, yw, where=(yw >= 50), color=ch, alpha=0.18, lw=0)
+    wp_ax.fill_between(xw, 50, yw, where=(yw < 50), color=ca, alpha=0.18, lw=0)
+    wp_ax.plot(xw, yw, color=FG, lw=1.1)
+    wp_ax.axhline(50, color=GRID, lw=0.8)
+    for q in (900, 1800, 2700):
+        wp_ax.axvline(q, color=GRID, lw=0.6)
+    for qi, q_lbl in enumerate(["1º", "2º", "3º", "4º"]):
+        wp_ax.text(450 + qi * 900, 3, q_lbl, ha="center", va="bottom", color=GRIS2, fontsize=6.5)
     for i, p in enumerate(top3_plays):
         if not (pd.isna(p["gsr"]) or pd.isna(p["wp"])):
             px_, py_ = 3600 - p["gsr"], p["wp"] * 100
-            wp_ax.scatter([px_], [py_], s=48, color="#ffd166",
-                          edgecolors=BG, linewidths=1.0, zorder=5)
-            wp_ax.annotate(f"{i+1}", (px_, py_), ha="center", va="center",
-                           fontsize=5.5, fontweight="bold", color="#0a0e13", zorder=6)
-
+            wp_ax.scatter([px_], [py_], s=60, color=FG, edgecolors=CARD, linewidths=1.2, zorder=5)
+            wp_ax.annotate(str(i + 1), (px_, py_), ha="center", va="center", fontsize=5.8,
+                           fontweight="bold", color=CARD, zorder=6)
     wp_ax.set_xlim(0, x_max)
     wp_ax.set_ylim(0, 100)
-    wp_ax.set_yticks([0, 50, 100])
-    wp_ax.set_yticklabels([f"{away_g} 100%", "50%", f"{home_g} 100%"],
-                          fontsize=6.5, color="#888888")
-    wp_ax.set_xticks([])
-    wp_ax.tick_params(length=0)
-    for sp in wp_ax.spines.values():
-        sp.set_edgecolor(GRID)
-else:
-    wp_ax.axis("off")
+    wp_ax.text(-40, 92, home_g, ha="right", va="center", color=ch, fontsize=6.5, weight="bold")
+    wp_ax.text(-40, 8, away_g, ha="right", va="center", color=ca, fontsize=6.5, weight="bold")
+y = y - 0.02 - alto_wp - 0.02
+for i, p in enumerate(top3_plays[:3]):
+    desc = str(p["desc"])
+    while desc.startswith("("):            # quita "(8:40)", "(Shotgun)", "(No Huddle...)"
+        desc = desc[desc.find(")") + 1:].strip()
+    try:
+        cuarto = f"{int(float(p['qtr']))}º cuarto"
+    except (TypeError, ValueError):
+        cuarto = "prórroga"
+    fig.text(L + 0.01, y, f"{i + 1}", family=TXT, weight="bold", size=7.5, color=FG, va="center")
+    fig.text(L + 0.04, y, f"{cuarto} · {desc[:72]}", family=TXT, size=6.8,
+             color=GRIS1, va="center")
+    y -= 0.021
 
-# ── TOP 3 PLAYS (texto) ───────────────────────────────────────────────
-for rank, play in enumerate(top3_plays[:3]):
-    y_txt = 0.94 - rank * 0.27
-    epa_str = f"EPA {play['epa']:+.3f}" if not pd.isna(play["epa"]) else ""
-    line = (f"#{rank+1}  Q{play['qtr']} {play['posteam']}: "
-            f"{play['desc'][:70]}  ·  WPA {play['wpa']:+.3f}  ·  {epa_str}")
-    ax.text(0.30, y_txt, line, ha="left", va="center",
-            fontsize=6.3, color="#cccccc", zorder=2)
-
-# ── FOOTER ─────────────────────────────────────────────────────
-fig.text(0.01, 0.006, f"Fuente: nflverse-data  ·  {sello(SEASON)}",
-         ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-fig.text(0.99, 0.006, "@CuartayDato",
-         ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
+tarjeta(fig, y - 0.012, y_top)
+pie(fig, "Explosiva = pase de 20+ o carrera de 10+ · Puntos = jugadas de mayor impacto en la probabilidad",
+    f"NFL {SEASON} · semana {week} · nflverse PBP")
 
 # El nombre lleva delante el orden de kickoff (01 = partido inaugural) y los
 # equipos como visitante_vs_local, para que la carpeta de la semana se lea como
@@ -508,9 +532,7 @@ else:
     MOTE = f"resumen_{team_a}_vs_{team_b}"
 
 outfile = salida(f"{MOTE}_{SEASON}.png", SEASON, week)
-fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
-plt.close(fig)
-print(f"Guardado: {outfile}")
+guardar(fig, outfile)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -643,79 +665,99 @@ if normas_usadas == {"temporada"}:
     pie_norma  = "norma = resto de partidos de la temporada"
 else:
     sub_norma  = f"su temporada {SEASON - 1}"
-    pie_norma  = (f"norma = temporada regular {SEASON - 1} (aun no hay "
-                  f"{MIN_PARTIDOS_NORMA} partidos en {SEASON}; plantillas cambian)")
+    pie_norma  = (f"norma = su temporada {SEASON - 1} (aún no hay "
+                  f"{MIN_PARTIDOS_NORMA} partidos en {SEASON})")
 
-# ── PNG CLAVES ────────────────────────────────────────────────────────────────
-fig2, ax2 = plt.subplots(figsize=(10, 7.0), facecolor=BG)
-fig2.subplots_adjust(left=0.02, right=0.98, top=0.995, bottom=0.005)
-ax2.set_facecolor(BG)
-ax2.axis("off")
-ax2.set_xlim(0, 10)
-ax2.set_ylim(0.55, 7.5)
+# ── PNG CLAVES (estilo docs/estilo-visual.md) ─────────────────────────────────
+FRASE_FACETA = {
+    "EPA / pase": "El pase de {T}",
+    "EPA / carrera": "La carrera de {T}",
+    "Carrera exterior (end/tackle)": "La carrera por fuera de {T}",
+    "Carrera interior (guard/centro)": "La carrera por dentro de {T}",
+    "3er down convertido": "{T} en 3er down",
+    "Presión sufrida": "La presión que sufrió {T}",
+    "Jugadas explosivas": "Las jugadas explosivas de {T}",
+    "Pase profundo (15+ air)": "El pase profundo de {T}",
+    "EPA en Red Zone": "{T} en la red zone",
+}
 
-ax2.add_patch(plt.Rectangle((0, 6.55), 10, 0.95, color="#151924", zorder=0))
-ax2.text(5.0, 7.10, f"CLAVES DEL PARTIDO  ·  {titulo}",
-         ha="center", va="center", fontsize=15, fontweight="bold", color=FG, zorder=1)
-ax2.text(5.0, 6.76,
-         f"Semana {week} | NFL {SEASON}  ·  las mayores desviaciones de cada equipo vs {sub_norma}",
-         ha="center", va="center", fontsize=9, color="#888888", fontstyle="italic", zorder=1)
 
-ax2.add_patch(plt.Rectangle((0.15, 0.95), 4.40, 5.35, color="#151924",
-                             zorder=0, linewidth=0, alpha=0.6))
-ax2.add_patch(plt.Rectangle((5.45, 0.95), 4.40, 5.35, color="#151924",
-                             zorder=0, linewidth=0, alpha=0.6))
+NOMBRE_FACETA = {
+    "EPA / pase": "EPA por pase", "EPA / carrera": "EPA por carrera",
+    "Carrera exterior (end/tackle)": "Carrera por fuera",
+    "Carrera interior (guard/centro)": "Carrera por dentro",
+    "3er down convertido": "3er down convertido", "Presión sufrida": "Presión sufrida",
+    "Jugadas explosivas": "Jugadas explosivas",
+    "Pase profundo (15+ air)": "Pase profundo (15+ yardas en el aire)",
+    "EPA en Red Zone": "EPA en red zone",
+}
 
-for team, rival, anchor_x, cx in [(team_a, team_b, 0.55, 2.35),
-                                   (team_b, team_a, 5.75, 7.65)]:
-    logo = load_logo(team, base_zoom=0.055)
-    if logo is not None:
-        ab = AnnotationBbox(logo, (anchor_x + 0.35, 5.90), frameon=False, zorder=3)
-        ax2.add_artist(ab)
-    ax2.text(anchor_x + 0.80, 5.90, team, ha="left", va="center",
-             fontsize=15, fontweight="bold", color=FG, zorder=3)
 
+def _fv2(v, fmt):
+    if pd.isna(v):
+        return "–"
+    return num(v) if fmt == "epa" else f"{v:.0f}%"
+
+
+def _fd2(d, fmt):
+    return f"{num(d)} EPA" if fmt == "epa" else f"{'+' if d > 0 else '−'}{abs(d):.0f} puntos"
+
+
+def titular_claves():
+    todas = [(c, t) for t in (team_a, team_b) for c in claves[t]]
+    if not todas:
+        return None
+    c, t = max(todas, key=lambda x: x[0]["score"])
+    if c["score"] < 1.0:
+        return None
+    frase = FRASE_FACETA.get(c["faceta"], c["faceta"] + " de {T}").format(T=nombre_equipo(t))
+    donde = "su norma" if c["lab"] == "temporada" else f"su {c['lab']}"
+    return _cap(f"{frase}: {_fv2(c['gv'], c['fmt'])} en el partido; {_fv2(c['tv'], c['fmt'])} en {donde}.")
+
+
+fig2 = lienzo()
+antetitulo(fig2, f"Claves · semana {week} · {titulo.replace('  ', ' ')}")
+tit2 = titular_claves()
+y = (titular(fig2, tit2, y=0.925) - 0.025) if tit2 else 0.905
+y_top = y
+y -= 0.035
+for team, rival in ((team_a, team_b), (team_b, team_a)):
+    poner_logo(fig2, team, L + 0.035, y, zoom=0.02)
+    fig2.text(L + 0.08, y, team, family=TXT, weight="bold", size=10, color=COLP[team],
+              va="center")
+    fig2.text(R - 0.01, y, f"contra {rival}", family=TXT, size=7.5, color=GRIS1, va="center",
+              ha="right")
+    y -= 0.045
     lista = claves[team]
     if not lista:
-        ax2.text(cx, 3.6, "Sin desviaciones\ncon muestra suficiente",
-                 ha="center", va="center", fontsize=9, color="#666666", zorder=3)
-        continue
-
-    for i, c in enumerate(lista):
-        y0 = 5.30 - i * 1.15
-        col = "#06d6a0" if c["mejora"] else "#d84a4a"
-
-        ax2.text(anchor_x + 0.05, y0, f"▸ {c['faceta']}",
-                 ha="left", va="center", fontsize=9, fontweight="bold",
-                 color=FG, zorder=3)
-
-        # Minibarra del delta (longitud = magnitud, capada)
-        bar_len = min(c["score"], 2.5) / 2.5 * 1.55
-        ax2.add_patch(plt.Rectangle((anchor_x + 0.10, y0 - 0.36), 1.55, 0.13,
-                                     color="#252c3b", zorder=2))
-        ax2.add_patch(plt.Rectangle((anchor_x + 0.10, y0 - 0.36), bar_len, 0.13,
-                                     color=col, zorder=3))
-        vs_txt = "vs su norma" if c["lab"] == "temporada" else f"vs su {c['lab']}"
-        ax2.text(anchor_x + 1.78, y0 - 0.295, f"{_fd(c['delta'], c['fmt'])} {vs_txt}",
-                 ha="left", va="center", fontsize=8.5, fontweight="bold",
-                 color=col, zorder=3)
-
+        nota(fig2, "Sin desviaciones con muestra suficiente", L + 0.01, y)
+        y -= 0.05
+    for c in lista:
+        col = RYG[2] if c["mejora"] else RYG[0]
+        fig2.text(L + 0.01, y, NOMBRE_FACETA.get(c["faceta"], c["faceta"]), family=TXT, weight="semibold", size=8.8, color=FG,
+                  va="center")
+        fig2.text(R - 0.01, y, _fd2(c["delta"], c["fmt"]), family=TXT, weight="bold", size=8.8,
+                  color=col, va="center", ha="right")
+        # barra de la desviacion (longitud = magnitud, capada)
+        bw = 0.30
+        x0b = R - 0.01 - bw - 0.11
+        fig2.add_artist(Rectangle((x0b, y - 0.004), bw, 0.008, transform=fig2.transFigure,
+                                  color=GRID, lw=0))
+        fig2.add_artist(Rectangle((x0b, y - 0.004), min(c["score"], 2.5) / 2.5 * bw, 0.008,
+                                  transform=fig2.transFigure, color=col, lw=0))
+        donde = "su norma" if c["lab"] == "temporada" else f"su {c['lab']}"
         verbo = "generar" if c["faceta"] == "Presión sufrida" else "ceder"
-        ax2.text(anchor_x + 0.10, y0 - 0.66,
-                 f"partido {_fv(c['gv'], c['fmt'])} (n={c['n']})  ·  "
-                 f"{c['lab']} {_fv(c['tv'], c['fmt'])}  ·  "
-                 f"{rival} solía {verbo} {_fv(c['rv'], c['fmt'])}",
-                 ha="left", va="center", fontsize=7.0, color="#9aa3b5", zorder=3)
+        nota(fig2, f"Partido {_fv2(c['gv'], c['fmt'])} ({c['n']} jugadas) · {donde} "
+                   f"{_fv2(c['tv'], c['fmt'])} · {rival} solía {verbo} {_fv2(c['rv'], c['fmt'])}",
+             L + 0.01, y - 0.025)
+        y -= 0.068
+    linea_h(fig2, y + 0.02)
+    y -= 0.02
 
-fig2.text(0.01, 0.006,
-          f"Fuente: nflverse-data  ·  {sello(SEASON)}  ·  {pie_norma}",
-          ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-fig2.text(0.99, 0.006, "@CuartayDato",
-          ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85,
-          fontstyle="italic")
+tarjeta(fig2, y + 0.005, y_top)
+pie(fig2, "Mayores desviaciones sobre la norma · " + pie_norma,
+    f"NFL {SEASON} · semana {week} · nflverse PBP")
 
 outfile2 = salida(f"{MOTE.replace('resumen_', 'resumen_claves_', 1)}_{SEASON}.png",
                   SEASON, week)
-fig2.savefig(outfile2, dpi=DPI, facecolor=BG, bbox_inches="tight")
-plt.close(fig2)
-print(f"Guardado: {outfile2}")
+guardar(fig2, outfile2)
