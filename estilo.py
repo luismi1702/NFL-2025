@@ -114,11 +114,20 @@ def _color_de(fila):
 _COL = None
 
 
+def equipos():
+    """teams.parquet indexado por siglas; si falta el cache, lo descarga."""
+    ruta = os.path.join("pbp_cache", "teams.parquet")
+    if not os.path.exists(ruta):
+        from pbp_loader import cargar_equipos
+        cargar_equipos()
+    return pd.read_parquet(ruta).set_index("team_abbr")
+
+
 def color_equipo(team):
     """Color de identidad de un equipo (siglas nflverse: LA, LV, WAS...)."""
     global _COL
     if _COL is None:
-        eq = pd.read_parquet(os.path.join("pbp_cache", "teams.parquet")).set_index("team_abbr")
+        eq = equipos()
         _COL = {t: _color_de(f) for t, f in eq.iterrows()}
     return _COL.get(team, FG)
 
@@ -316,7 +325,7 @@ def colores_pareja(a, b, umbral=90):
     ca, cb = color_equipo(a), color_equipo(b)
     if _dist(ca, cb) >= umbral:
         return {a: ca, b: cb}
-    eq = pd.read_parquet(os.path.join("pbp_cache", "teams.parquet")).set_index("team_abbr")
+    eq = equipos()
     cands = []
     if b in eq.index:
         f = eq.loc[b]
