@@ -231,7 +231,8 @@ rk_of = stats["off_epa"].rank(ascending=False, method="min").astype(int)
 rk_df = stats["def_epa"].rank(ascending=True, method="min").astype(int)
 
 primero, ultimo = stats.loc[0, "team"], stats.loc[n_teams - 1, "team"]
-tit = f"{nombre_equipo(primero)} encabeza el ranking; {nombre_equipo(ultimo)} lo cierra."
+n1, n32 = nombre_equipo(primero), nombre_equipo(ultimo)
+tit = f"{n1} {v(n1, 'encabeza', 'encabezan')} el ranking; {n32} lo {v(n32, 'cierra', 'cierran')}."
 tit = tit[0].upper() + tit[1:]
 
 fig = lienzo()

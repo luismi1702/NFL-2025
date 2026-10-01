@@ -281,10 +281,12 @@ def frase_titular(d):
     """Plantilla del titular: solo rangos, que son hechos. El fuerte va primero."""
     atk, dfn, c, ro, rd = d
     A, B = nombre_equipo(atk), nombre_equipo(dfn)
+    def ser(nombre):   # "los Rams son", "Denver es"
+        return "son" if nombre.startswith("los ") else "es"
     if ro < rd:     # el ataque es el fuerte
-        s = f"{A} es {ro}º {c[4]}; {B}, {rd}º {c[5]}."
+        s = f"{A} {ser(A)} {ro}º {c[4]}; {B}, {rd}º {c[5]}."
     else:
-        s = f"{B} es {rd}º {c[5]}; {A}, {ro}º {c[4]}."
+        s = f"{B} {ser(B)} {rd}º {c[5]}; {A}, {ro}º {c[4]}."
     return s[0].upper() + s[1:]   # solo la primera: "...; los Giants, 25º"
 
 

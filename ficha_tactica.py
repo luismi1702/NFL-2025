@@ -222,12 +222,14 @@ def titular_ficha():
     gan_partido = home if pts[home] > pts[away] else away
     per_partido = away if gan_partido == home else home
     if ganadas[per_partido] > ganadas[gan_partido]:
-        s = f"{nombre_equipo(per_partido)} ganó {ganadas[per_partido]} de las {n} facetas y perdió el partido."
+        np_ = nombre_equipo(per_partido)
+        s = f"{np_} {v(np_, 'ganó', 'ganaron')} {ganadas[per_partido]} de las {n} facetas y {v(np_, 'perdió', 'perdieron')} el partido."
     else:
         t = max(ganadas, key=ganadas.get)
         if ganadas[t] < 8:
             return None
-        s = f"{nombre_equipo(t)} ganó {ganadas[t]} de las {n} facetas del partido."
+        nt_ = nombre_equipo(t)
+        s = f"{nt_} {v(nt_, 'ganó', 'ganaron')} {ganadas[t]} de las {n} facetas del partido."
     return s[0].upper() + s[1:]
 
 

@@ -294,10 +294,12 @@ def render(df, season, week, n_weeks_played):
     cont = df[df["contender"]]["team"].tolist()
     if not cont:
         mejor = df.iloc[0]
+        nm = _nombre(mejor['team'])
         tit = (f"Ningún equipo cumple todavía las {TOTAL} marcas del peor campeón; "
-               f"{_nombre(mejor['team'])} cumple {int(mejor['n_ok'])}.")
+               f"{nm} {'cumplen' if nm.startswith('los ') else 'cumple'} {int(mejor['n_ok'])}.")
     elif len(cont) == 1:
-        tit = f"Solo {_nombre(cont[0])} cumple las {TOTAL} marcas del peor campeón."
+        nm = _nombre(cont[0])
+        tit = f"Solo {nm} {'cumplen' if nm.startswith('los ') else 'cumple'} las {TOTAL} marcas del peor campeón."
     else:
         tit = f"{len(cont)} equipos cumplen las {TOTAL} marcas del peor campeón."
     tit = tit[0].upper() + tit[1:]

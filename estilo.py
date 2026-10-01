@@ -338,3 +338,21 @@ def colores_pareja(a, b, umbral=90):
                         break
     mejor = max(cands, key=lambda c: _dist(c, ca), default=cb)
     return {a: ca, b: mejor if _dist(mejor, ca) > _dist(cb, ca) else cb}
+
+
+# ── Nombres en los titulares
+def nombre_equipo(team):
+    """Ciudad para el titular ("San Francisco"); los que comparten ciudad,
+    por su apodo con articulo ("los Rams"), que conjuga en PLURAL: usar v()."""
+    try:
+        eq = equipos()
+        if team in ("LA", "LAC", "NYG", "NYJ"):
+            return "los " + eq.loc[team, "team_nick"]
+        return eq.loc[team, "team_name"].replace(" " + eq.loc[team, "team_nick"], "")
+    except Exception:
+        return team
+
+
+def v(nombre, singular, plural):
+    """Concordancia: v("los Rams", "remontó", "remontaron") -> "remontaron"."""
+    return plural if nombre.lower().startswith("los ") else singular

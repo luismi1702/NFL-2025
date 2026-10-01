@@ -365,19 +365,19 @@ def titular_resumen():
         wp_w = wp_home if W == home_g else 1 - wp_home
         minimo = float(wp_w.min())
         if minimo < 0.20:
-            return _cap(f"{nW} remontó: llegó a tener solo un {minimo * 100:.0f}% de opciones de ganar.")
+            return _cap(f"{nW} {v(nW, 'remontó', 'remontaron')}: {v(nW, 'llegó', 'llegaron')} a tener solo un {minimo * 100:.0f}% de opciones de ganar.")
     # 2. Gano con peor EPA por jugada
     if (pd.notna(sw["off_epa_play"]) and pd.notna(sl["off_epa_play"])
             and sw["off_epa_play"] < sl["off_epa_play"] - 0.05):
-        return _cap(f"{nW} ganó con peor EPA por jugada que {nL}: "
+        return _cap(f"{nW} {v(nW, 'ganó', 'ganaron')} con peor EPA por jugada que {nL}: "
                     f"{num(sw['off_epa_play'])} contra {num(sl['off_epa_play'])}.")
     # 3. Las perdidas
     if sl["turnovers"] - sw["turnovers"] >= 2:
-        return _cap(f"{nL} lo perdió con {sl['turnovers']} pérdidas de balón; {nW} cometió "
+        return _cap(f"{nL} lo {v(nL, 'perdió', 'perdieron')} con {sl['turnovers']} pérdidas de balón; {nW} {v(nW, 'cometió', 'cometieron')} "
                     f"{sw['turnovers']}.")
     # 4. Paliza
     if abs(_hs - _as) >= 17:
-        return _cap(f"{nW} ganó de {abs(_hs - _as)} a {nL}.")
+        return _cap(f"{nW} {v(nW, 'ganó', 'ganaron')} de {abs(_hs - _as)} a {nL}.")
     return None
 
 
