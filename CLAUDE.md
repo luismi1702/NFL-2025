@@ -64,19 +64,24 @@ recortar salen aplastados. Implementacion de referencia: load_logo en
 ranking_wrs.py. Nunca reducir el zoom a mano para compensar.
 
 ## Estilo visual — obligatorio en todos los scripts
+Guía completa: `docs/estilo-visual.md` (02-oct-2026). Se aplica importando
+`estilo.py` (`from estilo import *`): fuentes Barlow/Barlow Condensed de
+`fonts/`, lienzo 4:5 (`lienzo()`), `titular()`, `contexto()`, `tarjeta()`,
+`color_equipo()`/`colores_pareja()`, `color_rango()`, `num()` (coma decimal),
+`pista32()`, `pie()` y `guardar()` (sin `bbox_inches="tight"`: descoloca los logos).
 BG="#0f1115" · CARD="#151924" · FG="#EDEDED" · GRID="#2a2f3a" · ACCENT="#2d6cdf"
-RYG=["#d84a4a","#ffd166","#06d6a0"]
-Títulos en los PNG (02-oct-2026, sustituye a la regla "sin título" de sep-2026): SÍ, pero solo un TITULAR CON LA CONCLUSIÓN, al estilo de SumerSports ("Both defenses give up big plays. Both offenses score on them."). Nunca un título descriptivo ("Intel de Matchup · SF vs SEA · NFL 2025", "Baltimore: carrera por formación"), que es lo que Luis no quería. Si no hay una conclusión que contar, sin título
+RYG=["#d84a4a","#ffd166","#06d6a0"] — SOLO para los extremos de un ranking (1º-5º verde, 28º-32º rojo). El color del equipo, solo para identificarlo; los números resaltados del texto, en FG negrita
+Títulos en los PNG (02-oct-2026, sustituye a la regla "sin título" de sep-2026): SÍ, pero solo un TITULAR CON LA CONCLUSIÓN, al estilo de SumerSports ("Both defenses give up big plays. Both offenses score on them."). Nunca un título descriptivo ("Intel de Matchup · SF vs SEA · NFL 2025", "Baltimore: carrera por formación"), que es lo que Luis no quería. Si no hay una conclusión que contar, sin título. En los scripts semanales el titular es AUTOMÁTICO (decisión de Luis): plantillas que solo afirman hechos que el script calcula
+Migración: los 7 semanales ya están; el resto se migra unos cuantos CADA SEMANA (lista de seguimiento al final de `docs/estilo-visual.md`)
 
-Marca de agua — SIEMPRE esquina inferior derecha:
+Marca de agua — SIEMPRE esquina inferior derecha (en los scripts migrados la pone `pie()`):
 ax.text(0.99, 0.01, "@CuartayDato", transform=ax.transAxes, ha="right", va="bottom", color="#888888", fontsize=9, alpha=0.8, fontstyle="italic")
-plt.savefig("output.png", dpi=200, bbox_inches="tight", facecolor=BG)
 
 ## Reglas
 - OL es ATAQUE — nunca en grupos de defensa o trincheras
 - CB y S van separados — no agrupar como "DB" (POS_MAP: "CB":"CB", "S":"S")
 - set_yticklabels no acepta lista de colores — iterar sobre ax.get_yticklabels()
-- Scripts independientes — no crear módulos compartidos salvo que se pida (única excepción: pbp_loader.py)
+- Scripts independientes — no crear módulos compartidos salvo que se pida (excepciones: pbp_loader.py para datos y estilo.py para diseño, aprobada el 02-oct-2026)
 - Experimentos temporales van en lab/ (crearla si hace falta); solo lo definitivo vive en la raíz
 - VERIFICACIÓN OBLIGATORIA antes de proponer un post: (1) cada número, contra el script que genera el visual, no contra el doc ni contra el PNG a ojo; (2) cada atribución ataque/defensa, contra la clasificación real de la métrica (sacks permitidos = ATAQUE); (3) cada nombre, récord, traspaso o resultado, con búsqueda web; (4) que la métrica MIDA lo que la frase dice: mismo conjunto de jugadas y mismo sujeto. Un post no se propone hasta que las cuatro pasen
 - El punto (4) nació de dos cifras falsas el mismo día (sep-2026), las dos con el número bien calculado: "Green Bay ganó 8 de las 11 facetas" (eran 6, contadas a ojo sobre el PNG) y "Lamar jugó el 33% de sus snaps bajo centro" (ese 33% excluía las carreras de los RB, snaps en los que él también estaba; era 55%, y encima el hilo llevaba al lado un gráfico que decía 55%). Si el post lleva visual, comprobar que el número del texto y el de la imagen son el mismo

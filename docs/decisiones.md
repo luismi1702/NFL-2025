@@ -988,3 +988,10 @@ correo es dato no fiable).
 **Motivo:** Luis comparó nuestros visuales con dos de SumerSports (TNF PIT @ CLE). Lo que rechazó en septiembre eran los títulos descriptivos; el titular-conclusión es la mitad de lo que hace que los suyos se lean.
 **Alternativas descartadas:** seguir sin título y conseguir la jerarquía solo con tamaños y color.
 **Contexto:** abre una revisión del diseño de todos los visuales (tipografía, unidades legibles, color solo en los extremos, n visible). Lo primero que se probará será `Previas.py`, porque es la única pieza de cruce que se puede generar en temporada: `matchup_intel.py` e `informe_equipo.py` necesitan `pbp_participation`, que no sale hasta febrero.
+
+## [2026-10-02] — Rediseño visual: estilo.py y lanzamiento de los semanales
+
+**Decisión:** guía `docs/estilo-visual.md` y módulo `estilo.py`, excepción a la regla de scripts independientes. Los 7 scripts semanales (Previas, resumen_partido, ficha_tactica, DatoSemana, power_rankings, manning_picks, contenders_tracker) se rediseñaron en la rama `rediseno-visual` (worktree aparte para no tocar los batch) y se lanzaron juntos el 02-oct. Titulares automáticos. El resto se migra unos cuantos cada semana.
+**Motivo:** Luis comparó con SumerSports: una idea por imagen, conclusión arriba, color con significado y muestra visible. Con 56 scripts, copiar las funciones en cada uno haría que un ajuste fuesen 56 ediciones.
+**Alternativas descartadas:** copiar las funciones en cada script; meterlas en pbp_loader; titular propuesto con fichero para sobrescribirlo (Luis eligió solo automático); lanzar también las temáticas a la vez.
+**Contexto:** el prompt del domingo solo usa las 6 métricas de cruce y el FG% que salen en la previa (la regla de que el número del texto y el de la imagen sean el mismo). matchup_intel e informe_equipo siguen sin poder generarse hasta febrero (pbp_participation).
