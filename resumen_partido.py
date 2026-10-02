@@ -359,25 +359,50 @@ def titular_resumen():
     Lz = away_g if W == home_g else home_g
     sw, sl = team_stats[W], team_stats[Lz]
     nW, nL = nombre_equipo(W), nombre_equipo(Lz)
-    # 1. Remontada: la probabilidad del ganador llego a bajar del 20%
-    if wp_col and game_df[wp_col].notna().any():
-        wp_home = pd.to_numeric(game_df[wp_col], errors="coerce").dropna()
-        wp_w = wp_home if W == home_g else 1 - wp_home
-        minimo = float(wp_w.min())
-        if minimo < 0.20:
-            return _cap(f"{nW} {v(nW, 'remontó', 'remontaron')}: {v(nW, 'llegó', 'llegaron')} a tener solo un {minimo * 100:.0f}% de opciones de ganar.")
-    # 2. Gano con peor EPA por jugada
+    g = game_df.sort_values("play_id") if "play_id" in game_df.columns else game_df
+    gsr = pd.to_numeric(g["game_seconds_remaining"], errors="coerce")
+    hs_ = pd.to_numeric(g["total_home_score"], errors="coerce").ffill().fillna(0)
+    as_ = pd.to_numeric(g["total_away_score"], errors="coerce").ffill().fillna(0)
+    dif_w = (hs_ - as_) if W == home_g else (as_ - hs_)      # marcador del ganador tras cada jugada
+    # 1. Remontada: SOLO si iba perdiendo en la segunda mitad y su probabilidad
+    # bajo del 25% en esa segunda mitad (02-oct-2026: el titular dijo que
+    # Cleveland "remonto" por un 20% del primer cuarto en un partido que fue
+    # ganando casi entero)
+    segunda = gsr <= 1800
+    if wp_col and g[wp_col].notna().any() and (dif_w[segunda] < 0).any():
+        wp_home = pd.to_numeric(g[wp_col], errors="coerce")
+        wp_w = (wp_home if W == home_g else 1 - wp_home)[segunda].dropna()
+        if len(wp_w) and float(wp_w.min()) < 0.25:
+            return _cap(f"{nW} {v(nW, 'remontó', 'remontaron')}: en la segunda mitad "
+                        f"{v(nW, 'llegó', 'llegaron')} a tener solo un {float(wp_w.min()) * 100:.0f}% "
+                        f"de opciones de ganar.")
+    # 2. Decidido al final: el ganador se pone por delante (desde el empate o
+    # por detras) en los dos ultimos minutos. Sin segundos exactos: el reloj
+    # del PBP es el del snap, no el del final de la jugada
+    previo = dif_w.shift(1).fillna(0)
+    clave = g[(gsr <= 120) & (previo <= 0) & (dif_w > 0) & (g["posteam"] == W)]
+    if not clave.empty:
+        j = clave.iloc[-1]
+        cuando = "en el último minuto" if j["game_seconds_remaining"] <= 60 else "en los dos últimos minutos"
+        if str(j.get("field_goal_result", "")) == "made" and pd.notna(j.get("kick_distance")):
+            como = f"con un field goal de {int(j['kick_distance'])} yardas"
+        elif j.get("touchdown", 0) == 1:
+            como = "con un touchdown"
+        else:
+            como = ""
+        return _cap(f"{nW} lo {v(nW, 'ganó', 'ganaron')} {cuando}{(' ' + como) if como else ''}.")
+    # 3. Gano con peor EPA por jugada
     if (pd.notna(sw["off_epa_play"]) and pd.notna(sl["off_epa_play"])
             and sw["off_epa_play"] < sl["off_epa_play"] - 0.05):
         return _cap(f"{nW} {v(nW, 'ganó', 'ganaron')} con peor EPA por jugada que {nL}: "
                     f"{num(sw['off_epa_play'])} contra {num(sl['off_epa_play'])}.")
-    # 3. Las perdidas
+    # 4. Paliza (antes que las perdidas: un 6-35 no se cuenta por las perdidas)
+    if abs(_hs - _as) >= 17:
+        return _cap(f"{nW} le {v(nW, 'ganó', 'ganaron')} por {abs(_hs - _as)} puntos a {nL}.")
+    # 5. Las perdidas
     if sl["turnovers"] - sw["turnovers"] >= 2:
         return _cap(f"{nL} lo {v(nL, 'perdió', 'perdieron')} con {sl['turnovers']} pérdidas de balón; {nW} {v(nW, 'cometió', 'cometieron')} "
                     f"{sw['turnovers']}.")
-    # 4. Paliza
-    if abs(_hs - _as) >= 17:
-        return _cap(f"{nW} {v(nW, 'ganó', 'ganaron')} de {abs(_hs - _as)} a {nL}.")
     return None
 
 
@@ -385,6 +410,7 @@ COLP = colores_pareja(team_a, team_b)
 fig = lienzo()
 antetitulo(fig, f"Final · semana {week}")
 tit = titular_resumen()
+print(f"Titular: {tit or '(sin titular)'}")
 y = (titular(fig, tit, y=0.925) - 0.025) if tit else 0.905
 
 # Marcador: el ganador en FG, el perdedor en gris
