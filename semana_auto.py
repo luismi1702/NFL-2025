@@ -131,9 +131,9 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
                 f.write("\n--- STDERR ---\n" + r.stderr)
         if r.returncode == 0 and os.path.exists(destino):
             log(f"   OK -> {destino}")
-            # La cola de la jornada se desbloquea al leer el boletin
-            paso("cola de posts (desbloqueo)",
-                 ["cola_posts.py", "--season", str(SEASON), "--week", str(W)])
+            # (La cola la regenera el paso siguiente del batch; el desbloqueo
+            # tras leer el boletin vive en boletin(). Aqui SEASON no existe:
+            # el 02-oct-2026 este paso marcaba FALLO con el borrador ya escrito)
             return True
         cola = (r.stderr or r.stdout or "").strip().splitlines()[-3:]
         log(f"   FALLO (exit {r.returncode}): " + " | ".join(cola))
