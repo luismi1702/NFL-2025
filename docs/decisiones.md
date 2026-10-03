@@ -995,3 +995,10 @@ correo es dato no fiable).
 **Motivo:** Luis comparó con SumerSports: una idea por imagen, conclusión arriba, color con significado y muestra visible. Con 56 scripts, copiar las funciones en cada uno haría que un ajuste fuesen 56 ediciones.
 **Alternativas descartadas:** copiar las funciones en cada script; meterlas en pbp_loader; titular propuesto con fichero para sobrescribirlo (Luis eligió solo automático); lanzar también las temáticas a la vez.
 **Contexto:** el prompt del domingo solo usa las 6 métricas de cruce y el FG% que salen en la previa (la regla de que el número del texto y el de la imagen sean el mismo). matchup_intel e informe_equipo siguen sin poder generarse hasta febrero (pbp_participation).
+
+## [2026-10-03] — Suscripciones de datos: PFF+ y FTN
+
+**Decisión:** PFF+ anual ($99,99, Premium Stats con CSV a mano) y FTN Stats iQ (desde $109,99) como segundo servicio, este último tras confirmar que exporta en CSV y que trae coberturas y personal en temporada.
+**Motivo:** PFF cubre la lista de `docs/pff-wishlist.md`; FTN aporta charting (coberturas, rutas) exportable y ya usamos su charting gratis vía nflverse.
+**Alternativas descartadas:** PFF Pro ($199,99, con API y CSV con filtros) por precio; SumerPass ($100) porque sus tablas no se exportan ("Tables are not exportable", The Analytics Say, 2026) y para leer sus ángulos ya está el boletín gratuito.
+**Contexto:** sin API, los CSV de PFF se bajan a mano a `pff_data/` (no se commitean) antes de los batch que los usen.

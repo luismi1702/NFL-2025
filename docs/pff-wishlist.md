@@ -1,8 +1,16 @@
 # PFF Wishlist — qué hacer cuando llegue la suscripción
 
-Plan: PFF+ básico ($9.99/mes o $79.99/año) — incluye Premium Stats, que cubre
-todo lo de abajo. Flujo de trabajo: exportar CSV desde premium.pff.com →
-guardarlo en `pff_data/` → los scripts lo leen (nada de scraping).
+Plan (DECIDIDO el 03-oct-2026): PFF+ anual, $99,99 (ya no $79,99). Incluye
+Premium Stats, que cubre todo lo de abajo. Se descartó PFF Pro ($199,99, con
+API y CSV con filtros) por precio: la descarga es A MANO. Flujo de trabajo:
+exportar CSV desde premium.pff.com → guardarlo en `pff_data/` → los scripts lo
+leen (nada de scraping). Como no hay API, los batch NO pueden bajarlo solos:
+antes de cada batch que use PFF hay que haber descargado los CSV de la semana.
+
+Segundo servicio: FTN (Stats iQ, desde $109,99/año) en vez de SumerPass
+($100/año), porque las tablas de SumerSports no se pueden exportar. Pendiente
+antes de pagar FTN: confirmar que exporta en CSV y que trae coberturas y
+personal en temporada (el hueco hasta febrero).
 
 ## Pendientes
 
