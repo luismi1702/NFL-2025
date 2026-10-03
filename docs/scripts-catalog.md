@@ -73,7 +73,8 @@
 | Script | Descripción |
 |--------|-------------|
 | informe_equipo.py | Team card de un equipo: 2 PNGs (ataque y defensa). Banda superior con 3 KPIs y DONDE DOMINA en fila; columna izquierda con cada faceta en pista de ranking 1→32; franja de carrera por hueco al pie (en ataque LE->RE; en defensa el defensor que cubre cada hueco, con el orden invertido); derecha con debilidades, identidad y bloque PRESION (KPI + origen en mini-campo de 4 flechas). Defensa usa presiones reales de PFR; ataque, atribucion de sacks+QB hits |
-| matchup_intel.py | Intel táctica A vs B — mismatches automáticos (EXPLOIT / NEUTRO / RIESGO) |
+| matchup_intel.py | Intel táctica A vs B — mismatches automáticos (EXPLOIT / NEUTRO / RIESGO). Necesita pbp_participation: en temporada, usar cruces.py |
+| cruces.py | Sustituto en temporada de matchup_intel (03-oct-2026), solo con PBP + charting FTN gratis: para cada partido, los 3 cruces más fuertes (VENTAJA top10 vs bottom10, CHOQUE top8 vs top8) en 9 situaciones (blitz, sin blitz, play action, pantallas, caja cargada/ligera, motion, 3er down, red zone), filtrados por uso real. Métrica: % de éxito. TXT `textos/cruces_semana_*.txt` (batch del viernes) y, con --partido, el PNG del duelo con titular automático. Los números del TXT NO salen en la previa del domingo: no van en ese hilo |
 | game_script.py | Análisis del game script: cómo juega un equipo según el marcador |
 | RankingEPAadjustado.py | Rankings ajustados por EPA y calendario |
 

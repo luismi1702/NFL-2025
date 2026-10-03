@@ -456,6 +456,11 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
                        ["destacados.py", "--season", str(SEASON), "--week", str(W)],
                        captura=os.path.join(txt_dir, "destacados_tnf.txt")))
         ok.append(borradores(txt_dir, W, "borradores_prompt_viernes.md"))
+        # Cruces de la jornada (03-oct-2026): los choques y ventajas de cada
+        # partido con el charting de FTN, para elegir el duelo del sabado. El
+        # PNG del duelo se saca a mano con --partido VIS LOC
+        ok.append(paso("cruces de la jornada",
+                       ["cruces.py", "--season", str(SEASON), "--week", str(W)]))
         ok.append(paso("cola de posts (copiar y pegar)",
                        ["cola_posts.py", "--season", str(SEASON),
                         "--week", str(W)]))

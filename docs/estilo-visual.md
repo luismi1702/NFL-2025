@@ -180,6 +180,7 @@ conclusión, verificar a tamaño de móvil y marcarlo aquí.
 | power_rankings.py | semanal | hecho en rama (02-oct): dos columnas de 16; titular 1º y 32º (mejorable con el movimiento semanal) |
 | manning_picks.py | semanal | hecho en rama (02-oct): titular = pick más claro; naranja LED = marca del bot (excepción) |
 | contenders_tracker.py | semanal | hecho en rama (02-oct): punto blanco = cumple; titular = cuántos cumplen las 12 |
+| cruces.py (nuevo) | semanal | hecho (03-oct): PNG del duelo con titular automático |
 | oline_presion_origen.py, dline_presion_origen.py | temática | hecho (03-oct): ficha de equipo + lista de 32, con los win rates de ESPN (datos_web/) |
 | under_center.py, play_action.py, proe.py, run_gap.py, run_gap_defensa.py, oline_presion.py, qb_presion.py, qb_overview.py, QBsTotalEPA.py, cuarto_down.py, target_share.py, ranking_wrs.py, ranking_rbs.py, ranking_tes.py, RankingEPAadjustado.py, clutch_performance.py, game_script.py, series_success.py, valor_turnovers.py, mapa_pases_por_zona.py, tendencias_playcalling.py, season_arc.py, evolucion_contender.py | temática | pendiente: unos cuantos por semana |
 | comparador_*.py (9), draft_*.py (7), generar_generales.py | offseason | pendiente: antes de abril |
