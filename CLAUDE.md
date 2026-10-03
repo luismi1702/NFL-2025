@@ -38,7 +38,11 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   open/closed por defensa: sharpfootballanalysis.com/stats-nfl/nfl-coverage-schemes;
   uso de 11/12/13/21/22 por ataque con EPA: .../nfl-offensive-personnel) y
   SumerSports (tendencias de personal por equipo: sumersports.com/teams/offensive/personnel-tendency).
-  Son tablas web: se leen y se copian a mano citando la fuente, sin scraping
+  Son tablas web: se leen y se copian a mano citando la fuente, sin scraping.
+  OJO (comprobado el 03-oct-2026): la tabla de personal de Sharp que se puede
+  leer da solo el % de USO (el EPA por agrupación sale al pasar el ratón) y va
+  una semana por detrás; la de SumerSports en abierto no se actualizaba desde
+  el 15-sep. El EPA por personal sigue sin estar hasta febrero
   Más gratis en 2026: ESPN (win rates de cada liniero y rusher, % de dobles
   equipos: artículo "2026 win rates" en espn.com), Sharp (presión cedida por OL:
   .../nfl-offensive-line-stats), YPRR estimado (sticktothemodel.com,
