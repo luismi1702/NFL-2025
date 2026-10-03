@@ -34,6 +34,7 @@ OK, AVISO, MAL = "#06d6a0", "#ffd166", "#d84a4a"
 RE_POST = re.compile(
     r"^\*\*\[(?P<letra>[A-Z])\]\*\*[^\n]*\n+```post\r?\n(?P<texto>.*?)\r?\n```",
     re.MULTILINE | re.DOTALL)
+RE_POST_SUELTO = re.compile(r"^```post\r?\n(.*?)\r?\n```", re.MULTILINE | re.DOTALL)
 
 
 def parsear(md):
@@ -54,6 +55,11 @@ def parsear(md):
         imagenes = [i.strip() for i in imagen.split(",") if i.strip()]
         posts = [{"letra": g.group("letra"), "texto": g.group("texto").strip()}
                  for g in RE_POST.finditer(cuerpo)]
+        if not posts:
+            # Una seccion con un solo post puede venir sin **[A]** (los tuits
+            # 2/3 y 3/3 del duelo del 03-oct-2026 no salian en la cola)
+            posts = [{"letra": "A", "texto": g.group(1).strip()}
+                     for g in RE_POST_SUELTO.finditer(cuerpo)]
         secciones.append({"titulo": titulo.strip(), "imagenes": imagenes,
                           "posts": posts})
     return banner, secciones
