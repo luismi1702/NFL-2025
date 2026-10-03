@@ -1,12 +1,27 @@
 # PFF Wishlist — qué hacer cuando llegue la suscripción
 
-Precios comprobados el 03-oct-2026: PFF+ $99,99/año (ya no $79,99), con
-Premium Stats y descarga CSV a mano; PFF Pro $199,99, con API y CSV con
-filtros. DECIDIDO (Luis, 03-oct-2026): PFF Pro descartado por precio. Lo demás
-(si PFF+, y qué segundo servicio: FTN Stats iQ desde $109,99 o SumerPass $100,
-cuyas tablas no se exportan) está POR DECIDIR. Flujo previsto si se contrata
-PFF+: exportar CSV desde premium.pff.com → `pff_data/` → los scripts lo leen
-(nada de scraping); sin API, los batch no pueden bajarlo solos.
+DECIDIDO (Luis, 03-oct-2026): NO se paga ninguna suscripción por ahora. Se
+empieza con fuentes GRATUITAS, y se pagaría PFF+ ($99,99/año; Pro de $199,99
+descartado por precio) solo si una pieza concreta necesita algo que es solo
+de PFF. SumerPass ($100) y FTN Stats iQ ($109,99) tampoco: lo que aportan en
+temporada (coberturas y personal) está gratis en Sharp y SumerSports.
+
+## Mapa: qué de esta lista se consigue gratis (comprobado el 03-oct-2026)
+
+| Dato | Fuente gratuita | Nota |
+|---|---|---|
+| Win rate de cada liniero en protección y carrera (PBWR/RBWR) | ESPN, artículo de win rates 2026 | Sustituye al item 1 con otra medida: duelos ganados antes de 2,5 s, no presiones contadas |
+| Pass rush win rate y % de dobles equipos por jugador | ESPN, mismo artículo | Item 7 |
+| Presión cedida por OL (equipo, con/sin blitz, tiempo hasta lanzar) | Sharp, nfl-offensive-line-stats | Item 2 a nivel equipo |
+| YPRR | StickToTheModel (estimado) y SumerSports (tablas de WR) | Item 4 |
+| Cobertura CB/S (rating, recepciones permitidas) | PFR, `cargar_pfr` (ya en uso) | Item 6 |
+| Placajes fallados | PFR (ya en uso) | Item 3 |
+| Presiones por defensor | PFR (ya en uso) | |
+| Coberturas por equipo y personal ofensivo | Sharp y SumerSports | Hasta que nflverse publique la participación en febrero |
+| Grades PFF, BTT/TWP, presiones CONTADAS por liniero, bloqueo de carrera por hueco, lado/gap del rusher | Solo PFF | Items 5, 8, 9 y parte del 1 |
+
+Las tablas web se leen y se copian a mano citando la fuente (sin scraping).
+URLs en CLAUDE.md, "Carga de datos"
 
 ## Pendientes
 

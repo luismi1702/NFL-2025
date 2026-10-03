@@ -39,6 +39,10 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   uso de 11/12/13/21/22 por ataque con EPA: .../nfl-offensive-personnel) y
   SumerSports (tendencias de personal por equipo: sumersports.com/teams/offensive/personnel-tendency).
   Son tablas web: se leen y se copian a mano citando la fuente, sin scraping
+  Más gratis en 2026: ESPN (win rates de cada liniero y rusher, % de dobles
+  equipos: artículo "2026 win rates" en espn.com), Sharp (presión cedida por OL:
+  .../nfl-offensive-line-stats), YPRR estimado (sticktothemodel.com,
+  sumersports.com/players/wide-receiver). Mapa completo: docs/pff-wishlist.md
 - REGLA (03-oct-2026): antes de decir que un dato "no existe" o "no está hasta
   X", buscar FUERA de nflverse (Sharp, SumerSports, FTN, PFR, NGS, TruMedia...).
   El 17-sep se dio por inexistente lo de coberturas mirando solo nflverse y casi

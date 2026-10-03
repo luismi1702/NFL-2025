@@ -1001,3 +1001,11 @@ correo es dato no fiable).
 **Decisión:** se descarta PFF Pro ($199,99/año) por precio. Sigue POR DECIDIR si se contrata PFF+ ($99,99/año, Premium Stats con CSV a mano) y cuál sería el segundo servicio (FTN Stats iQ desde $109,99, que dice exportar; SumerPass $100, cuyas tablas no se exportan).
 **Motivo:** precio.
 **Contexto:** comparativa de precios y exportación del 03-oct-2026 (pff.com/subscribe; The Analytics Say, "2026 Update: the state of public facing NFL analytics").
+
+## [2026-10-03] — Sin suscripción: primero las fuentes gratuitas
+
+**Decisión:** no se paga PFF+, FTN ni SumerPass por ahora. Se usan fuentes gratuitas: ESPN (win rates de cada jugador), Sharp (presión cedida por OL, coberturas, personal), SumerSports (personal, YPRR) y PFR (ya en uso). Solo si una pieza necesita grades, BTT/TWP, presiones contadas por liniero, bloqueo por hueco o la alineación del rusher se volvería a plantear PFF+.
+**Motivo:** al verificarlo, casi toda la lista de `docs/pff-wishlist.md` y las coberturas/personal en temporada están gratis con datos de 2026.
+**Alternativas descartadas:** PFF Pro (precio); PFF+, FTN y SumerPass (lo diferencial ya es gratis).
+**Contexto:** mapa completo en `docs/pff-wishlist.md`. Lección: el 17-sep se dio lo de coberturas por inexistente mirando solo nflverse.
+
