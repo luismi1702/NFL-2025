@@ -261,8 +261,8 @@ def titular_equipo(team):
     o = max(ratio, key=ratio.get)
     if ratio[o] >= 1.4 and r[f"n_{o}"] >= 3:
         return (f"A {T} la presión le llega sobre todo {CORTO[o]}: "
-                f"{num(r[f'pct_{o}'], 1, signo=False)} por cada 100 pases, por "
-                f"{num(media_liga[o], 1, signo=False)} de media.")
+                f"{num(r[f'pct_{o}'], 1, signo=False)} por cada 100 pases "
+                f"(media, {num(media_liga[o], 1, signo=False)}).")
     return None
 
 
@@ -283,7 +283,7 @@ def draw_equipo(team):
              color=GRIS1, va="center")
 
     # Dos numeros: win rate de ESPN y presion sufrida (PFR)
-    yb = yc - 0.065
+    yb = yc - 0.06
     n_eq = len(tabla)
     if WR_EQ is not None and team in WR_EQ.index:
         pb, rk = int(WR_EQ.loc[team, "pbwr"]), int(WR_EQ.loc[team, "pbwr_rk"])
@@ -304,13 +304,13 @@ def draw_equipo(team):
         numero(fig, num(r["press_pct"], 1, signo=False), 0.535, yb - 0.065, size=44)
         fig.text(0.54, yb - 0.13, ordinal(prk, n_eq), family=TXT, weight="bold", size=9,
                  color=color_rango(prk, n_eq), va="center")
-        nota(fig, f"{int(r['sacks'])} sacks y {int(r['hits'])} golpes en {int(r['dropbacks'])} pases",
+        nota(fig, f"{int(r['hits'])} golpes al QB, {int(r['sacks'])} de ellos sacks, en {int(r['dropbacks'])} pases",
              0.54, yb - 0.158)
         pista32(fig, 0.54, yb - 0.195, 0.36, prk, n=n_eq)
     linea_v(fig, 0.5, yb - 0.21, yb + 0.015)
 
     # Por donde llega: cuatro barras contra la media de la liga
-    ym = yb - 0.26
+    ym = yb - 0.245
     linea_h(fig, ym + 0.025)
     etiqueta(fig, "Por dónde llegan los sacks y los golpes (por 100 pases)", L + 0.01, ym)
     tope = max(max(r[f"pct_{o}"] for o in ORIGENES), max(media_liga.values())) * 1.15 or 1
@@ -326,7 +326,7 @@ def draw_equipo(team):
                                  transform=fig.transFigure, color=FG, lw=0))
         fig.text(x0b + wb + 0.015, yy, f"{num(val, 1, signo=False)}  ({n})", family=TXT,
                  weight="semibold", size=8.3, color=FG, va="center")
-        yy -= 0.036
+        yy -= 0.033
     nota(fig, "Raya blanca = media NFL · en color, por encima de la media · (n) = jugadas", L + 0.01, yy + 0.008)
 
     # Sus linieros en el top 20 de ESPN
