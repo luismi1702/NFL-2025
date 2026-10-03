@@ -775,6 +775,34 @@ def orden_partido(season, week, *equipos):
     return None
 
 
+def cargar_web(nombre, season=None, week=None):
+    """Tablas copiadas A MANO de webs publicas a datos_web/ (03-oct-2026).
+
+    Fichero: datos_web/{nombre}_{season}_wNN.csv, con columnas `fuente` y
+    `actualizado` en cada fila. Devuelve (df, semana) del mas reciente cuya
+    semana sea <= week (o el ultimo si week es None).
+    Nombres en uso: espn_win_rates_equipos, espn_win_rates_jugadores.
+    Las fuentes y sus URL estan en CLAUDE.md ("Carga de datos") y en
+    docs/pff-wishlist.md. Sin scraping: se copian a mano citando la fuente."""
+    import glob
+    import re as _re
+    if season is None:
+        season = temporada_actual()
+    cands = []
+    for ruta in glob.glob(os.path.join("datos_web", f"{nombre}_{season}_w*.csv")):
+        m = _re.search(r"_w(\d+)\.csv$", ruta)
+        if m and (week is None or int(m.group(1)) <= int(week)):
+            cands.append((int(m.group(1)), ruta))
+    if not cands:
+        raise DatosNoDisponibles(
+            f"No hay datos_web/{nombre}_{season}_wNN.csv"
+            + (f" hasta la semana {week}" if week else "")
+            + ". Son tablas de webs publicas que se copian a mano: ver "
+              "docs/pff-wishlist.md (mapa de fuentes gratuitas).")
+    sem, ruta = max(cands)
+    return pd.read_csv(ruta), sem
+
+
 def cargar_contratos(refrescar=False):
     """Contratos historicos de OverTheCap: apy, apy_cap_pct, guaranteed, draft.
     Se enlaza con el resto por gsis_id. Un solo fichero, todas las temporadas."""

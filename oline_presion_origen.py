@@ -4,8 +4,10 @@ Por dónde le llega la presión a cada línea ofensiva.
 - Sin equipo (Enter): heatmap 32 equipos — presión sufrida por 100 dropbacks
   + origen de la presión atribuida: interior (DT/NT), exterior (DE/OLB),
   blitz LB, blitz DB.
-- Con equipo (ej: SF): diagrama de campo estilo run_gap con las flechas de
-  presión convergiendo sobre el QB.
+- Con equipo (ej: SF): ficha 4:5 con el win rate de ESPN, la presión sufrida,
+  el origen de los sacks/golpes contra la media y sus linieros en el top 20 de
+  ESPN (03-oct-2026: el diagrama de campo necesitaba la participación de
+  nflverse para poner nombre a cada puesto, y en temporada no existe).
 
 Nota de datos: nflverse no dice qué liniero fue batido (eso es PFF de pago).
 El proxy honesto es el ORIGEN de la presión: quién la generó — interior =
@@ -29,7 +31,9 @@ from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from pbp_loader import (cargar_pbp, cargar_participation, cargar_stats,
-                        cargar_rosters, cargar_pfr, salida, season_cli, sello)
+                        cargar_rosters, cargar_pfr, cargar_web, DatosNoDisponibles,
+                        salida, season_cli, sello)
+from estilo import *   # noqa: F401,F403  (estilo comun, docs/estilo-visual.md)
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -222,280 +226,188 @@ for tm in tabla.index:
     print(f"{tm:<5}{p:>8}" + "".join(f"{r[f'pct_{o}']:>9.1f}" for o in ORIGENES))
 
 
-# ── HEATMAP 32 EQUIPOS ────────────────────────────────────────────────────────
-def draw_heatmap():
-    teams   = tabla.index.tolist()
-    n_teams = len(teams)
-    cols    = ["PRESS"] + ORIGENES
-    col_labels = {"PRESS": "Presión sufrida\npor 100 dropbacks"} | ORIGEN_LABELS
-    n_cols  = len(cols)
-    logo_w  = 1.2
-    fig_w   = logo_w + n_cols * 1.5 + 1.4
-    fig_h   = max(8, n_teams * 0.52 + 2.5)
+# ── WIN RATES DE ESPN (copiados a mano a datos_web/, 03-oct-2026) ─────────────
+# PBWR = % de duelos de pase en los que el bloqueador aguanta 2,5 s o mas.
+# Por equipo estan los 32; por jugador, solo el top 20 de OT y de IOL (sin lado).
+try:
+    WR_EQ, SEM_WR = cargar_web("espn_win_rates_equipos", SEASON)
+    WR_EQ = WR_EQ.set_index("team")
+    WR_JUG, _ = cargar_web("espn_win_rates_jugadores", SEASON)
+except DatosNoDisponibles as e:
+    print(f"  Aviso: sin win rates de ESPN ({e})")
+    WR_EQ, WR_JUG, SEM_WR = None, None, None
 
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h), facecolor=BG)
-    fig.subplots_adjust(left=0.02, right=0.98, top=0.995, bottom=0.008)
-    ax.set_facecolor(BG)
-    ax.axis("off")
-    ax.set_xlim(-logo_w, n_cols)
-    ax.set_ylim(-1, n_teams + 2.0)
-
-    # Normalización por columna (percentiles 5-95); verde = poca presión cedida
-    cmap = plt.cm.RdYlGn_r
-    normas = {}
-    for c in cols:
-        vals = tabla["press_pct"] if c == "PRESS" else tabla[f"pct_{c}"]
-        vals = vals.dropna()
-        normas[c] = Normalize(vmin=np.percentile(vals, 5),
-                              vmax=np.percentile(vals, 95))
-
-    for row_i, tm in enumerate(teams):
-        y = n_teams - row_i - 1
-        for col_j, c in enumerate(cols):
-            if c == "PRESS":
-                val, n = tabla.loc[tm, "press_pct"], None
-            else:
-                val, n = tabla.loc[tm, f"pct_{c}"], tabla.loc[tm, f"n_{c}"]
-            if pd.isna(val):
-                ax.add_patch(plt.Rectangle((col_j, y), 1, 1, color="#1e2430",
-                                           linewidth=0.4, edgecolor=BG))
-                ax.text(col_j + 0.5, y + 0.5, "—", ha="center", va="center",
-                        color="#444444", fontsize=10)
-                continue
-            bgc = cmap(normas[c](val))
-            ax.add_patch(plt.Rectangle((col_j, y), 1, 1, color=bgc,
-                                       linewidth=0.4, edgecolor=BG, zorder=1))
-            _r, _g, _b = bgc[0], bgc[1], bgc[2]
-            txt = "#0a0e13" if (0.299*_r + 0.587*_g + 0.114*_b) > 0.45 else FG
-            if n is None:
-                ax.text(col_j + 0.5, y + 0.5, f"{val:.1f}%", ha="center",
-                        va="center", color=txt, fontsize=8.5,
-                        fontweight="bold", zorder=2)
-            else:
-                ax.text(col_j + 0.5, y + 0.60, f"{val:.1f}%", ha="center",
-                        va="center", color=txt, fontsize=8,
-                        fontweight="bold", zorder=2)
-                ax.text(col_j + 0.5, y + 0.25, f"n={int(n)}", ha="center",
-                        va="center", color=txt, fontsize=6.5, zorder=2)
-
-    for row_i, tm in enumerate(teams):
-        y   = n_teams - row_i - 1
-        img = load_logo(tm, base_zoom=0.036)
-        if img is not None:
-            ab = AnnotationBbox(img, (-logo_w / 2, y + 0.5), frameon=False,
-                                zorder=3, box_alignment=(0.5, 0.5))
-            ax.add_artist(ab)
-        else:
-            ax.text(-logo_w / 2, y + 0.5, tm, ha="center", va="center",
-                    color=FG, fontsize=7.5, fontweight="bold")
-
-    for col_j, c in enumerate(cols):
-        ax.text(col_j + 0.5, n_teams + 0.42, col_labels[c], ha="center",
-                va="center", color=FG, fontsize=8, fontweight="bold",
-                linespacing=1.3)
-    ax.axhline(n_teams, color=GRID, linewidth=0.8, zorder=3)
-
-    fig.text(0.5, 0.99, f"¿Por dónde cede presión cada línea ofensiva? | NFL {SEASON}",
-             ha="center", va="top", fontsize=14, fontweight="bold", color=FG)
-    fig.text(0.5, 0.975,
-             "Todo por 100 dropbacks (mejor OL arriba)  ·  las columnas de origen "
-             "solo cuentan sacks y QB hits, así que NO suman la primera: los hurries "
-             "no traen autor  ·  Interior ≈ guards/center batidos, Exterior ≈ tackles",
-             ha="center", va="top", fontsize=8.5, color="#888888", fontstyle="italic")
-    fig.text(0.01, 0.005,
-             f"Fuente: nflverse-data · presión total de Pro Football Reference, origen por atribución de sacks/QB hits  |  {sello(SEASON)}",
-             ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-    fig.text(0.99, 0.005, "@CuartayDato", ha="right", va="bottom", fontsize=9,
-             color="#888888", alpha=0.85, fontstyle="italic")
-
-    out = salida(f"oline_presion_origen_{SEASON}.png", SEASON)
-    fig.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Guardado: {out}")
+press_rk = tabla["press_pct"].rank(method="min").astype("Int64")    # 1 = la que menos sufre
+CORTO = {"INT": "por dentro", "EXT": "por fuera", "LB": "con blitz de LB", "DB": "con blitz de DB"}
+MINI = {"INT": "dentro", "EXT": "fuera", "LB": "blitz LB", "DB": "blitz DB"}
+ETIQ = {"INT": "Por dentro (DT, NT)", "EXT": "Por fuera (DE, OLB)", "LB": "Blitz de LB",
+        "DB": "Blitz de DB (CB, S)"}
+SELLO_WR = (f"NFL {SEASON} · win rates de ESPN hasta sem. {SEM_WR} · presión de PFR y nflverse"
+            if SEM_WR else f"{sello(SEASON)} · presión de PFR y nflverse")
 
 
-# ── OL POR PUESTO: presión del equipo con/sin cada titular ────────────────────
-SLOTS = ["LT", "LG", "C", "RG", "RT"]
-MIN_SIN = 40   # dropbacks mínimos sin el titular para enseñar el split
-
-
-def ol_por_puesto(team):
-    """{slot: dict(name, jersey, con, n_con, sin, n_sin)} usando el depth chart
-    (titular por puesto) y la alineación real de cada dropback (participation).
-    El depth chart es un snapshot: se valida al titular por snaps reales y, si
-    el listado no jugó, se usa el suplente del mismo puesto que más jugó."""
-    sub = drops[(drops["posteam"] == team) & drops["offense_players"].notna()]
-    out = {}
-    try:
-        dc = nfl.load_depth_charts([SEASON]).to_pandas()
-        dc = dc[(dc["team"] == team) & (dc["pos_abb"].isin(SLOTS))]
-    except Exception:
-        dc = pd.DataFrame(columns=["pos_abb", "pos_rank", "gsis_id", "player_name"])
-    dorsal = {r["gsis_id"]: r["jersey_number"]
-              for _, r in ros[ros["team"] == team].iterrows()
-              if pd.notna(r.get("gsis_id")) and pd.notna(r.get("jersey_number"))}
-    for slot in SLOTS:
-        cands = dc[dc["pos_abb"] == slot].sort_values("pos_rank")
-        mejor = None
-        for _, r in cands.iterrows():
-            gid = r.get("gsis_id")
-            if pd.isna(gid):
-                continue
-            en = sub["offense_players"].str.contains(gid, regex=False)
-            n_con = int(en.sum())
-            if mejor is None or n_con > mejor["n_con"]:
-                mejor = dict(name=r["player_name"], gid=gid, n_con=n_con,
-                             con=sub.loc[en, "was_pressure"].mean() * 100,
-                             n_sin=int((~en).sum()),
-                             sin=sub.loc[~en, "was_pressure"].mean() * 100)
-        if mejor is None or mejor["n_con"] < 50:
-            out[slot] = None
-        else:
-            mejor["jersey"] = dorsal.get(mejor["gid"])
-            out[slot] = mejor
-    return out
-
-
-# ── DIAGRAMA DE CAMPO (un equipo) ─────────────────────────────────────────────
-OL_POS = {"LT": (-3.2, 2.5), "LG": (-1.6, 2.5), "C": (0.0, 2.5),
-          "RG": (1.6, 2.5), "RT": (3.2, 2.5)}
-OL_R  = 0.40
-QB_XY = (0.0, 0.55)
-QB_R  = 0.42
-
-# Puntos de origen de las flechas de presión (arco defensivo)
-ARR_XY = {
-    "DB":  (-3.6, 4.9),
-    "LB":  (-1.5, 5.1),
-    "INT": ( 0.9, 5.1),
-    "EXT": ( 3.9, 3.4),   # rodea al tackle; representa AMBOS lados
-}
-# Ángulo de llegada al QB de cada flecha (grados; 90 = desde arriba)
-ANG_LLEGADA = {"DB": 152, "LB": 113, "INT": 72, "EXT": 8}
-
-
-def draw_diagrama(team):
+def titular_equipo(team):
+    """Hechos que el script calcula: el puesto en PBWR si es extremo; si no, el
+    origen de la presion que mas se aleja de la media de la liga."""
+    T = nombre_equipo(team)
+    if WR_EQ is not None and team in WR_EQ.index:
+        pb, rk = int(WR_EQ.loc[team, "pbwr"]), int(WR_EQ.loc[team, "pbwr_rk"])
+        if rk <= 5:
+            return f"{T} {v(T, 'gana', 'ganan')} el {pb}% de sus duelos en protección, {rk}º de la NFL."
+        if rk >= 28:
+            return f"{T} solo {v(T, 'gana', 'ganan')} el {pb}% de sus duelos en protección, {rk}º de la NFL."
     r = tabla.loc[team]
+    ratio = {o: r[f"pct_{o}"] / media_liga[o] for o in ORIGENES if media_liga[o] > 0}
+    o = max(ratio, key=ratio.get)
+    if ratio[o] >= 1.4 and r[f"n_{o}"] >= 3:
+        return (f"A {T} la presión le llega sobre todo {CORTO[o]}: "
+                f"{num(r[f'pct_{o}'], 1, signo=False)} por cada 100 pases, por "
+                f"{num(media_liga[o], 1, signo=False)} de media.")
+    return None
 
-    fig, ax = plt.subplots(figsize=(11, 7.8), facecolor=BG)
-    ax.set_facecolor(BG)
-    ax.axis("off")
-    ax.set_xlim(-4.8, 4.8)
-    ax.set_ylim(-0.6, 6.6)
 
-    qx, qy = QB_XY
+def draw_equipo(team):
+    r = tabla.loc[team]
+    fig = lienzo()
+    antetitulo(fig, f"Línea ofensiva · {team}")
+    tit = titular_equipo(team)
+    y = (titular(fig, tit[0].upper() + tit[1:], y=0.925) - 0.03) if tit else 0.90
+    y_top = y
 
-    # Flechas de presión: origen defensivo → QB (Bézier), grosor ∝ % cedido,
-    # color rojo si cede más que la media de la liga, verde si menos
+    # Cabecera
+    yc = y - 0.045
+    poner_logo(fig, team, L + 0.035, yc, zoom=0.022)
+    fig.text(L + 0.08, yc, team, family=TXT, weight="bold", size=10, color=color_equipo(team),
+             va="center")
+    fig.text(L + 0.15, yc, "·  PROTECCIÓN DEL PASE", family=TXT, weight="semibold", size=8.5,
+             color=GRIS1, va="center")
+
+    # Dos numeros: win rate de ESPN y presion sufrida (PFR)
+    yb = yc - 0.065
+    n_eq = len(tabla)
+    if WR_EQ is not None and team in WR_EQ.index:
+        pb, rk = int(WR_EQ.loc[team, "pbwr"]), int(WR_EQ.loc[team, "pbwr_rk"])
+        etiqueta(fig, "Duelos ganados en pase (ESPN)", L + 0.01, yb)
+        t = numero(fig, f"{pb}", L + 0.005, yb - 0.065, size=44)
+        fig.canvas.draw()
+        bb = t.get_window_extent(renderer=fig.canvas.get_renderer())
+        fig.text(bb.x1 / fig.bbox.width + 0.004, yb - 0.08, "%", family=DISP, weight="semibold",
+                 size=19, color=FG, va="center")
+        fig.text(L + 0.01, yb - 0.13, ordinal(rk), family=TXT, weight="bold", size=9,
+                 color=color_rango(rk), va="center")
+        nota(fig, f"En carrera: {int(WR_EQ.loc[team, 'rbwr'])}% ({int(WR_EQ.loc[team, 'rbwr_rk'])}º)",
+             L + 0.01, yb - 0.158)
+        pista32(fig, L + 0.01, yb - 0.195, 0.36, rk)
+    if pd.notna(r["press_pct"]):
+        prk = int(press_rk[team])
+        etiqueta(fig, "Presión sufrida por 100 pases", 0.54, yb)
+        numero(fig, num(r["press_pct"], 1, signo=False), 0.535, yb - 0.065, size=44)
+        fig.text(0.54, yb - 0.13, ordinal(prk, n_eq), family=TXT, weight="bold", size=9,
+                 color=color_rango(prk, n_eq), va="center")
+        nota(fig, f"{int(r['sacks'])} sacks y {int(r['hits'])} golpes en {int(r['dropbacks'])} pases",
+             0.54, yb - 0.158)
+        pista32(fig, 0.54, yb - 0.195, 0.36, prk, n=n_eq)
+    linea_v(fig, 0.5, yb - 0.21, yb + 0.015)
+
+    # Por donde llega: cuatro barras contra la media de la liga
+    ym = yb - 0.26
+    linea_h(fig, ym + 0.025)
+    etiqueta(fig, "Por dónde llegan los sacks y los golpes (por 100 pases)", L + 0.01, ym)
+    tope = max(max(r[f"pct_{o}"] for o in ORIGENES), max(media_liga.values())) * 1.15 or 1
+    x0b, wb = L + 0.30, 0.42
+    yy = ym - 0.04
     for o in ORIGENES:
-        px, py = ARR_XY[o]
-        pct    = r[f"pct_{o}"]
-        n      = int(r[f"n_{o}"])
-        col    = COL_MAL if pct >= media_liga[o] else COL_BIEN
-        lw     = 2.0 + 6.0 * min(pct / 6.0, 1.0)
+        val, med, n = r[f"pct_{o}"], media_liga[o], int(r[f"n_{o}"])
+        fig.text(L + 0.01, yy, ETIQ[o], family=TXT, size=8.3, color=FG, va="center")
+        fig.add_artist(Rectangle((x0b, yy - 0.008), wb * val / tope, 0.016,
+                                 transform=fig.transFigure,
+                                 color=color_equipo(team) if val > med else NEUTRO, lw=0))
+        fig.add_artist(Rectangle((x0b + wb * med / tope - 0.001, yy - 0.013), 0.002, 0.026,
+                                 transform=fig.transFigure, color=FG, lw=0))
+        fig.text(x0b + wb + 0.015, yy, f"{num(val, 1, signo=False)}  ({n})", family=TXT,
+                 weight="semibold", size=8.3, color=FG, va="center")
+        yy -= 0.036
+    nota(fig, "Raya blanca = media NFL · en color, por encima de la media · (n) = jugadas", L + 0.01, yy + 0.008)
 
-        ctrl_x = qx + (px - qx) * 0.80
-        ctrl_y = 1.35
-        ang = np.radians(ANG_LLEGADA[o])
-        ux, uy = np.cos(ang), np.sin(ang)
-        tipo = np.array([qx, qy]) + np.array([ux, uy]) * (QB_R + 0.28)
-        verts = [(px, py), (ctrl_x, ctrl_y), tuple(tipo)]
-        patch = mpatches.PathPatch(
-            MPath(verts, [MPath.MOVETO, MPath.CURVE3, MPath.CURVE3]),
-            facecolor="none", edgecolor=col, linewidth=lw, zorder=2,
-            capstyle="round", alpha=0.9)
-        ax.add_patch(patch)
+    # Sus linieros en el top 20 de ESPN
+    yl = yy - 0.035
+    linea_h(fig, yl + 0.02)
+    etiqueta(fig, "Sus linieros en el top 20 de ESPN en protección", L + 0.01, yl)
+    yl -= 0.035
+    suyos = (WR_JUG[(WR_JUG.metrica == "pass_block") & (WR_JUG.team == team)]
+             if WR_JUG is not None else pd.DataFrame())
+    if suyos.empty:
+        nota(fig, "Ninguno entre los 20 mejores tackles ni los 20 mejores interiores",
+             L + 0.01, yl)
+        yl -= 0.03
+    for _, j in suyos.sort_values("win_rate", ascending=False).iterrows():
+        pos = "tackle" if j.grupo == "OT" else "interior"
+        fig.text(L + 0.01, yl, j.jugador, family=TXT, weight="semibold", size=9, color=FG,
+                 va="center")
+        fig.text(R - 0.01, yl, f"{int(j.win_rate)}% · {int(j.rk)}º {pos}", family=TXT, size=8.5,
+                 color=GRIS1, va="center", ha="right")
+        yl -= 0.03
 
-        # Punta de flecha apuntando al QB
-        perp = np.array([-uy, ux])
-        tip  = np.array(tipo) - np.array([ux, uy]) * 0.05
-        base = tip + np.array([ux, uy]) * 0.30
-        ax.add_patch(plt.Polygon([tip, base + perp * 0.15, base - perp * 0.15],
-                                 color=col, zorder=7))
+    tarjeta(fig, yl - 0.005, y_top)
+    pie(fig, "Duelo ganado: el bloqueador aguanta 2,5 s (ESPN) · origen por el puesto del rusher",
+        SELLO_WR)
+    guardar(fig, salida(f"oline_presion_origen_{team}_{SEASON}.png", SEASON))
 
-        # Etiqueta en el origen
-        nombre = ORIGEN_LABELS[o].split("\n")[0]
-        extra  = "  (izq+dcha)" if o == "EXT" else ""
-        ax.text(px, py + 0.52, f"{nombre}{extra}", ha="center", va="bottom",
-                color=FG, fontsize=9.5, fontweight="bold", zorder=10)
-        ax.text(px, py + 0.16, f"{pct:.1f}  ·  n={n}  ·  liga {media_liga[o]:.1f}",
-                ha="center", va="bottom", color=col, fontsize=8, zorder=10)
 
-    # Círculos OL: titular de cada puesto (dorsal + apellido, sin métricas —
-    # la presión cedida por liniero concreto no existe en datos públicos)
-    puestos = ol_por_puesto(team)
-    halo = [pe.withStroke(linewidth=2.4, foreground=BG)]
-    for pos, (cx, cy) in OL_POS.items():
-        info = puestos.get(pos)
-        ax.add_patch(plt.Circle((cx, cy), OL_R, facecolor="#1c2535",
-                                edgecolor=GRID, linewidth=1.4, zorder=5))
-        if info and info.get("jersey") is not None and pd.notna(info["jersey"]):
-            ax.text(cx, cy + 0.11, pos, ha="center", va="center", color=FG,
-                    fontsize=9, fontweight="bold", zorder=6)
-            ax.text(cx, cy - 0.12, f"#{int(info['jersey'])}", ha="center",
-                    va="center", color="#aaaaaa", fontsize=7, zorder=6)
-        else:
-            ax.text(cx, cy, pos, ha="center", va="center", color=FG,
-                    fontsize=10, fontweight="bold", zorder=6)
-        if info:
-            apellido = info["name"].split()[-1][:12]
-            ax.text(cx, cy - OL_R - 0.14, apellido, ha="center", va="top",
-                    color=FG, fontsize=8, fontweight="bold", zorder=10,
-                    path_effects=halo)
-
-    # QB
-    ax.add_patch(plt.Circle(QB_XY, QB_R, color=COL_QB, zorder=8))
-    ax.text(qx, qy, "QB", ha="center", va="center", color=BG, fontsize=12,
-            fontweight="bold", zorder=9)
-
-    logo = load_logo(team, base_zoom=0.075)
-    if logo:
-        ab = AnnotationBbox(logo, (qx - 1.8, qy), frameon=False, zorder=3,
-                            box_alignment=(0.5, 0.5))
-        ax.add_artist(ab)
-
-    # Barra de stats
-    press = f"{r['press_pct']:.1f}" if pd.notna(r["press_pct"]) else "N/D"
-    STATS = [(f"{int(r['dropbacks'])}", "DROPBACKS"),
-             (press,                    "PRESIÓN / 100 DB"),
-             (f"{int(r['sacks'])}",     "SACKS"),
-             (f"{int(r['hits'])}",      "QB HITS")]
-    xs = np.linspace(-3.3, 3.3, len(STATS))
-    sy = 6.05
-    for i, (val, lbl) in enumerate(STATS):
-        ax.text(xs[i], sy + 0.18, val, ha="center", va="bottom", color=FG,
-                fontsize=11, fontweight="bold", zorder=5)
-        ax.text(xs[i], sy + 0.02, lbl, ha="center", va="top",
-                color="#888888", fontsize=8, zorder=5)
-        if i < len(STATS) - 1:
-            xsep = (xs[i] + xs[i + 1]) / 2
-            ax.plot([xsep, xsep], [sy - 0.12, sy + 0.45], color=GRID,
-                    linewidth=0.8, zorder=3)
-
-    # Top rushers que castigaron a esta OL
-    top = (ev[ev["posteam"] == team].groupby("player").size()
-           .sort_values(ascending=False).head(3))
-    if len(top):
-        linea = "   ·   ".join(f"{nm} ×{ct}" for nm, ct in top.items())
-        ax.text(0, -0.42, f"Más te castigaron:  {linea}", ha="center",
-                va="center", color="#9aa3b5", fontsize=8.5, zorder=5)
-
-    fig.text(0.5, 0.97, f"¿Por dónde le llega la presión? — {team} | NFL {SEASON}",
-             ha="center", va="top", fontsize=14, fontweight="bold", color=FG)
-    fig.text(0.5, 0.945,
-             "Flechas: % de dropbacks con sack/QB hit según el origen del rusher (rojo = más que la media NFL)  ·  "
-             "Interior ≈ guards/center batidos, Exterior ≈ tackles (sin lado en los datos públicos)",
-             ha="center", va="top", fontsize=8, color="#888888", fontstyle="italic")
-    fig.text(0.01, 0.01,
-             f"Fuente: nflverse-data · presión total de Pro Football Reference, origen por atribución de sacks/QB hits  |  {sello(SEASON)}",
-             ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-    fig.text(0.99, 0.01, "@CuartayDato", ha="right", va="bottom", fontsize=9,
-             color="#888888", alpha=0.85, fontstyle="italic")
-
-    out = salida(f"oline_presion_origen_{team}_{SEASON}.png", SEASON)
-    fig.savefig(out, dpi=DPI, facecolor=BG, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Guardado: {out}")
+def draw_liga():
+    """Las 32 lineas ordenadas por PBWR de ESPN (o por presion si no hay ESPN)."""
+    if WR_EQ is not None:
+        orden = WR_EQ.reindex(tabla.index).sort_values("pbwr_rk").index.tolist()
+    else:
+        orden = tabla.sort_values("press_pct").index.tolist()
+    n = len(orden)
+    fig = lienzo()
+    antetitulo(fig, "Líneas ofensivas · protección del pase")
+    if WR_EQ is not None:
+        mejor, peor = orden[0], orden[-1]
+        nm, np_ = nombre_equipo(mejor), nombre_equipo(peor)
+        tit = (f"{nm} {v(nm, 'gana', 'ganan')} el {int(WR_EQ.loc[mejor, 'pbwr'])}% de sus duelos "
+               f"en protección; {np_}, el {int(WR_EQ.loc[peor, 'pbwr'])}%.")
+        y_top = titular(fig, tit[0].upper() + tit[1:], y=0.925) - 0.03
+    else:
+        y_top = 0.90
+    por_col = (n + 1) // 2
+    alto = (y_top - 0.15) / (por_col + 1)
+    ancho = (R - L) / 2
+    for c in range(2):
+        x0 = L + c * ancho + (0.012 if c else 0)
+        yh = y_top - 0.03
+        fig.text(x0 + 0.20, yh, "GANA", family=TXT, weight="medium", size=6.3, color=GRIS1,
+                 ha="right", va="center")
+        fig.text(x0 + 0.29, yh, "PRESIÓN", family=TXT, weight="medium", size=6.3, color=GRIS1,
+                 ha="right", va="center")
+        fig.text(x0 + 0.405, yh, "ORIGEN", family=TXT, weight="medium", size=6.3,
+                 color=GRIS1, ha="right", va="center")
+    for i, tm in enumerate(orden):
+        c, f = divmod(i, por_col)
+        x0 = L + c * ancho + (0.012 if c else 0)
+        yy = y_top - 0.03 - (f + 1) * alto
+        rk = int(WR_EQ.loc[tm, "pbwr_rk"]) if WR_EQ is not None else i + 1
+        fig.text(x0 + 0.025, yy, f"{rk}", family=TXT, weight="bold", size=7.6,
+                 color=color_rango(rk, n), ha="right", va="center")
+        poner_logo(fig, tm, x0 + 0.05, yy, zoom=0.0095)
+        fig.text(x0 + 0.072, yy, tm, family=TXT, weight="bold", size=7.4, color=FG, va="center")
+        if WR_EQ is not None:
+            fig.text(x0 + 0.20, yy, f"{int(WR_EQ.loc[tm, 'pbwr'])}%", family=TXT, weight="semibold",
+                     size=7.6, color=FG, ha="right", va="center")
+        p = tabla.loc[tm, "press_pct"]
+        fig.text(x0 + 0.29, yy, num(p, 1, signo=False) if pd.notna(p) else "–", family=TXT,
+                 size=7.4, color=GRIS1, ha="right", va="center")
+        rr = tabla.loc[tm]
+        o = max(ORIGENES, key=lambda k: rr[f"pct_{k}"] / media_liga[k] if media_liga[k] else 0)
+        fig.text(x0 + 0.405, yy, MINI[o], family=TXT, size=6.8, color=GRIS2, ha="right",
+                 va="center")
+    y_fin = y_top - 0.03 - por_col * alto - alto / 2 - 0.01
+    linea_v(fig, L + ancho + 0.002, y_fin + 0.015, y_top - 0.015)
+    tarjeta(fig, y_fin, y_top)
+    pie(fig, "Gana: duelos de pase ganados (ESPN) · Presión por 100 pases (PFR) · "
+             "Origen: el más por encima de la media", SELLO_WR)
+    guardar(fig, salida(f"oline_presion_origen_{SEASON}.png", SEASON))
 
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
@@ -503,6 +415,6 @@ if team_input:
     if team_input not in tabla.index:
         raise SystemExit(f"Equipo '{team_input}' no encontrado. "
                          f"Disponibles: {', '.join(tabla.index)}")
-    draw_diagrama(team_input)
+    draw_equipo(team_input)
 else:
-    draw_heatmap()
+    draw_liga()
