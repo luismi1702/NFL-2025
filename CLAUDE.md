@@ -32,7 +32,17 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   con otro nombre ni dentro de otro fichero (revisado 17-sep-2026). Sustitutos
   en temporada: FTN (qb_location, n_offense_backfield, n_defense_box, motion,
   play action, n_blitzers, n_pass_rushers) y PFR semanal (blitz, presiones).
-  Sin personal (nº de TE) ni coberturas hasta febrero
+  En nflverse no hay personal (nº de TE) ni coberturas hasta febrero, PERO SÍ
+  están gratis en webs públicas, actualizadas cada semana (comprobado el
+  03-oct-2026, datos de 2026): Sharp Football Analysis (% man/zone y middle
+  open/closed por defensa: sharpfootballanalysis.com/stats-nfl/nfl-coverage-schemes;
+  uso de 11/12/13/21/22 por ataque con EPA: .../nfl-offensive-personnel) y
+  SumerSports (tendencias de personal por equipo: sumersports.com/teams/offensive/personnel-tendency).
+  Son tablas web: se leen y se copian a mano citando la fuente, sin scraping
+- REGLA (03-oct-2026): antes de decir que un dato "no existe" o "no está hasta
+  X", buscar FUERA de nflverse (Sharp, SumerSports, FTN, PFR, NGS, TruMedia...).
+  El 17-sep se dio por inexistente lo de coberturas mirando solo nflverse y casi
+  se paga una suscripción por algo que estaba gratis
 - Fuentes verificadas que SI se actualizan en temporada (cada 6h o a diario):
   cargar_pfr (cobertura CB/S, presiones, placajes fallados; el acumulado de
   PFR solo llega al acabar la temporada, asi que en curso cargar_pfr lo
