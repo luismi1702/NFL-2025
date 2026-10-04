@@ -19,6 +19,10 @@ En `{DIR}/`:
 - `bot_balance.txt` — aciertos del bot en la jornada jugada
 - `bot_picks.txt` — pronósticos de la próxima jornada
 - `estado_datos.txt` — semáforo de fuentes
+- `ideas_boletin_review.md` — la Review de SumerSports de esta jornada. Léela
+  antes de elegir ángulos (regla del 30-sep-2026): lo que ellos ya contaron no
+  se repite, se completa. Sus cifras solo entran citadas como "según
+  SumerSports"
 - `NN_resumen_VIS_vs_LOC_*.png` y `NN_ficha_VIS_vs_LOC_*.png` — boxscore y cara
   a cara de CADA partido de la jornada. Solo se usan los del Monday Night (ver
   su sección más abajo)

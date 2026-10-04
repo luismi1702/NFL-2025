@@ -23,6 +23,12 @@ En `{DIR}/`:
   jornada en cuatro familias: extremos, contradicciones, cambios de identidad
   y jugadores desatados. Cada numero de ahi es publicable.
 - `estado_datos.txt` — semaforo de fuentes.
+- `ideas_boletin_review.md` — lo que dijo la Review de SumerSports de esta
+  jornada. **Leela antes de elegir angulos** (regla del 30-sep-2026): si
+  SumerSports ya conto la historia de un partido, no la repitas; completala
+  con lo que ellos no dicen, o elige otra. Sus cifras NO son nuestras: no
+  entran en el post salvo citadas como "segun SumerSports", y en la
+  verificacion anota que idea del boletin usaste en cada post.
 En `{DIR}/../partidos/` y `{DIR}/../liga/`, los PNG que acompanan a los posts:
   - `NN_resumen_VIS_vs_LOC_*.png` — boxscore y curva de probabilidad
   - `NN_resumen_claves_VIS_vs_LOC_*.png` — desviaciones vs su norma

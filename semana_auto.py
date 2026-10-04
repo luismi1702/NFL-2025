@@ -228,6 +228,12 @@ def boletin(SEASON):
                 f.write("\n--- STDERR ---\n" + r.stderr)
         if r.returncode == 0 and os.path.exists(destino):
             log(f"   OK -> {destino}")
+            # Los borradores del lunes se escriben AQUI, con la Review ya
+            # leida (04-oct-2026): a las 10:00 solo salen los visuales. Si el
+            # batch del lunes aun no ha corrido (sin destacados.txt), los
+            # escribira el, que ya encontrara la Review
+            if tipo == "review" and os.path.exists(os.path.join(txt_dir, "destacados.txt")):
+                borradores(txt_dir, W, "borradores_prompt_lunes.md")
             # Desbloquea su cola; la Review, ademas, el JUEVES de la jornada
             # siguiente, que ya vive en la cola de W+1 (01-oct-2026)
             for w in ([W, W + 1] if tipo == "review" else [W]):
@@ -424,8 +430,12 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
         ok.append(paso("destacados de la jornada",
                        ["destacados.py", "--season", str(SEASON), "--week", str(W)],
                        captura=os.path.join(txt_dir, "destacados.txt")))
-        hay_borradores = borradores(txt_dir, W, "borradores_prompt_lunes.md")
-        ok.append(hay_borradores)
+        # Los posts se escriben con la Review de SumerSports leida (llega
+        # hacia las 14:00): si aun no esta, los escribe boletin() al leerla
+        if os.path.exists(os.path.join(txt_dir, "ideas_boletin_review.md")):
+            ok.append(borradores(txt_dir, W, "borradores_prompt_lunes.md"))
+        else:
+            log("-> borradores: esperan a la Review de SumerSports (14:15)")
         # La cola se rehace SIEMPRE: sin borradores sale igual, como espejo de
         # la carpeta (27-sep-2026)
         ok.append(paso("cola de posts (copiar y pegar)",

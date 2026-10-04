@@ -9,7 +9,7 @@ automatiza.
 
 | Dia | Post | Fuente | Generacion |
 |---|---|---|---|
-| Lunes | Un post por partido jugado (sin el MNF) + la PREVIA del Monday Night (fuera del hilo del domingo) | destacados + fichas; la previa sale del batch del sabado | batch lunes 10:00 |
+| Lunes | Un post por partido jugado (sin el MNF) + la PREVIA del Monday Night (fuera del hilo del domingo) | destacados + fichas + Review de SumerSports; la previa sale del batch del sabado | visuales: batch lunes 10:00; textos: tras leer la Review (14:15) |
 | Martes | Dato de la semana (outlier) | DatoSemana | batch martes 8:00 |
 | Martes | Resumen del Monday Night (2 PNGs + ficha) | resumen_partido | batch martes: regenera TODA la jornada, que es cuando entra el MNF que el lunes faltaba |
 | Miercoles | Power Rankings | power_rankings | batch martes |
@@ -83,7 +83,7 @@ automatiza.
 
 - **"NFL2025 batch lunes"** — lunes **10:00**: `python semana_auto.py --dia lunes`
   → resumenes y fichas tacticas de TODOS los partidos del domingo, bajo centro,
-  `destacados.txt` (rastreo de lo que merece post) y un borrador por partido
+  `destacados.txt` (rastreo de lo que merece post) y un borrador por partido (este, ya no a las 10:00: lo escribe la tarea del boletin al leer la Review, 04-oct-2026)
   con `borradores_prompt_lunes.md` en `borradores_lunes.md`, mas su cola HTML.
   El Monday Night NO esta: se juega esa noche y lo recoge el batch del martes.
   A las 10:00 y no a las 8:00 porque el Sunday Night acaba sobre las 5:30 hora
