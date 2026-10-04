@@ -52,6 +52,15 @@ def to_num(df, cols):
     return df
 
 # --------- Cálculo ofensivo / defensivo ----------
+def tercer_down(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    """Conversiones en 3er down por equipo (col = posteam o defteam), con las
+    marcas de nflverse: un 3er down cuenta si acaba convertido o fallado."""
+    t = df[(df["third_down_converted"] == 1) | (df["third_down_failed"] == 1)]
+    g = t.groupby(col)["third_down_converted"].agg(hechos="sum", intentos="size")
+    g["pct"] = g["hechos"] / g["intentos"] * 100
+    return g
+
+
 def compute_offense(df: pd.DataFrame) -> pd.DataFrame:
     sub = df[df["play_type"].isin(["pass","run"])].copy()
     g = sub.groupby("posteam", dropna=True)
@@ -65,6 +74,7 @@ def compute_offense(df: pd.DataFrame) -> pd.DataFrame:
     out["EPA 1º down"]       = sub.loc[sub["down"]==1].groupby("posteam")["epa"].mean()
     out["EPA downs tardíos"] = sub.loc[sub["down"]>=3].groupby("posteam")["epa"].mean()
     out["Distancia media 3º down"] = sub.loc[sub["down"]==3].groupby("posteam")["ydstogo"].mean()
+    out["3er down (%)"]      = tercer_down(df, "posteam")["pct"]
     return out
 
 def compute_defense(df: pd.DataFrame) -> pd.DataFrame:
@@ -77,6 +87,7 @@ def compute_defense(df: pd.DataFrame) -> pd.DataFrame:
     out["EPA/carrera permitido"]  = sub.loc[sub["play_type"]=="run"].groupby("defteam")["epa"].mean()
     sub["explosive"]              = explosive_mask(sub)
     out["Explosivas permitidas (%)"] = sub.groupby("defteam")["explosive"].mean().mul(100)
+    out["3er down permitido (%)"] = tercer_down(df, "defteam")["pct"]
     return out
 
 # --------- Drives: RZ y %RedZone ----------
@@ -229,11 +240,13 @@ CRUCES = [
      "en EPA por carrera", "contra la carrera"),
     ("Explosivas (%)", "Explosivas permitidas (%)", "Jugadas explosivas", "pct",
      "en jugadas explosivas", "en explosivas permitidas"),
+    ("3er down (%)", "3er down permitido (%)", "Conversión en 3er down", "d3",
+     "en conversión de 3er down", "defendiendo el 3er down"),
     ("%RedZone", "%RedZone permitido", "TD en red zone", "rz",
      "en TD en la red zone", "defendiendo su red zone"),
 ]
 # Para el titular se prefieren los cruces concretos a los generales
-PREFERENCIA = ["EPA/pase", "EPA/carrera", "Explosivas (%)", "%RedZone", "EPA/jugada", "Éxito (%)"]
+PREFERENCIA = ["EPA/pase", "EPA/carrera", "3er down (%)", "Explosivas (%)", "%RedZone", "EPA/jugada", "Éxito (%)"]
 EXTREMO = 8          # titular solo si los dos rangos estan en el top/bottom 8
 MIN_RZ = 6           # visitas minimas a la red zone para usarla en el titular
 
@@ -296,20 +309,21 @@ def fmt_val(v, is_pct=False, nd=2):
     return f"{v:.1f}%" if is_pct else f"{v:.{nd}f}"
 
 
-def valor_celda(v, formato, team=None, lado=None, rz_cnt=None):
+def valor_celda(v, formato, team=None, lado=None, rz_cnt=None, d3_cnt=None):
     if pd.isna(v):
         return "–"
     if formato == "num":
         return num(v)
-    if formato == "rz" and rz_cnt:
-        hechos, visitas = rz_cnt.get((lado, team), (None, None))
+    cnt = rz_cnt if formato == "rz" else d3_cnt if formato == "d3" else None
+    if cnt:
+        hechos, visitas = cnt.get((lado, team), (None, None))
         if visitas:
             return f"{v:.0f}% ({hechos}/{visitas})"
     return f"{v:.0f}%"
 
 
 def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path, pie="",
-             rz_cnt=None, semana=None):
+             rz_cnt=None, semana=None, d3_cnt=None):
     """Previa de un partido (team_a visita a team_b), estilo docs/estilo-visual.md:
     titular con el mayor desajuste y los dos cruces ataque contra defensa."""
     rz_cnt = rz_cnt or {}
@@ -355,7 +369,7 @@ def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path, pie="
             fig.text(L + 0.01, y, lab, family=TXT, size=8.5, color=FG, va="center")
             for xv, v, rk, team, lado in ((0.60, vo, ro, atk, "of"),
                                           (R - 0.005, vd, rd, dfn, "df")):
-                fig.text(xv - 0.075, y, valor_celda(v, formato, team, lado, rz_cnt), family=TXT,
+                fig.text(xv - 0.075, y, valor_celda(v, formato, team, lado, rz_cnt, d3_cnt), family=TXT,
                          weight="semibold", size=8.5, color=FG, va="center", ha="right")
                 if pd.notna(rk):
                     fig.text(xv, y, f"{int(rk)}º", family=TXT, weight="bold", size=8.5,
@@ -495,7 +509,7 @@ if __name__ == "__main__":
     st   = compute_special_teams(stats_df)
 
     off_high   = ["EPA/jugada","Éxito (%)","EPA/pase","EPA/carrera","Explosivas (%)",
-                  "EPA 1º down","EPA downs tardíos","%RedZone"]
+                  "EPA 1º down","EPA downs tardíos","3er down (%)","%RedZone"]
     off_ranks  = rank_dataframe(off,  better_high_cols=off_high,                 better_low_cols=["Distancia media 3º down"])
     deff_ranks = rank_dataframe(deff, better_high_cols=[],                       better_low_cols=list(deff.columns))
     st_ranks   = rank_dataframe(st,   better_high_cols=["FG%","EPA/jugada ST"],  better_low_cols=[])
@@ -514,13 +528,18 @@ if __name__ == "__main__":
     rz_cnt.update({("df", t): (int(r["sum"]), int(r["size"]))
                    for t, r in _rz.groupby("defteam")["td_for"].agg(["sum", "size"]).iterrows()})
 
+    # Lo mismo para el 3er down (convertidos, intentos)
+    d3_cnt = {(lado, t): (int(r["hechos"]), int(r["intentos"]))
+              for lado, col in (("of", "posteam"), ("df", "defteam"))
+              for t, r in tercer_down(stats_df, col).iterrows()}
+
     # ── Generar imágenes ──────────────────────────────────────────────────────
     if modo_semana:
         with PdfPages(pdf_path) as pdf:
             for away, home in matchups:
                 out_png = salida(nombre_preview(away, home, SEASON, week_num), SEASON, week_num)
                 fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png,
-                               pie, rz_cnt=rz_cnt, semana=week_num)
+                               pie, rz_cnt=rz_cnt, semana=week_num, d3_cnt=d3_cnt)
                 # Lienzo fijo, sin bbox tight: descoloca los logos
                 pdf.savefig(fig, facecolor="#0f1115")
                 plt.close(fig)
@@ -538,6 +557,7 @@ if __name__ == "__main__":
         fg_n = fga.groupby("posteam")["field_goal_result"].agg(
             hechos=lambda s: int((s == "made").sum()), intentos="size")
         pct = {"Éxito (%)", "Explosivas (%)", "%RedZone", "Éxito permitido (%)",
+               "3er down (%)", "3er down permitido (%)",
                "Explosivas permitidas (%)", "%RedZone permitido", "FG%"}
         lineas = [f"NUMEROS DE LAS PREVIAS — semana {week_num} de {SEASON}",
                   f"Stats de las semanas 1-{week_num - 1}; rango 1 = el mejor de 32 "
@@ -577,6 +597,6 @@ if __name__ == "__main__":
         away, home = matchups[0]
         out_png = salida(nombre_preview(away, home, SEASON, week), SEASON, week)
         fig = draw_png(away, home, off, deff, st, off_ranks, deff_ranks, st_ranks, out_png, pie,
-                       rz_cnt=rz_cnt, semana=week)
+                       rz_cnt=rz_cnt, semana=week, d3_cnt=d3_cnt)
         plt.close(fig)
         print(f"\nPNG generado: {out_png}")

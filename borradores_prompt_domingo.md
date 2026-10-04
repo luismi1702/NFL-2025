@@ -16,11 +16,13 @@ lado. En la linea `IMAGEN:` va SOLO el nombre del fichero, sin carpeta.
   rango de cada metrica (1º = el mejor de 32; en defensa, 1º = la que menos
   concede), el record de cada equipo, los CONTEOS que hay detras de cada %
   (visitas a la red zone, FG intentados) y el TITULAR que lleva cada PNG.
-  **Desde oct-2026 el PNG solo enseña seis cruces** (EPA por jugada, jugadas
-  con éxito, EPA por pase, EPA por carrera, explosivas, TD en red zone) y el
-  FG%. El tuit usa SOLO esas metricas, para que el numero del texto y el de la
-  imagen sean el mismo (regla de CLAUDE.md). El 1er down, el 3er/4º down y la
-  distancia en 3er down del TXT no salen en la imagen: no se usan.
+  **Desde oct-2026 el PNG solo enseña siete cruces** (EPA por jugada, jugadas
+  con éxito, EPA por pase, EPA por carrera, explosivas, conversión en 3er down
+  y TD en red zone) y el FG%. El tuit usa SOLO esas metricas, para que el
+  numero del texto y el de la imagen sean el mismo (regla de CLAUDE.md). La
+  conversión en 3er down va con su conteo ("25 de 47"), como la red zone. El
+  EPA en 1er down, el EPA en 3er/4º down y la distancia en 3er down del TXT
+  no salen en la imagen: no se usan.
   El tuit no puede contradecir el titular del PNG; puede contarlo con otras
   palabras o elegir otro cruce de la imagen.
 - `{DIR}/../previas/NN_preview_VIS_vs_LOC_*.png` — un PNG por partido.
