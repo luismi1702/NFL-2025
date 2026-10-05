@@ -28,3 +28,4 @@ Las filas anteriores al 30-sep se reconstruyeron del CHANGELOG. Donde pone
 | 01-oct-2026 | Ecos de la NFL | 2X20 (30-sep) · "¿Qué pasa con los Eagles?" (44 min) | Respuesta en texto a su post: DL de PHI, 8 golpes al QB (31º) y 0 turnovers |
 | 01-oct-2026 | 100 Yardas | 01-oct · "Bears y Ben Johnson exponen a los Eagles" (62 min) | Sin pieza (Keenum vs blitz, ya muy contado; lo de Hurts es falso) |
 | 01-oct-2026 | El Nickel | Previa semana 4 · "Previa El Nickel Semana 4 + Picks" · NBbCke8SrBU | Sin pieza propia: el duelo DEN @ SF del sábado responde a su clave (presión sobre Purdy) |
+| 05-oct-2026 | 100 Yardas | 05-oct · "¡Nadie para a los Chiefs y los 49ers!" (72 min) | Candidatas: defensa de Houston (1ª en EPA en 2025, 21ª en 2026; 30ª en pass rush win rate de ESPN) y OL de Green Bay (16% de pass block win rate, última, pero 13ª en sacks). Pendiente de que Luis elija. El del 02-oct (previa de la semana 4) no se ha escuchado |

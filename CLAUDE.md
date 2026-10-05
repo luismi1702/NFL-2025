@@ -151,6 +151,7 @@ Estructura (DRAFT, solo en la ventana de abril): [historia del equipo] → [dato
 - Se etiqueta SIEMPRE a la afición del equipo del que va el post, gane o pierda. Única excepción: los equipos marcados *(pendiente)* en la tabla, que no tienen cuenta conocida
 - Terminología de jugadas: "proteger al QB" / "mejorar la protección de pase" / "pass pro", NUNCA "proteger al pasador". "Forzar turnovers", NUNCA "robar balones"
 - Reacción a podcasts (sep-2026): su ángulo, nuestros números recalculados con el PBP. UNA sola pieza por programa, y solo si de verdad mola. Mejor completar lo que dicen que corregirles. Los podcasts no están en `docs/cuentas-fans.md`: los etiqueta Luis a mano. Ver `docs/decisiones.md` (21-sep-2026)
+- Respuesta a podcasts (05-oct-2026): se responde al TUIT DEL EPISODIO, escrito como respuesta directa: sin "En 100 Yardas…", sin hashtags ni menciones. Y siempre con las opciones [A]/[B] ya redactadas, no solo las ideas
 - REGLA (01-oct-2026): antes de transcribir un episodio, comprobar en `docs/podcasts_revisados.md` que no se ha escuchado ya (programa + fecha + título o ID de YouTube; 100 Yardas saca varios por semana). Al terminar de revisarlo, añadir su fila aunque no salga pieza
 
 ## Docs (leer cuando se necesiten)
