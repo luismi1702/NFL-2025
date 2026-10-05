@@ -39,12 +39,20 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   uso de 11/12/13/21/22 por ataque con EPA: .../nfl-offensive-personnel) y
   SumerSports (tendencias de personal por equipo: sumersports.com/teams/offensive/personnel-tendency).
   Son tablas web: se leen y se copian a mano citando la fuente, sin scraping.
-  CORREGIDO (05-oct-2026): el 03-oct se dijo que el EPA por personal no estaba
-  gratis, y SÍ está. La tabla de personal de Sharp tiene un modo "Efficiency"
-  (y el ratón sobre cada celda) con EPA por jugada, yardas por jugada y % de
-  éxito por agrupación y equipo, con su puesto en la liga, filtrable por down,
-  zona del campo y tipo de jugada (mínimo 20 jugadas). La de SumerSports en
-  abierto no se actualizaba desde el 15-sep
+  REVISADO A FONDO el 05-oct-2026 (lo del 03-oct tenía dos errores):
+  · SumerSports SÍ se actualiza (cada noche: el 05-oct ya traía la semana 4,
+    cuadra con nuestro PBP). Gratis, ataque Y defensa: personal
+    (/teams/offensive/personnel-tendency y /teams/defensive/...) y formación
+    2x2, 3x1, etc. (/teams/{offensive,defensive}/formation-tendency), con uso,
+    EPA total y su puesto, EPA por pase y por carrera. Sin % de éxito
+  · Sharp (/stats-nfl/nfl-offensive-personnel, botón "Efficiency" o ratón
+    sobre la celda): EPA, yardas y % de ÉXITO por personal y equipo con su
+    puesto, filtrable por down, zona y tipo de jugada (mín. 20 jugadas). Solo
+    ataque. Se publica el martes: el 05-oct llegaba a la semana 3
+  · Las tablas de Sharp (coberturas, tendencias, OL, DL) son de 2026 aunque la
+    descripción diga "2025" (cuadran con nuestro FTN de 2026: blitz de MIN
+    68% en Sharp, 73% nuestro, 51% en 2025). Actualizadas el 29-sep
+  · No comprobado todavía: NFL Pro, FTN y PFF en abierto
   Más gratis en 2026: ESPN (win rates de cada liniero y rusher, % de dobles
   equipos: artículo "2026 win rates" en espn.com), Sharp (presión cedida por OL:
   .../nfl-offensive-line-stats), YPRR estimado (sticktothemodel.com,
@@ -52,7 +60,11 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
 - REGLA (03-oct-2026): antes de decir que un dato "no existe" o "no está hasta
   X", buscar FUERA de nflverse (Sharp, SumerSports, FTN, PFR, NGS, TruMedia...).
   El 17-sep se dio por inexistente lo de coberturas mirando solo nflverse y casi
-  se paga una suscripción por algo que estaba gratis
+  se paga una suscripción por algo que estaba gratis. Y revisar HASTA EL FONDO
+  (05-oct-2026, tras dar por no disponible el EPA por personal que Sharp tiene
+  en su modo "Efficiency"): abrir la página de verdad, cada modo, pestaña,
+  tooltip y filtro, ataque y defensa, y hasta qué semana llega. Lo no revisado
+  se dice "no comprobado", nunca "no existe"
 - Fuentes verificadas que SI se actualizan en temporada (cada 6h o a diario):
   cargar_pfr (cobertura CB/S, presiones, placajes fallados; el acumulado de
   PFR solo llega al acabar la temporada, asi que en curso cargar_pfr lo
