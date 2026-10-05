@@ -396,9 +396,13 @@ def titular_resumen():
             and sw["off_epa_play"] < sl["off_epa_play"] - 0.05):
         return _cap(f"{nW} {v(nW, 'ganó', 'ganaron')} con peor EPA por jugada que {nL}: "
                     f"{num(sw['off_epa_play'])} contra {num(sl['off_epa_play'])}.")
-    # 4. Paliza (antes que las perdidas: un 6-35 no se cuenta por las perdidas)
-    if abs(_hs - _as) >= 17:
-        return _cap(f"{nW} le {v(nW, 'ganó', 'ganaron')} por {abs(_hs - _as)} puntos a {nL}.")
+    # 4. Gano con el ataque en negativo (05-oct-2026: IND 30-13 WAS salia como
+    # "Indianapolis le gano por 17 puntos a Washington", que solo repite el
+    # marcador de debajo; esa plantilla de "paliza" se quito: si no hay
+    # conclusion, sin titular)
+    if pd.notna(sw["off_epa_play"]) and sw["off_epa_play"] < 0:
+        return _cap(f"{nW} {v(nW, 'ganó', 'ganaron')} por {abs(_hs - _as)} con el ataque en negativo: "
+                    f"{num(sw['off_epa_play'])} de EPA por jugada.")
     # 5. Las perdidas
     if sl["turnovers"] - sw["turnovers"] >= 2:
         return _cap(f"{nL} lo {v(nL, 'perdió', 'perdieron')} con {sl['turnovers']} pérdidas de balón; {nW} {v(nW, 'cometió', 'cometieron')} "
