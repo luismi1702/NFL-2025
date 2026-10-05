@@ -150,7 +150,7 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
 # las 14:02 (14 y 21-sep) y la Preview los jueves a las 14:03 y 15:04 (17 y
 # 24-sep; la de la semana 1 fue el miercoles, con el TNF de apertura el
 # jueves). Se lee una hora despues y la tarea reintenta dos horas mas tarde.
-# Review: llega los lunes entre las 13:00 y las 14:00 (hora de Madrid) y los
+# Review: llega los lunes entre las 13:00 y las 16:00 (05-oct-2026: 15:38; la tarea reintenta a las 15:30, 17:00 y 19:00) y los
 # posts del lunes salen a las 14:00 y NO pueden salir sin leerla (regla del
 # 30-sep-2026), asi que se busca a las 14:15
 # Preview: el 01-oct-2026 llego a las 14:03 y a las 14:54 la tarea aun daba
