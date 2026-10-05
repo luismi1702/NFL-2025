@@ -184,4 +184,5 @@ conclusión, verificar a tamaño de móvil y marcarlo aquí.
 | oline_presion_origen.py, dline_presion_origen.py | temática | hecho (03-oct): ficha de equipo + lista de 32, con los win rates de ESPN (datos_web/) |
 | under_center.py, play_action.py, proe.py, run_gap.py, run_gap_defensa.py, oline_presion.py, qb_presion.py, qb_overview.py, QBsTotalEPA.py, cuarto_down.py, target_share.py, ranking_wrs.py, ranking_rbs.py, ranking_tes.py, RankingEPAadjustado.py, clutch_performance.py, game_script.py, series_success.py, valor_turnovers.py, mapa_pases_por_zona.py, tendencias_playcalling.py, season_arc.py, evolucion_contender.py | temática | pendiente: unos cuantos por semana |
 | comparador_*.py (9), draft_*.py (7), generar_generales.py | offseason | pendiente: antes de abril |
-| matchup_intel.py, informe_equipo.py, coberturas.py, red_zone_personal.py, ataque_*_personal*.py, defensa_vs_personal_ofensivo.py | sin datos hasta feb. | pendiente: en febrero |
+| ataque_por_personal_ofensivo.py, defensa_vs_personal_ofensivo.py | SumerSports/Sharp en datos_web/ | hecho (05-oct-2026) |
+| matchup_intel.py, informe_equipo.py, coberturas.py, red_zone_personal.py, ataque_vs_personal_defensivo.py | parcial con webs gratis (ver CLAUDE.md) | pendiente |

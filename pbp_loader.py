@@ -781,7 +781,9 @@ def cargar_web(nombre, season=None, week=None):
     Fichero: datos_web/{nombre}_{season}_wNN.csv, con columnas `fuente` y
     `actualizado` en cada fila. Devuelve (df, semana) del mas reciente cuya
     semana sea <= week (o el ultimo si week es None).
-    Nombres en uso: espn_win_rates_equipos, espn_win_rates_jugadores.
+    Nombres en uso: espn_win_rates_equipos, espn_win_rates_jugadores (a mano);
+    sumersports_personal_ataque/_defensa y sharp_personal_ataque (los escribe
+    copiar_personal_web.py, que lee las paginas publicas una vez por semana).
     Las fuentes y sus URL estan en CLAUDE.md ("Carga de datos") y en
     docs/pff-wishlist.md. Sin scraping: se copian a mano citando la fuente."""
     import glob

@@ -1,270 +1,163 @@
 """
 defensa_vs_personal_ofensivo.py
-Heatmap: eficiencia defensiva de cada equipo vs los distintos
-paquetes de personal ofensivo del rival (11, 12, 21, 10, 22...).
-EPA permitido: negativo = buena defensa.
-NFL 2025
+Las 32 defensas según el personal ofensivo del rival (11, 12, 13, 21, 22):
+cuánto se lo encuentran y qué EPA conceden contra él. Estilo
+docs/estilo-visual.md.
+
+De dónde salen los datos (05-oct-2026):
+  - Temporada en curso: SumerSports, Personnel Tendency de defensa, copiado a
+    datos_web/ con `copiar_personal_web.py`. Su EPA es de su propio modelo:
+    no se mezcla con el de nflverse. OJO: su "EPA Rank" de defensa va al revés
+    (1 = la que más concede), así que aquí el puesto se calcula de nuevo.
+  - Temporadas cerradas: participación de nflverse (llega en febrero).
+
+    python defensa_vs_personal_ofensivo.py
+    python defensa_vs_personal_ofensivo.py --season 2025
 """
-
-import os
 import re
-import numpy as np
+
 import pandas as pd
-import matplotlib.pyplot as plt
-from pbp_loader import cargar_pbp, cargar_participation, DatosNoDisponibles, salida, season_cli, sello
-import matplotlib.gridspec as gridspec
-from matplotlib.colors import Normalize
-from matplotlib.cm import ScalarMappable
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-# ── CONFIG ─────────────────────────────────────────────────────────────────────
-SEASON   = season_cli()   # None = auto-detectar última temporada
-BG       = "#0f1115"
-FG       = "#EDEDED"
-GRID     = "#2a2f3a"
-DPI      = 170
-LOGOS_DIR    = "logos"
+from pbp_loader import (cargar_pbp, cargar_participation, cargar_web, DatosNoDisponibles,
+                        salida, season_cli, temporada_actual)
+from estilo import *   # noqa: F401,F403  (estilo comun, docs/estilo-visual.md)
 
-# Invertido: verde = menos EPA permitido = mejor defensa
-RYG_INV = plt.cm.RdYlGn   # usaremos norm invertida
-
-MIN_SNAPS = 20   # snaps mínimos por celda para mostrar valor
-
-# Paquetes principales a mostrar (en orden de frecuencia)
-PKG_ORDER  = ["11", "12", "21", "10", "13", "22"]
-PKG_LABELS = {
-    "11": "11\n1RB·1TE·3WR",
-    "12": "12\n1RB·2TE·2WR",
-    "21": "21\n2RB·1TE·2WR",
-    "10": "10\n1RB·0TE·4WR",
-    "13": "13\n1RB·3TE·1WR",
-    "22": "22\n2RB·2TE·1WR",
-}
-
-# ── HELPERS ────────────────────────────────────────────────────────────────────
-def load_logo(team, base_zoom=0.038):
-    path = os.path.join(LOGOS_DIR, f"{team}.png")
-    if not os.path.exists(path):
-        return None
-    try:
-        img = plt.imread(path)
-        # Recorta margenes transparentes: algunos archivos traen mucho aire
-        # (NYJ: tinta 3768x1186 en lienzo 4096x4096) y sin recorte salen enanos
-        if img.ndim == 3 and img.shape[2] == 4:
-            ys, xs = np.where(img[:, :, 3] > 0.02)
-            if len(ys):
-                img = img[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-        h, w = img.shape[:2]
-        # Normaliza por el area de tinta real; los wordmarks apaisados
-        # pueden ensancharse hasta 1.8x para compensar su poca altura
-        zoom = base_zoom * 500.0 / max((h * w) ** 0.5, 1.0)
-        if w * zoom > 900.0 * (base_zoom):
-            zoom = 900.0 * (base_zoom) / w
-        return OffsetImage(img, zoom=zoom, resample=True)
-    except Exception:
-        return None
+GRUPOS = ["11", "12", "13", "21", "22"]
+QUIEN = {"11": "1 RB · 1 TE", "12": "1 RB · 2 TE", "13": "1 RB · 3 TE",
+         "21": "2 RB · 1 TE", "22": "2 RB · 2 TE"}
+FRASE = {"11": "con tres receptores (11 personal)", "12": "con dos TE (12 personal)",
+         "13": "con tres TE (13 personal)", "21": "con dos RB (21 personal)",
+         "22": "con dos RB y dos TE (22 personal)"}
+MIN_JUG = 20          # jugadas mínimas por celda
+COLOR_MIN = 25        # columnas con menos equipos válidos, sin color de juicio
+TIT_MIN = 15          # equipos válidos mínimos para que una columna dé titular
+TIT_JUG = 40          # jugadas mínimas de la celda del titular
 
 
 def parse_personnel(s):
-    """
-    Extrae RB+FB y TE de cadenas tipo '1 RB, 1 TE, 3 WR' o '1 FB, 1 RB, 1 TE, 2 WR'.
-    Cuenta FB como RB (igual que raycarp) para clasificar correctamente el 21 personal.
-    Devuelve código de personal estilo '11', '12', '21', etc.
-    """
+    """'1 RB, 1 TE, 3 WR' -> '11'. El FB cuenta como RB."""
     if pd.isna(s):
         return None
-    s = str(s)
-    rb_count = 0
-    for pos in ["RB", "FB"]:
-        m = re.search(r"(\d+)\s*" + pos + r"(?:[,\s]|$)", s, re.IGNORECASE)
-        if m:
-            rb_count += int(m.group(1))
-    te = re.search(r"(\d+)\s*TE", s, re.IGNORECASE)
-    if rb_count > 0 and te:
-        return f"{rb_count}{te.group(1)}"
-    return None
+    rb = sum(int(m.group(1)) for pos in ("RB", "FB")
+             for m in [re.search(r"(\d+)\s*" + pos + r"(?:[,\s]|$)", str(s), re.I)] if m)
+    te = re.search(r"(\d+)\s*TE", str(s), re.I)
+    return f"{rb}{te.group(1)}" if rb > 0 and te else None
 
 
-# ── CARGA DE DATOS ─────────────────────────────────────────────────────────────
-pbp, SEASON = cargar_pbp(SEASON)
-pbp["epa"]     = pd.to_numeric(pbp["epa"],     errors="coerce")
-pbp["play_id"] = pd.to_numeric(pbp["play_id"], errors="coerce")
-print(f"PBP {SEASON}: {len(pbp):,} jugadas REG")
+def desde_participacion(season):
+    pbp, season = cargar_pbp(season)
+    part, _ = cargar_participation(season)
+    part = part[["nflverse_game_id", "play_id", "offense_personnel"]].rename(
+        columns={"nflverse_game_id": "game_id"})
+    p = pbp.merge(part, on=["game_id", "play_id"])
+    p = p[p.play_type.isin(["pass", "run"]) & p.epa.notna() & p.defteam.notna()
+          & (p.qb_kneel != 1) & (p.qb_spike != 1)]
+    p["grupo"] = p.offense_personnel.apply(parse_personnel)
+    p = p[p.grupo.notna()]
+    g = p.groupby(["defteam", "grupo"]).agg(jugadas=("epa", "size"),
+                                           epa=("epa", "mean")).reset_index()
+    g["uso_pct"] = g.jugadas / g.groupby("defteam").jugadas.transform("sum") * 100
+    return g.rename(columns={"defteam": "team"}), season, None
 
-try:
-    part, _ = cargar_participation(SEASON)
-except DatosNoDisponibles as e:
-    raise SystemExit(
-        "\n  No se puede generar este grafico todavia.\n"
-        f"  {e}\n"
-        "  Este visual necesita datos de participacion (el personal ofensivo del rival),\n"
-        "  que nflverse publica mas tarde que el play-by-play.\n")
-part = part[["nflverse_game_id", "play_id", "offense_personnel"]]
-part = part.rename(columns={"nflverse_game_id": "game_id"})
-part["play_id"] = pd.to_numeric(part["play_id"], errors="coerce")
-print(f"Participacion filas: {len(part):,}")
 
-# ── JOIN ───────────────────────────────────────────────────────────────────────
-merged = pbp.merge(part, on=["game_id", "play_id"], how="left")
+def desde_web(season):
+    d, sem = cargar_web("sumersports_personal_defensa", season)
+    d = d.rename(columns={"personal": "grupo", "epa_jugada": "epa"})
+    return d, season, (sem, "SumerSports (Personnel Tendency, EPA propio)")
 
-plays = merged[
-    merged["play_type"].isin(["pass", "run"]) &
-    merged["defteam"].notna() &
-    merged["epa"].notna() &
-    merged["offense_personnel"].notna()
-].copy()
 
-print(f"Jugadas con personal ofensivo: {len(plays):,}")
-
-# ── CLASIFICAR PERSONAL OFENSIVO ───────────────────────────────────────────────
-plays["pkg"] = plays["offense_personnel"].apply(parse_personnel)
-plays = plays[plays["pkg"].isin(PKG_ORDER)].copy()
-
-# ── AGREGAR POR DEFTEAM × PAQUETE ─────────────────────────────────────────────
-grp = (
-    plays.groupby(["defteam", "pkg"])["epa"]
-    .agg(epa_mean="mean", n_snaps="count")
-    .reset_index()
-)
-
-# Pivot EPA y n_snaps
-epa_piv = grp.pivot(index="defteam", columns="pkg", values="epa_mean")
-n_piv   = grp.pivot(index="defteam", columns="pkg", values="n_snaps").fillna(0).astype(int)
-
-# Asegurar todas las columnas
-for col in PKG_ORDER:
-    if col not in epa_piv.columns:
-        epa_piv[col] = np.nan
-    if col not in n_piv.columns:
-        n_piv[col] = 0
-epa_piv = epa_piv[PKG_ORDER]
-n_piv   = n_piv[PKG_ORDER]
-
-# Aplicar mínimo de snaps
-epa_piv = epa_piv.where(n_piv >= MIN_SNAPS)
-
-# Ordenar por EPA global permitido (mejor defensa = menor EPA → arriba)
-overall_epa = plays.groupby("defteam")["epa"].mean()
-epa_piv["_sort"] = overall_epa
-epa_piv = epa_piv.sort_values("_sort", ascending=True)
-epa_piv = epa_piv.drop(columns="_sort")
-n_piv   = n_piv.loc[epa_piv.index]
-
-teams   = epa_piv.index.tolist()
-n_teams = len(teams)
-
-# ── CONSOLA ────────────────────────────────────────────────────────────────────
-print(f"\n{'='*70}")
-print(f"  EPA permitido por personal ofensivo | NFL {SEASON}  (- = mejor defensa)")
-print(f"{'='*70}")
-header = f"{'Def':<5}" + "".join(f"  {'Pkg '+p:>10}" for p in PKG_ORDER)
-print(header)
-print("-" * len(header))
-for tm in teams:
-    row = epa_piv.loc[tm]
-    vals = "".join(
-        f"  {row[p]:+9.3f}" if not np.isnan(row[p]) else f"  {'N/D':>9}"
-        for p in PKG_ORDER
-    )
-    print(f"{tm:<5}{vals}")
-print()
-
-# ── FIGURA ─────────────────────────────────────────────────────────────────────
-n_cols  = len(PKG_ORDER)
-cell_w  = 1.4
-cell_h  = 0.52
-logo_w  = 1.2
-fig_w   = logo_w + n_cols * cell_w + 1.2
-fig_h   = max(8, n_teams * cell_h + 2.5)
-
-fig, ax = plt.subplots(figsize=(fig_w, fig_h), facecolor=BG)
-ax.set_facecolor(BG)
-ax.axis("off")
-ax.set_xlim(-logo_w, n_cols)
-ax.set_ylim(-1, n_teams + 0.8)
-
-# ── COLORMAP ──────────────────────────────────────────────────────────────────
-valid  = epa_piv.values[~np.isnan(epa_piv.values)]
-v_abs  = max(abs(valid.min()), abs(valid.max()), 0.05) if len(valid) else 0.3
-norm   = Normalize(vmin=-v_abs, vmax=v_abs)
-# Verde = EPA bajo (buena defensa), Rojo = EPA alto (mala defensa)
-cmap   = plt.cm.RdYlGn_r   # invertido: rojo arriba, verde abajo
-
-# ── CELDAS ────────────────────────────────────────────────────────────────────
-for row_i, team in enumerate(teams):
-    y = n_teams - row_i - 1   # invertir para que mejor defensa quede arriba
-    for col_j, pkg in enumerate(PKG_ORDER):
-        val = epa_piv.loc[team, pkg]
-        n   = n_piv.loc[team, pkg]
-        x   = col_j
-
-        bg_color = cmap(norm(val)) if not np.isnan(val) else "#1e2430"
-        rect = plt.Rectangle((x, y), 1, 1, color=bg_color,
-                              linewidth=0.4, edgecolor=BG, zorder=1)
-        ax.add_patch(rect)
-
-        if not np.isnan(val):
-            sign      = "+" if val >= 0 else ""
-            _r, _g, _b = bg_color[0], bg_color[1], bg_color[2]
-            txt_color = "#0a0e13" if (0.299*_r + 0.587*_g + 0.114*_b) > 0.45 else FG
-            ax.text(x + 0.5, y + 0.58, f"{sign}{val:.3f}",
-                    ha="center", va="center",
-                    color=txt_color, fontsize=8, fontweight="bold", zorder=2)
-            ax.text(x + 0.5, y + 0.25, f"n={n}",
-                    ha="center", va="center",
-                    color=txt_color, fontsize=6.5, zorder=2)
-        else:
-            ax.text(x + 0.5, y + 0.5, "—",
-                    ha="center", va="center",
-                    color="#444444", fontsize=10, zorder=2)
-
-# ── LOGOS ──────────────────────────────────────────────────────────────────────
-for row_i, team in enumerate(teams):
-    y = n_teams - row_i - 1
-    img = load_logo(team, base_zoom=0.036)
-    if img is not None:
-        ab = AnnotationBbox(img, (-logo_w / 2, y + 0.5),
-                            frameon=False, zorder=3,
-                            box_alignment=(0.5, 0.5))
-        ax.add_artist(ab)
+def titular_txt(tab, n, rk):
+    """Como en el de ataque: la celda (no 11) de TIT_JUG+ jugadas que más
+    mejora la mediana de su columna; el puesto, sobre todas las de la tabla."""
+    mejor = None
+    for gr in GRUPOS[1:]:
+        col = tab[gr].dropna()
+        if len(col) < TIT_MIN:
+            continue
+        for tm in col.index:
+            if n.loc[tm, gr] < TIT_JUG:
+                continue
+            dif = col.median() - col[tm]
+            if mejor is None or dif > mejor[0]:
+                mejor = (dif, gr, tm)
+    if not mejor:
+        return None
+    _, gr, tm = mejor
+    val, r, jug = tab.loc[tm, gr], int(rk[gr][tm]), int(n.loc[tm, gr])
+    if r == 1:
+        s = (f"Ninguna defensa frena mejor a los ataques {FRASE[gr]} que la de "
+             f"{nombre_equipo(tm)}: los deja en {num(val)} de EPA por jugada en {jug} jugadas.")
     else:
-        ax.text(-logo_w / 2, y + 0.5, team,
-                ha="center", va="center",
-                color=FG, fontsize=7.5, fontweight="bold")
+        s = (f"La defensa de {nombre_equipo(tm)} deja a los ataques {FRASE[gr]} en {num(val)} "
+             f"de EPA por jugada, {r}ª de {int(tab[gr].notna().sum())}, en {jug} jugadas.")
+    return s[0].upper() + s[1:]
 
-# ── CABECERAS DE COLUMNA ──────────────────────────────────────────────────────
-for col_j, pkg in enumerate(PKG_ORDER):
-    ax.text(col_j + 0.5, n_teams + 0.35,
-            PKG_LABELS[pkg],
-            ha="center", va="center",
-            color=FG, fontsize=8, fontweight="bold", linespacing=1.3)
 
-# Línea separadora cabecera
-ax.axhline(n_teams, color=GRID, linewidth=0.8, xmin=0, xmax=1, zorder=3)
+def main():
+    season = season_cli() or temporada_actual()
+    try:
+        d, season, web = desde_participacion(season)
+    except DatosNoDisponibles:
+        try:
+            d, season, web = desde_web(season)
+        except DatosNoDisponibles as e:
+            raise SystemExit(f"\n  Sin datos de personal: {e}\n  Lanza antes "
+                             "`python copiar_personal_web.py`.\n")
 
-# ── COLORBAR ─────────────────────────────────────────────────────────────────
-sm = ScalarMappable(cmap=cmap, norm=norm)
-sm.set_array([])
-cbar_ax = fig.add_axes([0.92, 0.12, 0.02, 0.70])
-cb = fig.colorbar(sm, cax=cbar_ax)
-cb.set_label("EPA permitido\n(- = mejor defensa)", color=FG, fontsize=8)
-cb.ax.yaxis.set_tick_params(color=FG, labelsize=7)
-plt.setp(cb.ax.yaxis.get_ticklabels(), color=FG)
-cb.outline.set_edgecolor(GRID)
+    d = d[d.grupo.isin(GRUPOS)]
+    tab = d.pivot(index="team", columns="grupo", values="epa").reindex(columns=GRUPOS)
+    n = d.pivot(index="team", columns="grupo", values="jugadas").reindex(columns=GRUPOS)
+    tab = tab.where(n >= MIN_JUG)
+    for gr in GRUPOS:
+        tab[f"uso_{gr}"] = d[d.grupo == gr].set_index("team").uso_pct
+    rk = {gr: tab[gr].rank(ascending=True, method="min") for gr in GRUPOS}   # 1 = concede menos
+    tab = tab.sort_values("11", ascending=True)
 
-# ── TÍTULOS ───────────────────────────────────────────────────────────────────
-fig.text(0.5, 0.99,
-         f"Eficiencia defensiva vs personal ofensivo rival | NFL {SEASON}",
-         ha="center", va="top", fontsize=14, fontweight="bold", color=FG)
-fig.text(0.5, 0.975,
-         "EPA permitido por paquete ofensivo  |  Ordenado por EPA global (mejor defensa arriba)  |  — = menos de 20 snaps",
-         ha="center", va="top", fontsize=8.5, color="#888888", fontstyle="italic")
-fig.text(0.01, 0.005, f"Fuente: nflverse-data + NGS participation  |  {sello(SEASON)}",
-         ha="left", va="bottom", fontsize=7.5, color="#555555", fontstyle="italic")
-fig.text(0.90, 0.005, "@CuartayDato",
-         ha="right", va="bottom", fontsize=9, color="#888888", alpha=0.85, fontstyle="italic")
+    fig = lienzo()
+    antetitulo(fig, "Defensas · contra cada personal ofensivo")
+    tit = titular_txt(tab, n, rk)
+    y_top = (titular(fig, tit, y=0.925, size=19) - 0.025) if tit else 0.90
+    x0, ancho_c = L + 0.17, (R - L - 0.17) / len(GRUPOS)
+    yh = y_top - 0.03
+    for j, gr in enumerate(GRUPOS):
+        xc = x0 + (j + 0.5) * ancho_c
+        fig.text(xc, yh + 0.008, gr, family=DISP, weight=700, size=12, color=FG, ha="center",
+                 va="center")
+        fig.text(xc, yh - 0.016, QUIEN[gr], family=TXT, size=6, color=GRIS1, ha="center",
+                 va="center")
+    linea_h(fig, yh - 0.03)
+    alto = (yh - 0.045 - 0.12) / len(tab)
+    for i, tm in enumerate(tab.index):
+        y = yh - 0.045 - (i + 0.5) * alto
+        poner_logo(fig, tm, L + 0.025, y, zoom=0.0095)
+        fig.text(L + 0.05, y, tm, family=TXT, weight="bold", size=7.2, color=FG, va="center")
+        for j, gr in enumerate(GRUPOS):
+            xc = x0 + (j + 0.5) * ancho_c
+            v, uso = tab.loc[tm, gr], tab.loc[tm, f"uso_{gr}"]
+            if pd.isna(v):
+                fig.text(xc, y, "–", family=TXT, size=7, color=GRIS2, ha="center", va="center")
+                continue
+            n_col = int(tab[gr].notna().sum())
+            fig.text(xc + 0.012, y, num(v), family=TXT, weight="bold", size=7.2,
+                     color=color_rango(int(rk[gr][tm]), n_col) if n_col >= COLOR_MIN else FG,
+                     ha="right", va="center")
+            fig.text(xc + 0.017, y, f"{uso:.0f}%", family=TXT, size=5.8, color=GRIS2,
+                     ha="left", va="center")
+    y_fin = yh - 0.045 - len(tab) * alto
+    tarjeta(fig, y_fin - 0.01, y_top)
+    if web:
+        sem, fuente = web
+        sello_txt = f"NFL {season} · hasta sem. {sem} · {fuente}"
+    else:
+        sello_txt = f"NFL {season} · nflverse PBP + participación"
+    pie(fig, "EPA concedido por jugada (menos = mejor) · gris: % de jugadas · color: 5 mejores y "
+             f"5 peores ({COLOR_MIN}+ equipos) · –: menos de {MIN_JUG} jugadas", sello_txt)
+    ruta = salida(f"defensa_vs_personal_ofensivo_{season}.png", season)
+    guardar(fig, ruta)
+    if tit:
+        print("Titular:", tit)
+    print("Guardado:", ruta)
 
-outfile = salida(f"defensa_vs_personal_ofensivo_{SEASON}.png", SEASON)
-fig.savefig(outfile, dpi=DPI, facecolor=BG, bbox_inches="tight")
-plt.close(fig)
-print(f"Guardado: {outfile}")
+
+if __name__ == "__main__":
+    main()

@@ -38,7 +38,11 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   open/closed por defensa: sharpfootballanalysis.com/stats-nfl/nfl-coverage-schemes;
   uso de 11/12/13/21/22 por ataque con EPA: .../nfl-offensive-personnel) y
   SumerSports (tendencias de personal por equipo: sumersports.com/teams/offensive/personnel-tendency).
-  Son tablas web: se leen y se copian a mano citando la fuente, sin scraping.
+  Son tablas web: se copian a datos_web/ citando la fuente y la hora (a mano,
+  o con `copiar_personal_web.py` para el personal, que lee la página una vez).
+  OJO: SumerSports sirve a veces una versión vieja de la tabla (05-oct: la de
+  las 01:04 o la de las 01:55, con otro EPA); el copiador se queda la más nueva.
+  Un post sale SIEMPRE del mismo CSV que su PNG.
   REVISADO A FONDO el 05-oct-2026 (lo del 03-oct tenía dos errores):
   · SumerSports SÍ se actualiza (cada noche: el 05-oct ya traía la semana 4,
     cuadra con nuestro PBP). Gratis, ataque Y defensa: personal
