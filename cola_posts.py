@@ -264,6 +264,7 @@ def construir(md, dir_semana, season, week, imagenes=None):
     bloqueadas = set()
     dia_actual = None
     n_tarjetas = 0
+    por_dia = {}            # dia -> nº de posts para copiar (para la barra de dias)
     for sec in secciones:
         # El rotulo del dia solo sale si ese dia tiene alguna tarjeta (el jueves
         # sin post del bot no deja un titulo vacio)
@@ -271,7 +272,8 @@ def construir(md, dir_semana, season, week, imagenes=None):
         if d != dia_actual and (sec.get("hueco") or sec["posts"]):
             dia_actual = d
             nombre = DIAS[d][1] if d < len(DIAS) else "OTROS"
-            tarjetas.append(f'<h2 class="dia">{nombre}</h2>')
+            tarjetas.append(f'<h2 class="dia" data-dia="{d}">{nombre}</h2>')
+            por_dia.setdefault(d, 0)
         if sec.get("hueco"):
             n_tarjetas += 1
             fotos = "".join(
@@ -279,7 +281,7 @@ def construir(md, dir_semana, season, week, imagenes=None):
                 f'alt="{html.escape(n)}">'
                 for n in sec["imagenes"] if n.lower() in imagenes)
             tarjetas.append(f"""
-  <article class="card">
+  <article class="card" data-dia="{d}">
     <header><h2>{numero_png(sec)}{html.escape(sec["titulo"])}</h2></header>
     {fotos}
     <p class="falta">{html.escape(sec.get("nota", "Este partido no tiene post en los borradores."))}</p>
@@ -293,7 +295,9 @@ def construir(md, dir_semana, season, week, imagenes=None):
             falta = boletin_que_falta(sec, dir_semana, season, week)
             if falta:
                 bloqueadas.add(falta)
-            tarjetas.append(tarjeta(sec, post, idx, imagenes, falta))
+            tarjetas.append(tarjeta(sec, post, idx, imagenes, falta)
+                            .replace('<article class="card"', f'<article class="card" data-dia="{d}"', 1))
+            por_dia[d] = por_dia.get(d, 0) + 1
             idx += 1
             n_tarjetas += 1
 
@@ -316,6 +320,15 @@ def construir(md, dir_semana, season, week, imagenes=None):
         tarjetas.append('<article class="card"><p class="falta">No se encontro '
                         'ningun borrador con el formato esperado en '
                         '<code>borradores_lunes.md</code> ni <code>borradores_posts.md</code>.</p></article>')
+
+    # Barra de dias (05-oct-2026, Luis: "quiero poder organizarla por dia"):
+    # un boton por dia con sus posts; al abrir, el dia de hoy
+    botones = ['<button class="tab" data-dia="todos">Todos</button>']
+    for d in sorted(por_dia):
+        nombre = DIAS[d][1] if d < len(DIAS) else "OTROS"
+        botones.append(f'<button class="tab" data-dia="{d}">{nombre.capitalize()}'
+                       f'<span class="n">{por_dia[d]}</span></button>')
+    barra = f'<nav class="dias">{"".join(botones)}</nav>'
 
     return f"""<!doctype html>
 <html lang="es">
@@ -359,6 +372,13 @@ def construir(md, dir_semana, season, week, imagenes=None):
   .bloqueo {{ background:{MAL}; color:#1a1a1a; font-weight:700; border-radius:6px;
               padding:6px 12px; font-size:12px; flex:0 0 auto; }}
   .pie {{ color:#888; font-size:12px; margin-top:24px; font-style:italic; }}
+  .dias {{ position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:8px;
+           background:{BG}; padding:10px 0 12px; margin-bottom:8px; }}
+  .tab {{ background:{CARD}; color:{FG}; border:1px solid {GRID}; border-radius:999px;
+          padding:7px 14px; font-size:14px; cursor:pointer; }}
+  .tab.activo {{ background:{ACCENT}; border-color:{ACCENT}; color:#fff; }}
+  .tab .n {{ margin-left:7px; font-size:12px; opacity:.75; }}
+  .oculto {{ display:none !important; }}
 </style>
 </head>
 <body>
@@ -366,10 +386,32 @@ def construir(md, dir_semana, season, week, imagenes=None):
 <p class="sub">Copiar, pegar en X y arrastrar la imagen desde esta misma carpeta.
 Los borradores son borradores: la verificacion triple sigue siendo tuya.</p>
 {aviso_bloq}{aviso}
+{barra}
 <div class="grid">{"".join(tarjetas)}
 </div>
 <p class="pie">Generado por cola_posts.py desde borradores_posts.md — @CuartayDato</p>
 <script>
+// Barra de dias: #lunes, #martes... en la URL; si no, el dia de hoy (la
+// semana de la cola va de jueves=0 a miercoles=6); si hoy no hay nada, todos
+var NOMBRES = ["jueves","viernes","sabado","domingo","lunes","martes","miercoles"];
+function mostrar(dia) {{
+  document.querySelectorAll(".tab").forEach(function (t) {{
+    t.classList.toggle("activo", t.dataset.dia === dia); }});
+  document.querySelectorAll(".grid > [data-dia]").forEach(function (e) {{
+    e.classList.toggle("oculto", dia !== "todos" && e.dataset.dia !== dia); }});
+  if (dia !== "todos") history.replaceState(null, "", "#" + (NOMBRES[+dia] || "otros"));
+  else history.replaceState(null, "", "#todos");
+}}
+document.querySelectorAll(".tab").forEach(function (t) {{
+  t.addEventListener("click", function () {{ mostrar(t.dataset.dia); window.scrollTo(0, 0); }}); }});
+(function () {{
+  var h = location.hash.slice(1), dia = null;
+  if (h === "todos") dia = "todos";
+  else if (NOMBRES.indexOf(h) >= 0) dia = String(NOMBRES.indexOf(h));
+  if (dia === null) dia = String((new Date().getDay() + 3) % 7);
+  if (!document.querySelector('.tab[data-dia="' + dia + '"]')) dia = "todos";
+  mostrar(dia);
+}})();
 document.querySelectorAll(".copiar").forEach(function (b) {{
   b.addEventListener("click", function () {{
     var t = document.getElementById(b.dataset.id).textContent;
