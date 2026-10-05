@@ -17,7 +17,7 @@ temporada (coberturas y personal) está gratis en Sharp y SumerSports.
 | Cobertura CB/S (rating, recepciones permitidas) | PFR, `cargar_pfr` (ya en uso) | Item 6 |
 | Placajes fallados | PFR (ya en uso) | Item 3 |
 | Presiones por defensor | PFR (ya en uso) | |
-| Coberturas por equipo (man/zone, middle open/closed) y USO de cada personal | Sharp | Solo uso y tasas: el EPA por personal o por cobertura no está gratis en temporada (Sharp lo enseña al pasar el ratón; SumerSports en abierto no se actualiza) |
+| Coberturas por equipo (man/zone, middle open/closed) y USO de cada personal | Sharp | Personal: uso Y resultado (EPA, yardas y % de éxito por agrupación, modo "Efficiency" de Sharp; corregido el 05-oct-2026). Coberturas: solo uso y tasas. SumerSports en abierto no se actualiza |
 | Grades PFF, BTT/TWP, presiones CONTADAS por liniero, bloqueo de carrera por hueco, lado/gap del rusher | Solo PFF | Items 5, 8, 9 y parte del 1 |
 
 Las tablas web se leen y se copian a mano citando la fuente (sin scraping).
