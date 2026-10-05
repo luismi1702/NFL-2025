@@ -67,6 +67,7 @@
 | ataque_por_personal_ofensivo.py | Los 32 ataques por personal (11/12/13/21/22): EPA por jugada y % de uso; `--exito` = % de éxito. En temporada lee datos_web/ (SumerSports; Sharp con --exito), con temporadas cerradas la participación de nflverse. Estilo nuevo, titular automático (05-oct-2026) |
 | ataque_vs_personal_defensivo.py | Eficiencia ofensiva según el personal defensivo del rival |
 | defensa_vs_personal_ofensivo.py | Las 32 defensas contra cada personal ofensivo del rival: EPA concedido y % de jugadas. En temporada, SumerSports desde datos_web/. Estilo nuevo (05-oct-2026) |
+| personal_jornada.py | A demanda, solo texto: ataques que destrozaron (o se hundieron) con un personal en la jornada, por % de éxito frente a lo normal, y lo que concede ese rival el resto de la temporada. Fichero jugada a jugada de Sharp, disponible el martes por la tarde |
 | copiar_personal_web.py | Copia a datos_web/ las tablas de personal de SumerSports (ataque y defensa, EPA, cada noche) y Sharp (ataque, % de éxito, los martes). Avisa de hasta qué semana llegan |
 | red_zone_personal.py | EPA en red zone según personal ofensivo. Un equipo o heatmap 32 |
 

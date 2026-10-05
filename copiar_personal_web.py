@@ -46,9 +46,14 @@ def bajar(url):
         return r.read().decode("utf-8", errors="ignore")
 
 
+# Siglas de nflverse (las del PBP y el calendario): los Rams son LA, no LAR
+NFLVERSE = {"LAR": "LA"}
+
+
 def siglas():
     eq = pd.read_parquet(os.path.join(RAIZ, "pbp_cache", "teams.parquet"))
-    return dict(zip(eq.team_name, eq.team_abbr))
+    eq = eq[eq.team_abbr.isin(["LA"]) | ~eq.team_name.duplicated(keep=False)]
+    return {n: NFLVERSE.get(t, t) for n, t in zip(eq.team_name, eq.team_abbr)}
 
 
 def semana_de_jugadas(jugadas_web, lado):
@@ -112,7 +117,9 @@ def sumersports(season):
               f"semana {w} (desvío medio {err:.1f} jugadas) -> {ruta}")
 
 
-def sharp(season):
+def sharp_jugadas(season):
+    """Las jugadas del fichero de Sharp (team, week, grupo, epa, yds, exito) y
+    la hora a la que se genero. Lo usa tambien personal_jornada.py."""
     d = json.loads(bajar(SHARP.format(season=season)))
     inv = {ch: i for i, ch in enumerate(d["alphabet"])}
     B = len(d["alphabet"])
@@ -122,13 +129,18 @@ def sharp(season):
     c = d["cols"]
     pers = [d["pers"][i] for i in col(c["p"])]
     pl = pd.DataFrame({
-        "team": [d["teams"][i] for i in col(c["t"])],
+        "team": [NFLVERSE.get(d["teams"][i], d["teams"][i]) for i in col(c["t"])],
         "week": col(c["w"]),
         "grupo": [(v // 100) * 10 + (v // 10) % 10 for v in pers],
         "epa": [x / d["epa_scale"] for x in pair(c["eh"], c["el"], d["epa_offset"])],
         "yds": pair(c["yh"], c["yl"], d["yds_offset"]),
         "exito": col(c["sc"]),
     })
+    return pl, d["generated_utc"]
+
+
+def sharp(season):
+    pl, generado = sharp_jugadas(season)
     semanas = sorted(set(pl.week))
     g = pl.groupby(["team", "grupo"]).agg(jugadas=("epa", "size"), epa_jugada=("epa", "mean"),
                                           yardas_jugada=("yds", "mean"), exito=("exito", "mean"))
@@ -139,12 +151,12 @@ def sharp(season):
     g["minimo_20"] = g.jugadas >= 20      # la web solo enseña la eficiencia con 20+
     g = g.drop(columns="exito").round({"epa_jugada": 3, "yardas_jugada": 2, "uso_pct": 1})
     g["fuente"] = SHARP_PAG
-    g["actualizado"] = d["generated_utc"]
+    g["actualizado"] = generado
     g["copiado"] = str(date.today())
     w = max(semanas)
     ruta = os.path.join(DIR, f"sharp_personal_ataque_{season}_w{w:02d}.csv")
     g.to_csv(ruta, index=False, encoding="utf-8")
-    print(f"Sharp: {len(g)} filas, semanas {semanas}, generado {d['generated_utc']} -> {ruta}")
+    print(f"Sharp: {len(g)} filas, semanas {semanas}, generado {generado} -> {ruta}")
 
 
 def refrescar(season):

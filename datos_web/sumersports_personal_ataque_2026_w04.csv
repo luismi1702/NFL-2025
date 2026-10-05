@@ -7,7 +7,7 @@ NO,11,222,156,70.27,1.87,13,0.0,0.03,68.59,55.81,-0.03,0.012,https://sumersports
 HOU,11,254,167,65.75,-1.47,14,-0.04,0.11,80.24,55.81,-0.03,-0.009,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 DET,11,267,172,64.42,31.92,3,0.24,0.04,72.67,55.81,-0.03,0.186,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 CLE,11,229,147,64.19,3.21,10,0.03,0.0,62.59,55.81,-0.03,0.022,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
-LAR,11,276,177,64.13,-14.21,19,-0.12,0.05,76.27,55.81,-0.03,-0.08,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
+LA,11,276,177,64.13,-14.21,19,-0.12,0.05,76.27,55.81,-0.03,-0.08,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 PIT,11,254,162,63.78,-36.22,31,-0.25,-0.16,74.07,55.81,-0.03,-0.224,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 WAS,11,260,165,63.46,-12.59,18,-0.12,0.0,64.85,55.81,-0.03,-0.076,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 ARI,11,263,162,61.6,-15.41,21,-0.15,0.08,75.93,55.81,-0.03,-0.095,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
@@ -36,7 +36,7 @@ LV,12,268,94,35.07,10.37,5,0.17,-0.04,72.34,21.83,-0.02,0.11,https://sumersports
 IND,12,253,82,32.41,-14.29,31,-0.34,-0.06,41.46,21.83,-0.02,-0.174,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 SF,11,228,72,31.58,23.9,5,0.49,0.0,68.06,55.81,-0.03,0.332,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 KC,12,252,78,30.95,-1.32,16,-0.05,0.03,58.97,21.83,-0.02,-0.017,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
-LAR,13,276,85,30.8,7.68,3,0.54,-0.15,35.29,8.27,0.02,0.09,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
+LA,13,276,85,30.8,7.68,3,0.54,-0.15,35.29,8.27,0.02,0.09,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 LAC,21,245,75,30.61,-5.2,18,0.09,-0.15,33.33,6.89,-0.06,-0.069,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 BAL,12,239,73,30.54,12.3,3,0.26,0.12,35.62,21.83,-0.02,0.168,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 CAR,12,268,81,30.22,1.91,11,0.32,-0.3,51.85,21.83,-0.02,0.024,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
@@ -103,7 +103,7 @@ NO,13,222,12,5.41,0.06,17,0.11,-0.1,50.0,8.27,0.02,0.005,https://sumersports.com
 LAC,22,245,13,5.31,-2.55,10,-0.91,0.12,30.77,3.4,-0.11,-0.196,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 KC,11*,252,13,5.16,4.09,1,1.33,0.13,15.38,0.77,0.08,0.315,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 LV,13,268,13,4.85,3.12,9,0.81,-0.43,53.85,8.27,0.02,0.24,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
-LAR,12,276,13,4.71,-5.25,22,-0.06,-0.7,46.15,21.83,-0.02,-0.404,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
+LA,12,276,13,4.71,-5.25,22,-0.06,-0.7,46.15,21.83,-0.02,-0.404,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 BAL,12*,239,11,4.6,2.56,2,1.56,-0.06,18.18,1.22,-0.09,0.233,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 NYG,20,242,11,4.55,1.55,2,0.06,0.2,45.45,0.23,0.22,0.141,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 NO,22,222,10,4.5,4.6,1,1.95,0.29,10.0,3.4,-0.11,0.46,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
@@ -223,7 +223,7 @@ LV,11*,268,1,0.37,1.43,2,1.43,,100.0,0.77,0.08,1.43,https://sumersports.com/team
 CAR,12*,268,1,0.37,0.52,9,,0.52,0.0,1.22,-0.09,0.52,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 CAR,22,268,1,0.37,0.58,6,,0.58,0.0,3.4,-0.11,0.58,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 CAR,21,268,1,0.37,-0.99,11,,-0.99,0.0,6.89,-0.06,-0.99,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
-LAR,02,276,1,0.36,-2.5,8,,-2.5,0.0,0.23,-0.35,-2.5,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
+LA,02,276,1,0.36,-2.5,8,,-2.5,0.0,0.23,-0.35,-2.5,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 CHI,02,298,1,0.34,-0.18,5,-0.18,,100.0,0.23,-0.35,-0.18,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 CHI,10,298,1,0.34,-0.22,2,,-0.22,0.0,0.28,-0.38,-0.22,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
 CHI,31,298,1,0.34,1.19,1,,1.19,0.0,0.09,-0.62,1.19,https://sumersports.com/teams/offensive/personnel-tendency/,10-05-2026 01:55 AM,2026-10-05
