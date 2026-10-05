@@ -43,6 +43,12 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   OJO: SumerSports sirve a veces una versión vieja de la tabla (05-oct: la de
   las 01:04 o la de las 01:55, con otro EPA); el copiador se queda la más nueva.
   Un post sale SIEMPRE del mismo CSV que su PNG.
+  PERSONAL A DEMANDA (decisión de Luis, 05-oct-2026): no va en el batch. Los
+  scripts de personal refrescan solos datos_web/ al lanzarse, y cuando Luis
+  pregunte algo de personal ("¿qué tal X con dos TE?", "¿quién frena mejor el
+  13?"), se responde lanzando `python copiar_personal_web.py` y consultando
+  los CSV de datos_web/ (sumersports_personal_ataque/_defensa, sharp_personal_ataque),
+  citando fuente, semana y nº de jugadas
   REVISADO A FONDO el 05-oct-2026 (lo del 03-oct tenía dos errores):
   · SumerSports SÍ se actualiza (cada noche: el 05-oct ya traía la semana 4,
     cuadra con nuestro PBP). Gratis, ataque Y defensa: personal

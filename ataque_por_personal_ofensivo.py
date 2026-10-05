@@ -65,6 +65,8 @@ def desde_participacion(season):
 
 
 def desde_web(season, exito):
+    from copiar_personal_web import refrescar
+    refrescar(season)       # siempre lo último: estos scripts se lanzan a demanda
     if exito:
         d, sem = cargar_web("sharp_personal_ataque", season)
         d = d.rename(columns={"exito_pct": "exito"})

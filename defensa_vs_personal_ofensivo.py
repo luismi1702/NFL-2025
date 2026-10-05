@@ -61,6 +61,8 @@ def desde_participacion(season):
 
 
 def desde_web(season):
+    from copiar_personal_web import refrescar
+    refrescar(season)       # siempre lo último: estos scripts se lanzan a demanda
     d, sem = cargar_web("sumersports_personal_defensa", season)
     d = d.rename(columns={"personal": "grupo", "epa_jugada": "epa"})
     return d, season, (sem, "SumerSports (Personnel Tendency, EPA propio)")

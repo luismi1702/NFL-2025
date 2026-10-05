@@ -1,6 +1,7 @@
 """
 copiar_personal_web.py — copia a datos_web/ las tablas de personal ofensivo de
-dos webs gratuitas (05-oct-2026). Se lanza una vez por semana.
+dos webs gratuitas (05-oct-2026). A demanda, no va en el batch: los scripts
+de personal lo llaman solos (refrescar) antes de leer datos_web/.
 
   SumerSports  /teams/offensive/personnel-tendency   ataque: uso y EPA de cada
                /teams/defensive/personnel-tendency   personal; defensa: el EPA
@@ -146,9 +147,18 @@ def sharp(season):
     print(f"Sharp: {len(g)} filas, semanas {semanas}, generado {d['generated_utc']} -> {ruta}")
 
 
+def refrescar(season):
+    """Copia lo último antes de usarlo. Sin red (o si una web cambia), avisa y
+    se sigue con la última copia que haya en datos_web/."""
+    os.makedirs(DIR, exist_ok=True)
+    for nombre, f in (("SumerSports", sumersports), ("Sharp", sharp)):
+        try:
+            f(season)
+        except Exception as e:      # noqa: BLE001 — la copia vieja sirve igual
+            print(f"  Aviso: no se pudo refrescar {nombre} ({type(e).__name__}: {e}); "
+                  "se usa la última copia de datos_web/")
+
+
 if __name__ == "__main__":
     from pbp_loader import temporada_actual
-    season = temporada_actual()
-    os.makedirs(DIR, exist_ok=True)
-    sumersports(season)
-    sharp(season)
+    refrescar(temporada_actual())
