@@ -167,11 +167,12 @@ CALENDARIO = [
     "HILO de la jornada: una previa por partido, abre el gordo. PNG en previas/; "
     "el texto va en textos/borradores_domingo.md.",
     "Un post por partido jugado, sin el MNF (batch lunes 10:00).",
-    "Dato de la semana + Monday Night, dos posts, uno por equipo (batch martes 8:00).",
+    "Monday Night, dos posts, uno por equipo (batch martes 8:00). El dato de la semana "
+    "sale el día que FTN complete la jornada (tarea NFL2025 dato semana).",
     "Power Rankings + hilo de MVPs de la jornada (batch martes).",
 ]
 PNG_DEL_DIA = [r"^(01_preview_|manning_picks_)", r"^01_(ficha|resumen)_", r"^duelo_", None, None,
-               r"^dato_semana", r"^power_rankings"]
+               None, r"^power_rankings"]
 
 
 def dia_de(sec):
@@ -507,14 +508,17 @@ def main():
     # ultima jugada. Ese JUEVES se publica en la semana N: aqui se trae el de
     # la carpeta anterior y se quita el de esta, que es el de la siguiente.
     # Lo que se escriba a mano en borradores_jueves.md se queda donde esta.
+    # El dato de la semana (06-oct-2026) se escribe ya en la carpeta del dia
+    # en que se publica, aunque sea jueves: se queda donde esta
+    QUIETOS = ("borradores_jueves.md", "borradores_dato.md")
     trozos = [solo_jueves(io.open(o, encoding="utf-8").read(), False)
-              if os.path.basename(o) != "borradores_jueves.md"
+              if os.path.basename(o) not in QUIETOS
               else io.open(o, encoding="utf-8").read() for o in origenes]
     anterior = os.path.join(carpeta(int(week) - 1), "textos")
     if os.path.isdir(anterior):
         for f in sorted(os.listdir(anterior)):
             if (f.startswith("borradores_") and f.endswith(".md")
-                    and "_previo" not in f and f != "borradores_jueves.md"):
+                    and "_previo" not in f and f not in QUIETOS):
                 jue = solo_jueves(io.open(os.path.join(anterior, f),
                                           encoding="utf-8").read(), True)
                 if jue.strip():

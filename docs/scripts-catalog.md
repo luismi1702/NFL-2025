@@ -84,7 +84,7 @@
 | Script | Descripción |
 |--------|-------------|
 | destacados.py | Rastrea la jornada y ORDENA lo que merece post, en cuatro familias: extremos (mejor y peor de cada faceta), contradicciones (gano casi todo y perdio, gano jugando mal, coste de las perdidas), cambios de identidad (bajo centro, pase profundo vs su ano anterior) y jugadores desatados (EPA y cuota de objetivos). Solo consola/TXT, sin PNG. Es la fuente del redactor del lunes |
-| DatoSemana.py | Outlier estadístico de la semana (z-score robusto) |
+| DatoSemana.py | Dato de la semana (rehecho 06-oct-2026): lo más raro de la jornada en 21 situaciones (equipo, 3er down, red zone, shotgun/bajo centro, charting de FTN, personal de Sharp, especiales), contra la jornada y contra todos los partidos desde 2016 (FTN 2022, Sharp 2021). TXT con 8 candidatos; `--elegir N`, `--excluir`, `--sin-ftn` |
 | MVPsSemana.py | Candidatos MVP de la semana |
 | MVPsSeason.py | Seguimiento MVP de la temporada |
 | resumen_partido.py | Resumen de partido: 2 PNGs — boxscore + curva Win Probability con Top-3 |WPA|, y "Claves del partido" (top-4 desviaciones de cada equipo vs su norma de temporada, con contexto del rival). Con menos de 3 partidos jugados (semanas 1-3) la norma es la temporada regular anterior, rotulado en el PNG. Acepta siglas alternativas (`LAR` = `LA`). Los PNGs salen como `NN_resumen_VIS_vs_LOC_{año}_wNN.png`, con NN = orden de kickoff de la jornada (01 = partido inaugural), via `orden_partido()` |

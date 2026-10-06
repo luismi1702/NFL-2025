@@ -37,7 +37,10 @@ CONTENDERS_DESDE = 5
 
 def log(msg):
     linea = f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {msg}"
-    print(linea, flush=True)
+    try:
+        print(linea, flush=True)
+    except UnicodeEncodeError:      # consola cp1252: el log en disco va entero
+        print(linea.encode("ascii", "replace").decode(), flush=True)
     os.makedirs(os.path.dirname(LOG), exist_ok=True)
     with io.open(LOG, "a", encoding="utf-8") as f:
         f.write(linea + "\n")
@@ -414,6 +417,85 @@ def batch_pendiente(ahora=None):
 
 
 
+DIAS_ES = ["LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO", "DOMINGO"]
+
+
+def dato(SEASON):
+    """Dato de la semana en cuanto el charting de FTN de la jornada esta
+    completo (06-oct-2026: Luis prefiere esperar a tener las formaciones).
+    Lo lanza la tarea "NFL2025 dato semana" varias veces al dia y la
+    recuperacion al iniciar sesion: si ya esta hecho o FTN no ha acabado, sale
+    sin hacer nada. Busca la jornada completa mas reciente sin dato.
+
+    El borrador va a la carpeta de la cola del dia en que se escribe: martes o
+    miercoles, la de la jornada; de jueves en adelante, la de la siguiente
+    (la semana de la cola va de jueves a miercoles), con una copia del PNG."""
+    import re
+    import shutil
+    from datetime import date
+    from pbp_loader import cargar_pbp, cargar_calendario, ultima_semana
+    W = ultima_semana()
+    if not W:
+        return True
+    pbp, _ = cargar_pbp(SEASON, columns=["week", "game_id"], solo_reg=False, avisar=False)
+    cal, _ = cargar_calendario(SEASON)
+    cal = cal[cal.game_type == "REG"]
+    # SOLO la jornada completa mas reciente (W, o W-1 si W es la del TNF en
+    # curso). Nunca una anterior: el 06-oct-2026, en la prueba, esto regenero
+    # el dato ya publicado de la semana 3 porque su TXT era del formato viejo
+    completas = [w for w in (W, W - 1) if w >= 1
+                 and pbp[pbp.week == w].game_id.nunique() >= (cal.week == w).sum()]
+    for w in completas[:1]:
+        txt = os.path.join(RAIZ, "salidas", str(SEASON), f"w{w:02d}", "textos", "dato_semana.txt")
+        if os.path.exists(txt) and "CANDIDATOS" in io.open(txt, encoding="utf-8", errors="replace").read():
+            log(f"-> dato semana {w}: ya estaba hecho")
+            return True
+        excl = []
+        previo = txt.replace(f"w{w:02d}", f"w{w - 1:02d}")
+        if os.path.exists(previo):
+            hits = re.findall(r"(?:-> |defensa: )([A-Z]{2,3}) en",
+                              io.open(previo, encoding="utf-8", errors="replace").read())
+            if hits:
+                excl = ["--excluir", hits[-1]]
+        r = subprocess.run([sys.executable, "DatoSemana.py", "--season", str(SEASON), "--week", str(w)]
+                           + excl, cwd=RAIZ, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=3600,
+                           env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+        salida_txt = (r.stdout or "") + (r.stderr or "")
+        if "FTN aún no está completo" in salida_txt:
+            linea = [l for l in salida_txt.splitlines() if l.startswith("Charting de FTN")]
+            log(f"-> dato semana {w}: espera a FTN ({linea[0] if linea else '?'})")
+            return True
+        if r.returncode != 0:
+            log(f"-> dato semana {w}: FALLO " + " | ".join((r.stderr or r.stdout).strip().splitlines()[-3:]))
+            return False
+        os.makedirs(os.path.dirname(txt), exist_ok=True)
+        io.open(txt, "w", encoding="utf-8").write(r.stdout)
+        log(f"-> dato semana {w}: OK ({txt})")
+        hoy = date.today().weekday()                    # lunes = 0
+        w_cola = w if hoy in (1, 2) else w + 1
+        dir_txt = os.path.join(RAIZ, "salidas", str(SEASON), f"w{w_cola:02d}", "textos")
+        os.makedirs(dir_txt, exist_ok=True)
+        if w_cola != w:
+            png = re.search(r"Guardado: (.+\.png)", r.stdout)
+            if png:
+                origen = os.path.join(RAIZ, png.group(1).strip())
+                destino = os.path.join(RAIZ, "salidas", str(SEASON), f"w{w_cola:02d}", "liga")
+                os.makedirs(destino, exist_ok=True)
+                shutil.copy2(origen, destino)
+        # El prompt sabe que dia es y de que jornada habla
+        plantilla = io.open(os.path.join(RAIZ, "borradores_prompt_dato.md"), encoding="utf-8").read()
+        io.open(os.path.join(dir_txt, "borradores_prompt_dato.md"), "w", encoding="utf-8").write(
+            plantilla.replace("{DIA}", DIAS_ES[hoy]).replace("{WD2}", f"{w:02d}").replace("{WD}", str(w))
+                     .replace("{AÑO}", str(SEASON))
+                     .replace("{DIR_DATO}", os.path.dirname(txt).replace(os.sep, "/")))
+        borradores(dir_txt, w, os.path.join(dir_txt, "borradores_prompt_dato.md"))
+        paso(f"cola de posts w{w_cola:02d}", ["cola_posts.py", "--season", str(SEASON),
+                                              "--week", str(w_cola)])
+        return True
+    return True
+
+
 def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
     """Los pasos de ese dia, apilando su resultado en `ok` (que es del
     llamante a proposito: si esto revienta a mitad, main sigue sabiendo
@@ -479,22 +561,9 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
         # Semaforo de fuentes primero: si algo esta caido, que quede en el log
         ok.append(paso("estado de datos", ["estado_datos.py"],
                        captura=os.path.join(txt_dir, "estado_datos.txt")))
-        # MARTES: dato de la semana + los resumenes de TODA la jornada
-        # (cual se publica lo eliges tu; generarlos todos no cuesta decision)
-        # El equipo del dato de la semana anterior no puede repetir (29-sep-2026:
-        # salio SF dos semanas seguidas). Se lee del TXT de w{W-1}
-        excl = []
-        previo = os.path.join(RAIZ, "salidas", str(SEASON), f"w{W - 1:02d}",
-                              "textos", "dato_semana.txt")
-        if os.path.exists(previo):
-            import re
-            hits = re.findall(r"(?:-> |defensa: )([A-Z]{2,3}) en",
-                              io.open(previo, encoding="utf-8", errors="replace").read())
-            if hits:
-                excl = ["--excluir", hits[-1]]
-                log(f"   dato: se excluye {hits[-1]} (fue el dato de la semana {W - 1})")
-        ok.append(paso("dato de la semana", ["DatoSemana.py", "--week", str(W)] + excl,
-                       captura=os.path.join(txt_dir, "dato_semana.txt")))
+        # MARTES: los resumenes de TODA la jornada. El dato de la semana ya no
+        # va aqui: sale cuando el charting de FTN de la jornada esta completo
+        # (dato(), tarea "NFL2025 dato semana"; decision de Luis, 06-oct-2026)
         # Se regeneran resumenes Y fichas: el lunes faltaba el Monday Night, que
         # a estas horas ya esta publicado. Los demas partidos salen identicos.
         ok.append(resumenes(SEASON, W))
@@ -575,18 +644,22 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
 
 def main():
     ap = argparse.ArgumentParser(description="Batch semanal de generacion de PNGs")
-    ap.add_argument("--dia", choices=["lunes", "martes", "viernes", "domingo", "boletin"])
+    ap.add_argument("--dia", choices=["lunes", "martes", "viernes", "domingo", "boletin", "dato"])
     ap.add_argument("--recuperar", action="store_true",
                     help="al iniciar sesion: lanza el ultimo batch si se salto")
     args = ap.parse_args()
     if args.dia == "boletin":
         from pbp_loader import temporada_actual
         sys.exit(0 if boletin(temporada_actual()) else 1)
+    if args.dia == "dato":
+        from pbp_loader import temporada_actual
+        sys.exit(0 if dato(temporada_actual()) else 1)
     if args.recuperar:
         # El boletin va aparte del batch: no cuenta para batch_pendiente y se
         # salta solo si su fichero ya existe
         from pbp_loader import temporada_actual
         boletin(temporada_actual())
+        dato(temporada_actual())
         args.dia = batch_pendiente()
         if not args.dia:
             return

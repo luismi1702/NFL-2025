@@ -12,7 +12,6 @@ lado, en `../liga/` (dato de la semana, power rankings, bajo centro) y
 del fichero, sin carpeta: `cola_posts.py` lo busca en todos los cajones.
 
 En `{DIR}/`:
-- `dato_semana.txt` y el PNG `dato_semana_outlier_*.png` — el outlier de la jornada
 - `power_rankings.txt` y su PNG — los 32 ordenados
 - `mvps_semana.txt` — líderes EPA de la jornada: ataque, defensa, especiales
   y rookie, con su top-3
@@ -115,13 +114,11 @@ Reglas del formato:
 ````
 # Borradores semana {W} — generado {FECHA} (REVISAR ANTES DE PUBLICAR)
 
-## MARTES — Dato de la semana
-IMAGEN: dato_semana_outlier_2026_w03.png
+## MARTES — Monday Night (local)
+IMAGEN: 16_ficha_ATL_vs_NO_2026_w04.png, 16_resumen_ATL_vs_NO_2026_w04.png
 
 **[A]** (224 chars)
 ```post
-Dato de la semana📕
-
 Primer parrafo: la historia y el dato.
 
 Segundo parrafo: el contexto.
@@ -133,21 +130,18 @@ Cierre corto con opinion.
 
 **[B]** (238 chars)
 ```post
-Dato de la semana📕
-
 La otra alternativa, con un angulo distinto.
 
 #NFL | #Bucs | @Bucs_es
 ```
 
 Verificación:
-- numero X sale de `dato_semana.txt`
+- numero X sale de la ficha o del resumen
 - resultado TB 16-14 CAR verificado en web (ESPN, enlace)
 ````
 
 Las secciones, con estos titulos exactos:
 
-- `## MARTES — Dato de la semana`
 - `## MARTES — Monday Night (local)`
 - `## MARTES — Monday Night (visitante)`
 - `## MIÉRCOLES — Power Rankings`
@@ -163,12 +157,8 @@ Las secciones, con estos titulos exactos:
   verdad" en `docs/post-ejemplos.md`): parrafos cortos separados por una
   linea en blanco, el cierre de opinion en su propia linea y una linea en
   blanco antes de los hashtags. Nunca un bloque unico.
-- El dato de la semana empieza SIEMPRE con la linea `Dato de la semana📕`,
-  una linea en blanco y la historia. Publicado el 22-sep-2026:
-  `Dato de la semana📕` / (blanco) / `Con la mitad de los WR en la enfermería
-  San Francisco pasó por encima de Miami: +1.06 EPA por jugada de pase.` /
-  (blanco) / `Seattle y los Rams, segundos, con +0.60.` / (blanco) / `Con
-  Shanahan a los mandos da igual quien juegue.` / (blanco) / hashtags.
+- El dato de la semana ya NO va en este fichero: lo escribe `borradores_prompt_dato.md`
+  cuando el charting de FTN de la jornada está completo (06-oct-2026).
 - El post del jueves abre con el balance de la jornada anterior ("el bot fue
   X-Y") y remata con los picks destacados; si el TNF de esta semana está en
   los picks, úsalo de gancho.

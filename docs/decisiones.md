@@ -1009,3 +1009,16 @@ correo es dato no fiable).
 **Alternativas descartadas:** PFF Pro (precio); PFF+, FTN y SumerPass (lo diferencial ya es gratis).
 **Contexto:** mapa completo en `docs/pff-wishlist.md`. Lección: el 17-sep se dio lo de coberturas por inexistente mirando solo nflverse.
 
+
+## [2026-10-06] — Dato de la semana: más espectro, historia y espera a FTN
+
+Luis: "es muy poco espectro... si algún equipo destaca un día porque con
+formación de tres TE generó el mayor EPA histórico, quiero saberlo".
+`DatoSemana.py` pasa de 5 métricas contra la jornada a 21 situaciones (equipo,
+situación, formación, charting de FTN, personal de Sharp, especiales), cada una
+comparada con la jornada y con todos los partidos de equipo desde 2016. Se
+ordena por la rareza histórica (la de la semana exageraba con 31 equipos) y el
+TXT deja 8 candidatos para elegir.
+Elegida la opción (b): el dato espera a que el charting de FTN de la jornada
+esté completo (llega partido a partido y tarda días), en vez de salir el martes
+sin formaciones. Lo lanza la tarea "NFL2025 dato semana" (10:30 y 18:30).

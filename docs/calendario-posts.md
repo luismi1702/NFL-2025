@@ -10,7 +10,8 @@ automatiza.
 | Dia | Post | Fuente | Generacion |
 |---|---|---|---|
 | Lunes | Un post por partido jugado (sin el MNF) + la PREVIA del Monday Night (fuera del hilo del domingo) | destacados + fichas + Review de SumerSports; la previa sale del batch del sabado | visuales: batch lunes 10:00; textos: tras leer la Review (14:15) |
-| Martes | Dato de la semana (outlier) | DatoSemana | batch martes 8:00 |
+| Martes | Monday Night (dos posts, uno por equipo) | resumen + ficha del MNF | batch martes 8:00 |
+| Cuando FTN complete la jornada (mié-vie) | Dato de la semana | DatoSemana (21 situaciones, contra la jornada y la historia) | tarea "NFL2025 dato semana", 10:30 y 18:30 |
 | Martes | Resumen del Monday Night (2 PNGs + ficha) | resumen_partido | batch martes: regenera TODA la jornada, que es cuando entra el MNF que el lunes faltaba |
 | Miercoles | Power Rankings | power_rankings | batch martes |
 | Miercoles | MVPs de la jornada: HILO de 5 (apertura + ataque, defensa, especiales, rookie) | MVPsSemana (TXT, sin PNG) | batch martes |
@@ -89,7 +90,7 @@ automatiza.
   A las 10:00 y no a las 8:00 porque el Sunday Night acaba sobre las 5:30 hora
   espanola y nflverse puede tardar en publicarlo.
 - **"NFL2025 batch martes"** — martes 8:00: `python semana_auto.py --dia martes`
-  → estado_datos.txt, dato PNG, power rankings PNG, mvps_semana.txt,
+  → estado_datos.txt, power rankings PNG, mvps_semana.txt,
   bot_balance.txt, bot_picks.txt en `salidas/{año}/w{NN}/`, y desde la
   semana 5 el contenders tracker (PNG + contenders.txt)
 - **"NFL2025 batch viernes"** — viernes **9:00** (creada el 27-sep-2026):
@@ -197,7 +198,10 @@ viejo (`#NFL #Bucs`, sin menciones): no sirven de muestra del formato actual.
 ## Borradores del lunes y del martes: ficheros separados (15-sep-2026)
 
 - El lunes escribe `borradores_lunes.md` (un post por partido) y el martes
-  `borradores_posts.md` (dato, MNF, power rankings, hilo de MVPs, bot).
+  `borradores_posts.md` (MNF, power rankings, hilo de MVPs, bot). El dato va aparte:
+  `semana_auto.py --dia dato` (tarea "NFL2025 dato semana", 10:30 y 18:30 cada dia) lo
+  saca en cuanto el charting de FTN de la jornada esta completo, con
+  `borradores_prompt_dato.md`, en la carpeta de la cola del dia en que sale.
   Compartian fichero y el batch del martes borraba los del lunes.
 - `cola_posts.py` junta los dos en una sola pagina AGRUPADA POR DIA de
   publicacion, con un rotulo por dia; dentro de cada dia, en el orden de la
