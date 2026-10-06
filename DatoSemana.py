@@ -23,8 +23,9 @@
 # PNG sale del 1º (o del que se pida con --elegir N).
 #
 # El charting de FTN llega partido a partido y tarda días: el dato espera a que
-# esté completo (decisión de Luis, 06-oct-2026). Sin él, el script se para;
-# con --sin-ftn sale igual sin esas situaciones.
+# estén todos los partidos MENOS el Monday Night, que FTN carga el miércoles
+# (decisión de Luis, 06-oct-2026: sale el martes; el jueves no cabe). Sin eso
+# el script se para; con --sin-ftn sale igual sin las situaciones de charting.
 #
 #   python DatoSemana.py --week 4
 #   python DatoSemana.py --week 4 --elegir 3      # el 3º candidato del TXT
@@ -171,14 +172,23 @@ def celdas_sharp(season):
 
 
 def ftn_completo(season, week, pbp_w):
-    """(¿completo?, partidos con charting, partidos jugados)."""
+    """(¿listo?, partidos con charting, partidos jugados, texto). Listo = todos
+    menos, como mucho, el Monday Night: FTN carga los del domingo el martes
+    hacia las 13:00 y el MNF el miércoles por la noche, y el dato sale el
+    martes (Luis, 06-oct-2026: el jueves no cabe)."""
+    jugados = set(pbp_w.game_id.unique())
     try:
         f, _ = cargar_ftn(season)
     except DatosNoDisponibles:
-        return False, 0, pbp_w.game_id.nunique()
-    hechos = f[f.week == week].nflverse_game_id.nunique()
-    jugados = pbp_w.game_id.nunique()
-    return hechos >= jugados, hechos, jugados
+        return False, 0, len(jugados), "sin FTN"
+    hechos = set(f[f.week == week].nflverse_game_id.unique()) & jugados
+    faltan = jugados - hechos
+    cal, _ = cargar_calendario(season)
+    mnf = set(cal[(cal.week == week) & (cal.weekday == "Monday")].game_id)
+    listo = faltan <= mnf
+    nota_ = "completo" if not faltan else (
+        f"sin el Monday Night ({', '.join(sorted(faltan))})" if listo else f"faltan {len(faltan)}")
+    return listo, len(hechos), len(jugados), nota_
 
 
 # ── Rareza ────────────────────────────────────────────────────────────────────
@@ -373,8 +383,8 @@ def main():
     dfw = actual[actual.week == week]
     if dfw.empty:
         raise SystemExit(f"No hay jugadas para la semana {week}.")
-    completo, hechos, jugados = ftn_completo(season, week, dfw)
-    print(f"Charting de FTN: {hechos} de {jugados} partidos de la semana {week}")
+    completo, hechos, jugados, nota_ftn = ftn_completo(season, week, dfw)
+    print(f"Charting de FTN: {hechos} de {jugados} partidos de la semana {week} ({nota_ftn})")
     if not completo and not a.sin_ftn:
         raise SystemExit("  FTN aún no está completo: el dato espera (decisión del 06-oct-2026). "
                          "Para sacarlo igual, --sin-ftn.")
