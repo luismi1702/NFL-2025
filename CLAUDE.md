@@ -50,7 +50,7 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   los CSV de datos_web/ (sumersports_personal_ataque/_defensa, sharp_personal_ataque),
   citando fuente, semana y nº de jugadas. "¿Alguien destrozó a otro con un
   personal esta jornada?" -> `python personal_jornada.py` (Sharp, desde el
-  martes por la tarde; ordena por % de éxito, no por EPA)
+  martes, a hora variable: 29-sep a las 16:32 y 06-oct a las 06:19 de Madrid; ordena por % de éxito, no por EPA)
   REVISADO A FONDO el 05-oct-2026 (lo del 03-oct tenía dos errores):
   · SumerSports SÍ se actualiza (cada noche: el 05-oct ya traía la semana 4,
     cuadra con nuestro PBP). Gratis, ataque Y defensa: personal
@@ -60,7 +60,7 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   · Sharp (/stats-nfl/nfl-offensive-personnel, botón "Efficiency" o ratón
     sobre la celda): EPA, yardas y % de ÉXITO por personal y equipo con su
     puesto, filtrable por down, zona y tipo de jugada (mín. 20 jugadas). Solo
-    ataque. Se publica el martes: el 05-oct llegaba a la semana 3
+    ataque. Se publica el martes, a hora variable (29-sep 16:32, 06-oct 06:19 de Madrid). Trae temporadas desde 2021
   · Las tablas de Sharp (coberturas, tendencias, OL, DL) son de 2026 aunque la
     descripción diga "2025" (cuadran con nuestro FTN de 2026: blitz de MIN
     68% en Sharp, 73% nuestro, 51% en 2025). Actualizadas el 29-sep

@@ -4,7 +4,7 @@ jornada? (05-oct-2026). Herramienta A DEMANDA, solo texto, sin PNG ni batch.
 
 Fuente: el fichero jugada a jugada de Sharp (el de su página de personal
 ofensivo), que trae la semana de cada jugada. SumerSports no sirve: su filtro
-por semana es de pago. Sharp lo publica el martes por la tarde, así que la
+por semana es de pago. Sharp lo publica el martes, a hora variable (29-sep 16:32, 06-oct 06:19), así que la
 jornada que acaba de jugarse no está hasta entonces.
 
 Criterio, como DatoSemana.py: para cada ataque y personal de la jornada
@@ -51,7 +51,7 @@ def main():
     week = args.week or max(semanas)
     if week not in semanas:
         raise SystemExit(f"Sharp aún no tiene la semana {week} (tiene {semanas}, generado "
-                         f"{generado}). La publica el martes por la tarde.")
+                         f"{generado}). La publica el martes (hora variable).")
 
     cal, _ = cargar_calendario(season)
     cal = cal[cal.game_type == "REG"]
