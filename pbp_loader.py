@@ -425,6 +425,11 @@ def _cargar_auxiliar(season, refrescar, nombre_cache, url, etiqueta, es_csv=Fals
             if not necesita and edad > 6 * 3600:
                 try:
                     loc = pd.read_parquet(cache)
+                    # FTN la llama nflverse_game_id: sin esto su cache solo se
+                    # refrescaba a los 3 dias (06-oct-2026: el 05-oct a las
+                    # 10:00 seguia sirviendose con nflverse ya actualizado)
+                    if "game_id" not in loc.columns and "nflverse_game_id" in loc.columns:
+                        loc = loc.rename(columns={"nflverse_game_id": "game_id"})
                     if "game_id" in loc.columns:
                         if "season_type" in loc.columns:
                             es_reg = (loc["season_type"].astype(str)

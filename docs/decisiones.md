@@ -1021,4 +1021,4 @@ ordena por la rareza histórica (la de la semana exageraba con 31 equipos) y el
 TXT deja 8 candidatos para elegir.
 Elegida la opción (b): el dato espera a que el charting de FTN de la jornada
 esté completo (llega partido a partido y tarda días), en vez de salir el martes
-sin formaciones. Lo lanza la tarea "NFL2025 dato semana" (10:30 y 18:30).
+sin formaciones. Lo lanza la tarea "NFL2025 dato semana" (10:30, 20:00 y 22:30). FTN completó la semana 3 el miércoles hacia las 19:00; la 4 tenía el martes 15 de 16 (falta el MNF).
