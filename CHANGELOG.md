@@ -2,6 +2,25 @@
 
 ---
 
+## [2026-10-05/07] — Personal gratis, dato de la semana nuevo y podcasts con respuesta [A]/[B]
+
+**Que se hizo:**
+- **Personal y éxito, gratis**: `copiar_personal_web.py` (SumerSports ataque y defensa; Sharp jugada a jugada con % de éxito, desde 2021). Scripts de personal rehechos con el estilo nuevo y `personal_jornada.py`, todo A DEMANDA, sin batch
+- **Dato de la semana**: `DatoSemana.py` rehecho con 21 situaciones (formación, charting, personal, especiales) contra la jornada y la historia desde 2016. Sale el MARTES en cuanto FTN tiene todo salvo el MNF (tarea "NFL2025 dato semana"); prompt propio `borradores_prompt_dato.md`. Semana 4: Carolina con 11 personal
+- **Lunes**: los posts se escriben con la Review de SumerSports ya leída (reintentos de la tarea del boletín hasta las 19:00)
+- **Previas**: añadida la conversión en 3er down
+- **Cola** organizada por día (barra con pestañas, abre en el día de hoy)
+- **Arreglos**: caché de FTN que no se refrescaba (`pbp_loader`), titular "paliza" que solo repetía el marcador y titular de personal que contradecía al PNG
+- **Podcasts**: 100 Yardas, Álvaro Fraile, El Nickel y Ecos 2X21 revisados; las respuestas van al tuit del episodio, sin nombrar al programa y siempre con [A]/[B]. En Ecos 2X21, Whisper se cortó por falta de memoria del sistema y se relanzó por trozos
+
+**Archivos modificados:** `DatoSemana.py`, `semana_auto.py`, `cola_posts.py`, `Previas.py`, `resumen_partido.py`, `pbp_loader.py`, `copiar_personal_web.py` (nuevo), `personal_jornada.py` (nuevo), `ataque_por_personal_ofensivo.py`, `defensa_vs_personal_ofensivo.py`, `borradores_prompt*.md`, `borradores_prompt_dato.md` (nuevo), `CLAUDE.md`, `docs/` (calendario-posts, decisiones, podcasts_revisados, pff-wishlist, scripts-catalog, estilo-visual)
+
+**Pendiente:**
+- Elegir y publicar la respuesta a Ecos 2X21 ([A] blitz de MIN / [B] explosivas de DET)
+- Hilo de los Jaguars antes de Londres (domingo 11-oct): confirmar estructura, 8 tuits y ficha PNG
+- Hoy miércoles: power ranking e hilo de MVPs (en `w04/textos/borradores_posts.md`)
+- Cada semana: win rates de ESPN, migrar scripts al estilo nuevo, podcasts contra el registro; Atlanta sigue sin cuenta de afición
+
 ## [2026-10-01] — Semana de jueves a miércoles, previa del TNF y estreno de Manning Bot
 
 **Que se hizo:**

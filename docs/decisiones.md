@@ -1022,3 +1022,11 @@ TXT deja 8 candidatos para elegir.
 Elegida la opción (b): el dato espera a que el charting de FTN de la jornada
 esté completo (llega partido a partido y tarda días), en vez de salir el martes
 sin formaciones. Lo lanza la tarea "NFL2025 dato semana" (10:30, 20:00 y 22:30). FTN completó la semana 3 el miércoles hacia las 19:00; la 4 tenía el martes 15 de 16 (falta el MNF).
+
+
+## [2026-10-07] — Dato de la semana: martes, sin esperar al Monday Night
+
+**Decisión:** el dato sale el martes en cuanto el charting de FTN tiene todos los partidos de la jornada menos el MNF (`ftn_completo` da por lista la jornada si solo falta el del lunes). La tarea "NFL2025 dato semana" mira a las 10:30, 20:00 y 22:30 y solo genera la jornada completa más reciente, una vez.
+**Motivo:** esperar a la jornada entera lo llevaba al jueves, que ya va cargado (Luis: "publicarlo el jueves es poco viable"). FTN tenía 15 de 16 el martes a las 13:02.
+**Alternativas descartadas:** sacarlo el martes sin charting (pierde formaciones y personal); esperar al jueves con la jornada completa.
+
