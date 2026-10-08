@@ -54,8 +54,12 @@ automatiza.
   crea ya la carpeta y la cola de `w{N}` para que el jueves exista. La previa
   del TNF se escribe a mano en `w{N}/textos/borradores_jueves.md` con la
   imagen de siempre: `01_preview_*` de `Previas.py --week N` (el jueves hay
-  que lanzarlo a mano; el batch del sabado la rehace con el resto). El jueves lo desbloquea la Review de
-  `w{N-1}`; la Review del lunes rehace las dos colas. CADA `w{N}` tiene su propia `cola_posts.html` con
+  que lanzarlo a mano; el batch del sabado la rehace con el resto). El post del bot del jueves lo desbloquea la Review de
+  `w{N-1}`; la Review del lunes rehace las dos colas. La PREVIA DEL TNF, en
+  cambio, espera al correo de la Preview de ese mismo jueves (14:00-15:00,
+  disparadores a las 15:00 y 17:00): no se lanza `Previas.py` ni se escribe
+  `borradores_jueves.md` hasta que existe `w{N}/textos/ideas_boletin_preview.md`
+  (Luis, 08-oct-2026). CADA `w{N}` tiene su propia `cola_posts.html` con
   SOLO lo de su carpeta (27-sep-2026, Luis): nace el sabado con las previas y
   la rehacen todos los batch, haya borradores o no. Entra cualquier
   `textos/borradores_*.md` (lunes, posts, domingo...).
