@@ -1030,3 +1030,11 @@ sin formaciones. Lo lanza la tarea "NFL2025 dato semana" (10:30, 20:00 y 22:30).
 **Motivo:** esperar a la jornada entera lo llevaba al jueves, que ya va cargado (Luis: "publicarlo el jueves es poco viable"). FTN tenía 15 de 16 el martes a las 13:02.
 **Alternativas descartadas:** sacarlo el martes sin charting (pierde formaciones y personal); esperar al jueves con la jornada completa.
 
+
+
+## [2026-10-08] — La previa del TNF espera a la Preview del jueves
+
+**Decisión:** el jueves no se prepara ni se ofrece la previa del TNF (ni `Previas.py`, ni `borradores_jueves.md`) hasta que existe `w{N}/textos/ideas_boletin_preview.md`. La Review de `w{N-1}` solo desbloquea el post del bot.
+**Motivo:** la Preview es el boletín que habla de la jornada que se juega; la Review mira hacia atrás (Luis: "esperamos al correo que es lo que hemos dicho").
+**Alternativas descartadas:** sacar la previa por la mañana con la Review, como decía `docs/calendario-posts.md` desde el 01-oct.
+**Pendiente de código:** `cola_posts.py` sigue desbloqueando el jueves con la Review y el disparador del boletín está a las 15:00 (el correo llegó a las 13:02).

@@ -2,6 +2,23 @@
 
 ---
 
+## [2026-10-08] — Jornada 5: la previa del TNF espera a la Preview, duelo SF @ SEA y podcasts
+
+**Que se hizo:**
+- **Regla nueva**: la previa del TNF no se prepara hasta que llega la Preview de SumerSports del jueves (llegó a las 13:02; el disparador de `semana_auto.py` es a las 15:00 y hubo que forzarlo a mano)
+- **Previa del TNF TB @ DAL** con [A]/[B] (la Preview no traía nada del partido) y las 15 previas de la semana 5
+- **Duelo del sábado SF @ SEA**: hilo de 3 tuits y dos PNG (`lab/sf_sea_png.py`), pase corto de San Francisco contra la defensa de Seattle. El 28º de Seattle en pase corto (SumerSports) es en EPA; en yardas es 7ª, y el texto lo matiza
+- **Podcasts**: 100 Yardas y El Nickel (Preview Week 5) transcritos; respuestas [A]/[B] en `w05/textos/borradores_jueves.md` (Hurts bajo centro, Falcons con Penix, Seattle en 3er down corto, Smith-Njigba, Seattle llega con cuatro)
+- **StatMuse MCP** revisado (20 $/mes, sin EPA ni charting documentados): no se contrata por ahora
+
+**Archivos modificados:** `docs/calendario-posts.md`, `docs/podcasts_revisados.md`, `docs/decisiones.md`, `CLAUDE.md`, `marca/cabecera_x.py` y sus dos PNG (nuevos), `lab/sf_sea_png.py` (nuevo, sin seguimiento en git)
+
+**Pendiente:**
+- Elegir y publicar hoy: previa del TNF (A/B), post del bot (10-6 de los picks publicados o 9-7) y una respuesta por podcast
+- Sábado: antes de publicar el duelo, mirar el parte del viernes (Mike Evans, Juszczyk, Trent Williams); si cae Williams, revisar el "0 sacks"
+- `cola_posts.py` aún desbloquea la previa del TNF con la Review, y el disparador del boletín sigue a las 15:00: adaptar los dos a la regla nueva
+- Sigue de la semana pasada: hilo de los Jaguars antes de Londres (domingo 11-oct)
+
 ## [2026-10-05/07] — Personal gratis, dato de la semana nuevo y podcasts con respuesta [A]/[B]
 
 **Que se hizo:**
