@@ -69,6 +69,7 @@
 | defensa_vs_personal_ofensivo.py | Las 32 defensas contra cada personal ofensivo del rival: EPA concedido y % de jugadas. En temporada, SumerSports desde datos_web/. Estilo nuevo (05-oct-2026) |
 | personal_jornada.py | A demanda, solo texto: ataques que destrozaron (o se hundieron) con un personal en la jornada, por % de éxito frente a lo normal, y lo que concede ese rival el resto de la temporada. Fichero jugada a jugada de Sharp, disponible el martes (hora variable) |
 | copiar_personal_web.py | Copia a datos_web/ las tablas de personal de SumerSports (ataque y defensa, EPA, cada noche) y Sharp (ataque, % de éxito, los martes). Avisa de hasta qué semana llegan |
+| copiar_sharp_defensa.py | Copia a datos_web/ las tablas de Sharp sobre CÓMO defiende cada equipo: % zona/hombre y medio abierto/cerrado, sub package (5+ DB), caja ligera/pesada, blitz, presión (y sin blitz), yardas por target según la posición del receptor; más línea ofensiva y tendencias de ataque. `python copiar_sharp_defensa.py N` (N = semana hasta la que llegan). Para el duelo del sábado (10-oct-2026) |
 | red_zone_personal.py | EPA en red zone según personal ofensivo. Un equipo o heatmap 32 |
 
 ## Análisis de equipo / matchup

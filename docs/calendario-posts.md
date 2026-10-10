@@ -17,7 +17,7 @@ automatiza.
 | Miercoles | MVPs de la jornada: HILO de 5 (apertura + ataque, defensa, especiales, rookie) | MVPsSemana (TXT, sin PNG) | batch martes |
 | Jueves | Bot: balance jornada anterior + picks (gancho: previa TNF) | Manning_bot --no-retrain | batch martes (2 TXT) |
 | Viernes | Analisis del TNF jugado la noche anterior (resumen + ficha) | resumen_partido + ficha_tactica + destacados | batch viernes 9:00 → `borradores_viernes.md` |
-| Sabado | Pieza de DUELO: un partido del domingo a fondo (p.ej. Johnson vs Flores, hilo) | `textos/cruces_semana_*.txt` (batch del viernes) para elegirlo; PNG con `cruces.py --partido VIS LOC [--faceta X --ataca EQ]` | manual (el TXT sale solo) |
+| Sabado | Pieza de DUELO: un partido del domingo a fondo, hilo de UN ataque contra UNA defensa (formato del 10-oct-2026, SF @ SEA: ver `docs/decisiones.md`) | `textos/cruces_semana_*.txt` (batch del viernes) para elegirlo; `copiar_sharp_defensa.py` + `copiar_personal_web.py` para como defiende y el personal; PNG a mano en `lab/` con la plantilla `lab/sf_sea_png*.py` | manual (el TXT sale solo) |
 | Domingo AM | HILO de la jornada: presentacion (con el gancho del partido gordo) + una previa por partido del DOMINGO, EN EL ORDEN DE LOS PNG (el del duelo del sabado tambien; el MNF no, va el lunes) | Previas modo jornada (+ `previas_numeros_*.txt`) | batch sabado 23:00 → PNG y `borradores_domingo.md` |
 | Quincenal | Pieza tematica rotatoria (presion, PROE, rankings posicion...) | grupo B del catalogo | manual |
 

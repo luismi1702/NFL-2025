@@ -1038,3 +1038,25 @@ sin formaciones. Lo lanza la tarea "NFL2025 dato semana" (10:30, 20:00 y 22:30).
 **Motivo:** la Preview es el boletín que habla de la jornada que se juega; la Review mira hacia atrás (Luis: "esperamos al correo que es lo que hemos dicho").
 **Alternativas descartadas:** sacar la previa por la mañana con la Review, como decía `docs/calendario-posts.md` desde el 01-oct.
 **Pendiente de código:** `cola_posts.py` sigue desbloqueando el jueves con la Review y el disparador del boletín está a las 15:00 (el correo llegó a las 13:02).
+
+
+## [2026-10-10] — El duelo del sábado: un ataque contra una defensa, a fondo
+
+**Decisión:** el hilo del sábado se hace siempre como el de SF @ SEA de la jornada 5 (Luis: "podemos hacer así todos los sábados"). Un solo sentido, el ataque de un equipo contra la defensa del otro; el sentido contrario no entra en el hilo. Orden:
+1. Presentación [A]/[B], sin imagen, con los dos entrenadores si hay historia entre ellos.
+2. El antecedente: sus cruces anteriores partido a partido (PBP con `solo_reg=False`; quién jugó de QB, por `passer_player_name`).
+3. Cómo defiende esa defensa: zona/hombre, dos safeties profundos, 5+ DB, caja, blitz y presión sin blitz (`copiar_sharp_defensa.py`, Sharp).
+4. Qué consigue con eso y qué deja (pase por profundidad y zona, PBP).
+5. Lo que el ataque hace mejor justo ahí.
+6. A quién va el pase (posición del receptor) frente a lo que la defensa concede a cada posición.
+7. La carrera, partida por la caja (FTN `n_defense_box`).
+8. El personal ofensivo y lo que la defensa hace contra él (`copiar_personal_web.py`), con las bajas del parte del viernes.
+9. Cierre con opinión, sin imagen.
+Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, solo texto) y `lab/sf_sea_png.py`, `_png2.py`, `_png3.py` (los cinco PNG).
+**Motivo:** la primera versión (3 tuits, solo el pase corto) se quedaba corta; Luis pidió la carrera, el personal, cómo defiende el rival y el duelo de entrenadores, siempre "centrado en ataque SF vs defensa de Seattle".
+**Lecciones del primero:**
+- Antes de escribir, mirar si el dato de una defensa sale de un solo partido. "A Seattle se le corre con seis en la caja" (4,4 yardas, 14ª) eran 10 carreras de los Chargers; sin ellas, 3,3. Se descartó el titular y el PNG se apoyó en el dato del ataque, que sí era estable en los cuatro partidos.
+- El personal defensivo (sub package) y las coberturas SÍ están gratis en Sharp ("Defensive Tendencies" y "Coverage Schemes"). Sharp no separa cover 2 de cover 4: se dice "dos safeties profundos".
+- El parte del viernes puede cambiar el hilo entero (Juszczyk, baja, con SF jugando el 42% en 21 personnel).
+- "Running backs" o "RB", nunca "corredores".
+**Alternativas descartadas:** meter también el ataque del rival contra la otra defensa ("viceversa"): se calculó y se dejó fuera para no partir el hilo en dos.
