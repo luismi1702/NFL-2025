@@ -1040,9 +1040,9 @@ sin formaciones. Lo lanza la tarea "NFL2025 dato semana" (10:30, 20:00 y 22:30).
 **Pendiente de código:** `cola_posts.py` sigue desbloqueando el jueves con la Review y el disparador del boletín está a las 15:00 (el correo llegó a las 13:02).
 
 
-## [2026-10-10] — El duelo del sábado: un ataque contra una defensa, a fondo
+## [2026-10-10] — El duelo del sábado: el cruce que decide el partido, a fondo
 
-**Decisión:** el hilo del sábado se hace siempre como el de SF @ SEA de la jornada 5 (Luis: "podemos hacer así todos los sábados"). Un solo sentido, el ataque de un equipo contra la defensa del otro; el sentido contrario no entra en el hilo. Orden:
+**Decisión:** el hilo del sábado se hace siempre como el de SF @ SEA de la jornada 5 (Luis: "podemos hacer así todos los sábados"). El ángulo lo marca el partido: en SF @ SEA fue un solo sentido (ataque de SF contra defensa de Seattle) porque se cruzaban dos unidades de élite, el 1er ataque y la 2ª defensa. NO es regla que sea siempre un ataque contra una defensa (Luis, 10-oct): otro sábado puede pedir los dos sentidos u otro cruce. Lo que se mantiene es la profundidad. Orden que se siguió, para un ataque contra una defensa:
 1. Presentación [A]/[B], sin imagen, con los dos entrenadores si hay historia entre ellos.
 2. El antecedente: sus cruces anteriores partido a partido (PBP con `solo_reg=False`; quién jugó de QB, por `passer_player_name`).
 3. Cómo defiende esa defensa: zona/hombre, dos safeties profundos, 5+ DB, caja, blitz y presión sin blitz (`copiar_sharp_defensa.py`, Sharp).
@@ -1059,4 +1059,4 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 - El personal defensivo (sub package) y las coberturas SÍ están gratis en Sharp ("Defensive Tendencies" y "Coverage Schemes"). Sharp no separa cover 2 de cover 4: se dice "dos safeties profundos".
 - El parte del viernes puede cambiar el hilo entero (Juszczyk, baja, con SF jugando el 42% en 21 personnel).
 - "Running backs" o "RB", nunca "corredores".
-**Alternativas descartadas:** meter también el ataque del rival contra la otra defensa ("viceversa"): se calculó y se dejó fuera para no partir el hilo en dos.
+**Alternativas descartadas (solo en este partido):** meter también el ataque de Seattle contra la defensa de SF: se calculó y se dejó fuera porque el partido estaba en el otro cruce.
