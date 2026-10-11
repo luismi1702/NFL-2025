@@ -26,14 +26,14 @@ FIGSIZE      = (8.7, 13.5)
 DPI          = 170
 
 # ---------------- Nombre del PNG ----------------
-def nombre_preview(away, home, season, week):
+def nombre_preview(away, home, season, week, sufijo=""):
     """preview_... con el indice de kickoff delante (01 = TNF), como las fichas
     y los resumenes, para que la carpeta de la semana se lea en orden de partido."""
     orden = orden_partido(season, week, away, home) if week else None
     if orden:
         idx, vis, loc = orden
-        return f"{idx:02d}_preview_{vis}_vs_{loc}_{season}.png"
-    return f"preview_{away}_vs_{home}_{season}.png"
+        return f"{idx:02d}_preview_{vis}_vs_{loc}{sufijo}_{season}.png"
+    return f"preview_{away}_vs_{home}{sufijo}_{season}.png"
 
 # ---------------- Helpers base ----------------
 def success_rate(s: pd.Series) -> float:
@@ -390,6 +390,381 @@ def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path, pie="
 
 
 # ---------------- Main ----------------
+# ---------------- Radar: las claves del partido (2º PNG, 11-oct-2026) ----------------
+# Nace de un tuit con los screens de San Francisco contra Seattle que se nos escapo
+# en un duelo del sabado: el dato estaba en FTN y nadie pregunto por el. El radar
+# repasa ~45 situaciones por partido y se queda con los cruces mas desiguales.
+RADAR_MIN_N = 10    # jugadas minimas de cada lado para que el cruce cuente
+N_CLAVES    = 5     # las que caben en el PNG
+BASE_OF  = {"db": "sus pases", "run": "sus carreras", "all": "sus jugadas"}
+BASE_DEF = {"db": "los pases que defiende", "run": "las carreras que defiende",
+            "all": "las jugadas que defiende"}
+POS_TXT  = {"WR": "wide receivers", "TE": "tight ends", "RB": "running backs"}
+PERSONAL = {"10": "1 RB, 0 TE", "11": "1 RB, 1 TE", "12": "1 RB, 2 TE", "13": "1 RB, 3 TE",
+            "20": "2 RB, 0 TE", "21": "2 RB, 1 TE", "22": "2 RB, 2 TE"}
+
+
+def _com(x, dec=1):
+    return f"{x:.{dec}f}".replace(".", ",")
+
+
+def _epa(x):
+    return f"{x:+.2f}".replace(".", ",")
+
+
+def construir_radar(d, season, semana):
+    """Todas las tablas de cruce (ataque y defensa, con su rango) a partir de las
+    jugadas `d`, que ya vienen cortadas en la semana anterior. Cada fuente
+    auxiliar que falte (FTN, roster, PFR, datos_web) se avisa y se salta."""
+    from pbp_loader import (cargar_ftn, cargar_rosters, cargar_pfr, cargar_web,
+                            DatosNoDisponibles)
+    fuentes = set()
+    p = d[d.play_type.isin(["pass", "run"]) & d.epa.notna() & d.posteam.notna()
+          & (d.qb_kneel != 1) & (d.qb_spike != 1)].copy()
+    p["db"] = p.qb_dropback == 1
+    p["run"] = (p.play_type == "run") & (p.qb_scramble != 1)
+    p["all"] = True
+    db, run, pase = p.db, p.run, p.play_type == "pass"
+    air = pd.to_numeric(p.air_yards, errors="coerce")
+
+    # nombre: (mascara, familia, base del % de uso, quien elige la situacion: of / df / None)
+    sit = {
+        "Pase en 1er down": (db & (p.down == 1), "1er down", "all", None),
+        "Carrera en 1er down": (run & (p.down == 1), "1er down", "all", None),
+        "3er down corto (1-3 yardas)": ((p.down == 3) & (p.ydstogo <= 3), "3er down", "all", None),
+        "3er down largo (7+ yardas)": ((p.down == 3) & (p.ydstogo >= 7), "3er down", "all", None),
+        "Zona roja": (p.yardline_100 <= 20, "zona roja", "all", None),
+        "Dentro de la yarda 10": (p.yardline_100 <= 10, "zona roja", "all", None),
+        "Pase desde shotgun": (db & (p.shotgun == 1), "formacion pase", "db", "of"),
+        "Pase desde bajo centro": (db & (p.shotgun == 0), "formacion pase", "db", "of"),
+        "Carrera desde shotgun": (run & (p.shotgun == 1), "formacion carrera", "run", "of"),
+        "Carrera desde bajo centro": (run & (p.shotgun == 0), "formacion carrera", "run", "of"),
+        "Pase profundo (20+ por aire)": (pase & (air >= 20), "profundidad", "db", "of"),
+        "Pase corto (menos de 10 por aire)": (pase & (air < 10), "profundidad", "db", "of"),
+        "Pase al centro del campo": (pase & (p.pass_location == "middle"), "zona pase", "db", "of"),
+        "Pase a los lados": (pase & p.pass_location.isin(["left", "right"]), "zona pase", "db", "of"),
+        "Carrera por dentro": (run & ((p.run_location == "middle") | (p.run_gap == "guard")),
+                               "zona carrera", "run", "of"),
+        "Carrera por fuera": (run & (p.run_gap == "end"), "zona carrera", "run", "of"),
+        "Sin huddle": (p.no_huddle == 1, "ritmo", "all", "of"),
+        "Últimos 2 minutos de cada parte": (p.half_seconds_remaining <= 120, "reloj", "all", None),
+    }
+    try:
+        ftn = cargar_ftn(season)
+        ftn = ftn[0] if isinstance(ftn, tuple) else ftn
+        sems = sorted(d.week.dropna().unique())
+        falta = (d.groupby("week").game_id.nunique()
+                 - ftn.groupby("week").nflverse_game_id.nunique().reindex(sems).fillna(0))
+        if (falta > 0).any():
+            print("  AVISO radar: FTN incompleto, partidos que faltan por semana:",
+                  falta[falta > 0].to_dict())
+        f = ftn[ftn.qb_location.astype(str) != "0"]
+        idx = p.index
+        p = p.merge(f[["nflverse_game_id", "nflverse_play_id", "is_play_action", "is_motion",
+                       "is_screen_pass", "is_rpo", "is_qb_out_of_pocket", "n_offense_backfield",
+                       "n_blitzers", "n_pass_rushers", "n_defense_box"]],
+                    left_on=["game_id", "play_id"], right_on=["nflverse_game_id", "nflverse_play_id"],
+                    how="left")
+        p.index = idx
+        hay = p.nflverse_play_id.notna()
+        nb = pd.to_numeric(p.n_blitzers, errors="coerce")
+        nr = pd.to_numeric(p.n_pass_rushers, errors="coerce")
+        box = pd.to_numeric(p.n_defense_box, errors="coerce")
+        sit.update({
+            "Screens": (hay & pase & (p.is_screen_pass == True), "screens", "db", "of"),            # noqa: E712
+            "Play action": (hay & db & (p.is_play_action == True), "play action", "db", "of"),      # noqa: E712
+            "Pase sin play action": (hay & db & (p.is_play_action == False), "play action", "db", "of"),  # noqa: E712
+            "Pase con motion": (hay & db & (p.is_motion == True), "motion", "db", "of"),            # noqa: E712
+            "Carrera con motion": (hay & run & (p.is_motion == True), "motion", "run", "of"),       # noqa: E712
+            "RPO": (hay & (p.is_rpo == True), "rpo", "all", "of"),                                  # noqa: E712
+            "QB fuera del pocket": (hay & db & (p.is_qb_out_of_pocket == True), "pocket", "db", None),  # noqa: E712
+            "Backfield vacío": (hay & db & (pd.to_numeric(p.n_offense_backfield, errors="coerce") == 0),
+                                "vacio", "db", "of"),
+            "Pase contra blitz": (hay & db & (nb >= 1), "blitz", "db", "df"),
+            "Pase sin blitz": (hay & db & (nb == 0), "blitz", "db", "df"),
+            "Pase contra 3 rushers": (hay & db & (nr <= 3), "rushers", "db", "df"),
+            "Carrera contra caja de 8+": (hay & run & (box >= 8), "caja", "run", "df"),
+            "Carrera contra caja de 6 o menos": (hay & run & (box <= 6), "caja", "run", "df"),
+        })
+        fuentes.add("FTN")
+    except DatosNoDisponibles as e:
+        print("  Radar sin FTN: sale sin screens, play action, motion ni blitz.", e)
+
+    def tabla_epa(q, col, n_base=None, unidad="jugadas"):
+        t = q.groupby(col).agg(n=("epa", "size"), val=("epa", "mean"), yds=("yards_gained", "mean"))
+        t["rk"] = t.val.rank(ascending=(col == "defteam"), method="min")
+        t["txt"] = [f"{_epa(r.val)} EPA · {_com(r.yds)} yd · {int(r.n)} {unidad}" for r in t.itertuples()]
+        if n_base is not None:
+            t["uso"] = t.n / n_base
+            t["rk_uso"] = t.uso.rank(ascending=False, method="min")
+        return t
+
+    def tabla_k(k, n, mejor_alta, unidad):
+        """Claves que no son EPA: una tasa (hechos entre oportunidades)."""
+        t = pd.DataFrame({"k": k, "n": n}).dropna()
+        t["val"] = t.k / t.n
+        t["yds"] = np.nan
+        t["rk"] = t.val.rank(ascending=not mejor_alta, method="min")
+        t["txt"] = [f"{_com(r.val * 100)}% · {int(r.k)} en {int(r.n)} {unidad}" for r in t.itertuples()]
+        return t
+
+    tab = {}
+    for k, (m, fam, base, elige) in sit.items():
+        q = p[m.fillna(False).astype(bool)]
+        tab[k] = dict(of=tabla_epa(q, "posteam", p[p[base]].groupby("posteam").size() if elige == "of" else None),
+                      df=tabla_epa(q, "defteam", p[p[base]].groupby("defteam").size() if elige == "df" else None),
+                      fam=fam, base=base, elige=elige)
+
+    # Series: three-and-outs, perdidas y series con puntos
+    ser = d[d.posteam.notna() & d.fixed_drive.notna()].groupby(["game_id", "fixed_drive"]).agg(
+        posteam=("posteam", "first"), defteam=("defteam", "first"),
+        res=("fixed_drive_result", "first"), fd=("drive_first_downs", "first")).reset_index()
+    ser["tao"] = (ser.res == "Punt") & (ser.fd == 0)
+    ser["perdida"] = ser.res.isin(["Turnover", "Opp touchdown"])
+    ser["puntos"] = ser.res.isin(["Touchdown", "Field goal"])
+    dbs = p[p.db].assign(sack=lambda x: x.sack == 1)
+    # (nombre, tabla, columna, unidad, familia, ¿en ataque mas es mejor?)
+    for nombre, q, cuenta, unidad, fam, of_alta in (
+            ("Three-and-outs", ser, "tao", "series", "series", False),
+            ("Pérdidas de balón por serie", ser, "perdida", "series", "perdidas", False),
+            ("Sacks por dropback", dbs, "sack", "dropbacks", "sacks", False),
+            ("Series que acaban en puntos", ser, "puntos", "series", "puntos", True)):
+        g_of, g_df = q.groupby("posteam")[cuenta], q.groupby("defteam")[cuenta]
+        tab[nombre] = dict(of=tabla_k(g_of.sum(), g_of.size(), of_alta, unidad),
+                           df=tabla_k(g_df.sum(), g_df.size(), not of_alta, unidad),
+                           fam=fam, base="all", elige=None)
+
+    # Receptores por posicion (PBP + roster) y el receptor mas buscado de cada equipo
+    lider, def_pos = None, {}
+    try:
+        ros = cargar_rosters(season)
+        ros = ros[0] if isinstance(ros, tuple) else ros
+        pos = (ros.dropna(subset=["gsis_id"]).drop_duplicates("gsis_id").set_index("gsis_id").position
+               .replace({"FB": "RB"}))
+        p["pos_rec"] = p.receiver_player_id.map(pos)
+        tg = p[pase & p.receiver_player_id.notna()]
+        n_tg = {"posteam": tg.groupby("posteam").size(), "defteam": tg.groupby("defteam").size()}
+        for ps, nombre in POS_TXT.items():
+            q = tg[tg.pos_rec == ps]
+            t = {col: tabla_epa(q, col, n_tg[col], "targets") for col in ("posteam", "defteam")}
+            tab[f"Pases a los {nombre}"] = dict(of=t["posteam"], df=t["defteam"], fam=f"pos {ps}",
+                                                base="db", elige="of")
+            def_pos[ps] = t["defteam"]
+        j = tg.groupby(["posteam", "receiver_player_id"]).agg(
+            nombre=("receiver_player_name", "first"), pos=("pos_rec", "first"), n=("epa", "size"),
+            val=("epa", "mean"), yds=("yards_gained", "mean")).reset_index()
+        j = j.sort_values("n", ascending=False).drop_duplicates("posteam").set_index("posteam")
+        j["cuota"] = j.n / n_tg["posteam"]
+        j["rk"] = j.val.rank(ascending=False, method="min")
+        j["txt"] = [f"{r.cuota * 100:.0f}% de los targets · {_com(r.yds)} yd" for r in j.itertuples()]
+        lider = j[j.pos.isin(POS_TXT)]
+    except DatosNoDisponibles as e:
+        print("  Radar sin roster: sale sin receptores por posicion.", e)
+
+    # Presion y placajes fallados (PFR semanal, la misma fuente para los dos lados)
+    try:
+        pf, _ = cargar_pfr("def", season, semanal=True)
+        pf = pf[(pf.week < semana) & (pf.game_type == "REG")]
+        tab["Presión por dropback"] = dict(
+            of=tabla_k(pf.groupby("opponent").def_pressures.sum(), dbs.groupby("posteam").size(), False, "dropbacks"),
+            df=tabla_k(pf.groupby("team").def_pressures.sum(), dbs.groupby("defteam").size(), True, "dropbacks"),
+            fam="presion", base="all", elige=None)
+        tab["Placajes fallados"] = dict(
+            of=tabla_k(pf.groupby("opponent").def_missed_tackles.sum(), p.groupby("posteam").size(), True, "jugadas"),
+            df=tabla_k(pf.groupby("team").def_missed_tackles.sum(), p.groupby("defteam").size(), False, "jugadas"),
+            fam="placajes", base="all", elige=None)
+        fuentes.add("PFR")
+    except DatosNoDisponibles as e:
+        print("  Radar sin PFR semanal: sale sin presion ni placajes fallados.", e)
+
+    # Personal (SumerSports): el ataque con cada agrupacion contra la defensa ante esa misma
+    try:
+        pa, _ = cargar_web("sumersports_personal_ataque", season, semana)
+        pdf_, _ = cargar_web("sumersports_personal_defensa", season, semana)
+        for per, desc in PERSONAL.items():
+            t = {}
+            for lado, tb in (("of", pa), ("df", pdf_)):
+                x = tb[tb.personal.astype(str) == per].set_index("team")
+                x = x[x.jugadas >= RADAR_MIN_N + 5]
+                x = x.assign(n=x.jugadas, val=x.epa_jugada, yds=np.nan, uso=x.uso_pct / 100)
+                x["rk"] = x.val.rank(ascending=(lado == "df"), method="min")
+                x["rk_uso"] = x.uso.rank(ascending=False, method="min")
+                x["txt"] = [f"{_epa(r.val)} EPA · {int(r.n)} jugadas" for r in x.itertuples()]
+                t[lado] = x
+            # con menos de 16 equipos el rango no dice nada
+            if len(t["of"]) >= 16 and len(t["df"]) >= 16:
+                tab[f"Personal {per} ({desc})"] = dict(of=t["of"], df=t["df"], fam="personal",
+                                                       base="all", elige="of")
+        fuentes.add("SumerSports")
+    except DatosNoDisponibles as e:
+        print("  Radar sin datos_web de SumerSports: sale sin personal.", e)
+
+    # Trincheras en carrera y coberturas (Sharp): tablas de equipo, sin recuento de jugadas
+    cob = cpos = sem_cob = None
+    try:
+        ol, _ = cargar_web("sharp_linea_ofensiva", season, semana)
+        dl, _ = cargar_web("sharp_linea_defensiva", season, semana)
+        ol, dl = ol.set_index("team"), dl.set_index("team")
+
+        def tabla_sharp(v, mejor_alta, fmt):
+            t = pd.DataFrame({"val": v, "n": 999, "yds": np.nan})
+            t["rk"] = t.val.rank(ascending=not mejor_alta, method="min")
+            t["txt"] = [fmt(x) for x in t.val]
+            return t
+        tab["Yardas antes del contacto (RB)"] = dict(
+            of=tabla_sharp(ol["Yards Before Contact Per RB Rush"], True, lambda v: f"{_com(v)} yd por carrera"),
+            df=tabla_sharp(dl["yardas_antes_contacto_rb"], False, lambda v: f"{_com(v)} yd por carrera"),
+            fam="trinchera carrera", base="all", elige=None)
+        tab["Carreras frenadas en la línea"] = dict(
+            of=tabla_sharp(ol["Rush Stuff Rate"], False, lambda v: f"{_com(v)}% de sus carreras"),
+            df=tabla_sharp(dl["stuff_pct"], True, lambda v: f"{_com(v)}% de las que defiende"),
+            fam="trinchera carrera", base="all", elige=None)
+        cob, sem_cob = cargar_web("sharp_coberturas", season, semana)
+        cob = cob.set_index("team")
+        cob["rk_man"] = cob.man_pct.rank(ascending=False, method="min")
+        cpos, _ = cargar_web("sharp_cobertura_posicion", season, semana)
+        cpos = cpos.set_index("team")
+        cpos["rk_slot"] = cpos.ypt_slot.rank(method="min")
+        fuentes.add("Sharp")
+    except DatosNoDisponibles as e:
+        print("  Radar sin datos_web de Sharp: sale sin trincheras ni coberturas.", e)
+
+    return dict(tab=tab, lider=lider, def_pos=def_pos, cob=cob, cpos=cpos, sem_cob=sem_cob,
+                fuentes=fuentes)
+
+
+def claves_partido(radar, a, h):
+    """Los cruces mas desiguales del partido, en los dos sentidos: como mucho uno
+    por familia y sentido (zona roja y dentro de la 10 son la misma historia).
+    Una de las claves es siempre el receptor mas buscado con el cruce mas desigual."""
+    cand = []
+    for atk, dfn in ((a, h), (h, a)):
+        for k, t in radar["tab"].items():
+            if atk not in t["of"].index or dfn not in t["df"].index:
+                continue
+            x, y = t["of"].loc[atk], t["df"].loc[dfn]
+            if x.n < RADAR_MIN_N or y.n < RADAR_MIN_N:
+                continue
+            cand.append(dict(sit=k, atk=atk, dfn=dfn, x=x, y=y, dif=int(y.rk - x.rk),
+                             fam=t["fam"], base=t["base"], elige=t["elige"]))
+        lider = radar["lider"]
+        if lider is not None and atk in lider.index:
+            x = lider.loc[atk]
+            if dfn in radar["def_pos"][x.pos].index and x.n >= RADAR_MIN_N:
+                y = radar["def_pos"][x.pos].loc[dfn]
+                cand.append(dict(sit=f"{x.nombre}, el más buscado de {atk}", atk=atk, dfn=dfn, x=x, y=y,
+                                 dif=int(y.rk - x.rk), fam="jugador", base="all", elige=None,
+                                 rol_of=f"{x.pos} · {int(x.n)} TARGETS",
+                                 rol_df=f"DEFENSA {dfn} A LOS {x.pos}"))
+    cand.sort(key=lambda c: (-abs(c["dif"]), -(c["x"].n + c["y"].n)))
+    out, vistas = [], set()
+    for c in cand:
+        if (c["atk"], c["fam"]) in vistas:
+            continue
+        vistas.add((c["atk"], c["fam"]))
+        out.append(c)
+    if not any(c["fam"] == "jugador" for c in out[:N_CLAVES]):
+        js = [c for c in cand if c["fam"] == "jugador"]
+        if js:
+            return out[:N_CLAVES - 1] + [js[0]]
+    return out[:N_CLAVES]
+
+
+def uso_clave(c):
+    """Cuanto recurre a la situacion quien la elige (el ataque, o la defensa si es blitz o caja)."""
+    if c["elige"] == "of" and pd.notna(c["x"].get("uso")):
+        return f"{c['atk']}: {c['x'].uso * 100:.0f}% de {BASE_OF[c['base']]} ({int(c['x'].rk_uso)}º que más)"
+    if c["elige"] == "df" and pd.notna(c["y"].get("uso")):
+        return f"{c['dfn']}: {c['y'].uso * 100:.0f}% de {BASE_DEF[c['base']]} ({int(c['y'].rk_uso)}ª que más)"
+    return ""
+
+
+def frase_clave(c):
+    """Titular del 2º PNG: solo rangos, que son hechos."""
+    return (f"{c['sit']}: {nombre_equipo(c['atk'])}, {int(c['x'].rk)}º en ataque; "
+            f"{nombre_equipo(c['dfn'])}, {int(c['y'].rk)}ª en defensa.")
+
+
+def titular_claves(cs):
+    """Solo hay titular si la primera clave es un cruce extremo de verdad
+    (top 5 contra las 5 peores, en cualquiera de los dos sentidos)."""
+    if not cs or cs[0]["fam"] == "jugador":
+        return ""
+    ro, rd = int(cs[0]["x"].rk), int(cs[0]["y"].rk)
+    return frase_clave(cs[0]) if (ro <= 5 and rd >= 28) or (ro >= 28 and rd <= 5) else ""
+
+
+def contexto_cob(radar, a, h):
+    """Lineas de contexto: cuanto man juega cada defensa y, si es extremo, el slot."""
+    cob, cpos = radar["cob"], radar["cpos"]
+    if cob is None:
+        return []
+    out = []
+    for t in (a, h):
+        if t in cob.index:
+            s = (f"Coberturas (Sharp, sem. {radar['sem_cob']}): {t} juega man el "
+                 f"{cob.man_pct[t]:.0f}% ({int(cob.rk_man[t])}ª que más)")
+            if t in cpos.index and (cpos.rk_slot[t] <= 5 or cpos.rk_slot[t] >= 28):
+                s += f" y concede {_com(cpos.ypt_slot[t])} yd por target al slot ({int(cpos.rk_slot[t])}ª)"
+            out.append(s)
+    return out
+
+
+def draw_claves(radar, team_a, team_b, cs, out_path, pie="", semana=None):
+    """2º PNG de la previa: las claves del partido. Misma cabecera que el 1º;
+    cada clave, una tarjeta con el ataque a la izquierda y la defensa a la derecha."""
+    fig = lienzo()
+    recs = {t: (record_equipo(t), rol) for t, rol in ((team_a, "visitante"), (team_b, "local"))}
+    cabecera(fig, (team_a, team_b),
+             {t: f"{rec} · {rol}" if rec else rol for t, (rec, rol) in recs.items()})
+    antetitulo(fig, f"Claves del partido · semana {semana}" if semana else "Claves del partido",
+               y=Y_BAJO_CABECERA)
+    tit = titular_claves(cs)
+    y_top = (titular(fig, tit, y=0.82, size=18.5) - 0.02) if tit else 0.815
+    cob = contexto_cob(radar, team_a, team_b)
+    y_fin = 0.088 + 0.015 * len(cob)
+    alto = (y_top - y_fin) / max(len(cs), 1)
+    for i, c in enumerate(cs):
+        y1 = y_top - i * alto
+        y0 = y1 - alto + 0.01
+        tarjeta(fig, y0, y1)
+        yc = (y0 + y1) / 2
+        fig.text(0.5, y1 - 0.022, c["sit"].upper(), family=DISP, weight="bold", size=12.5,
+                 color=FG, ha="center", va="center")
+        for lado, eq, r, x, ha, sg, rol in (("of", c["atk"], c["x"], L + 0.01, "left", 1, "ATAQUE"),
+                                            ("df", c["dfn"], c["y"], R - 0.01, "right", -1, "DEFENSA")):
+            poner_logo(fig, eq, x + sg * 0.03, yc - 0.004, zoom=0.03)
+            rk = int(r.rk)
+            fig.text(x + sg * 0.075, yc + 0.002, f"{rk}{'º' if lado == 'of' else 'ª'}", family=DISP,
+                     weight="bold", size=24, color=color_rango(rk) if rk <= 5 or rk >= 28 else FG,
+                     ha=ha, va="center")
+            fig.text(x + sg * 0.17, yc + 0.012, c.get(f"rol_{lado}", f"{rol} {eq}"), family=TXT,
+                     weight="bold", size=7.5, color=GRIS1, ha=ha, va="center")
+            fig.text(x + sg * 0.17, yc - 0.01, r.txt, family=TXT, size=7.2, color=FG, alpha=0.85,
+                     ha=ha, va="center")
+        u = uso_clave(c)
+        if u:
+            fig.text(0.5, y0 + 0.014, u, family=TXT, size=6.8, color=GRIS2, ha="center", va="center",
+                     fontstyle="italic")
+    for i, linea in enumerate(cob):
+        fig.text(0.5, 0.075 + 0.015 * (len(cob) - i), linea, family=TXT, size=6.8, color=GRIS1,
+                 ha="center", va="center")
+    nota = "Rango entre 32, por EPA por jugada o por la tasa indicada (defensa: 1ª = la mejor)"
+    if any(c["fam"] == "jugador" for c in cs):
+        nota += " · Receptor: entre los 32 nº 1"
+    pie_fn(fig, nota, pie + " · Fuentes: nflverse, " + ", ".join(sorted(radar["fuentes"])))
+    guardar(fig, out_path)
+    return fig
+
+
+def linea_clave(c):
+    """La clave en una linea, para el TXT del redactor."""
+    lado_of = c.get("rol_of", f"ataque {c['atk']}")
+    u = uso_clave(c)
+    return (f"{c['sit']}: {lado_of} {int(c['x'].rk)}º ({c['x'].txt}) · defensa {c['dfn']} "
+            f"{int(c['y'].rk)}ª ({c['y'].txt})" + (f" · {u}" if u else ""))
+
+
 if __name__ == "__main__":
     from matplotlib.backends.backend_pdf import PdfPages
 
@@ -527,6 +902,10 @@ if __name__ == "__main__":
               for lado, col in (("of", "posteam"), ("df", "defteam"))
               for t, r in tercer_down(stats_df, col).iterrows()}
 
+    # Radar de claves (2º PNG de cada previa). Sin semana, hasta donde llegan los datos
+    sem_radar = week_num if modo_semana else int(pd.to_numeric(stats_df["week"]).max()) + 1
+    radar = construir_radar(stats_df[stats_df["season_type"] == "REG"], SEASON, sem_radar)
+
     # ── Generar imágenes ──────────────────────────────────────────────────────
     if modo_semana:
         with PdfPages(pdf_path) as pdf:
@@ -538,6 +917,12 @@ if __name__ == "__main__":
                 pdf.savefig(fig, facecolor="#0f1115")
                 plt.close(fig)
                 print(f"  → {out_png}")
+                out_cl = salida(nombre_preview(away, home, SEASON, week_num, "_claves"), SEASON, week_num)
+                fig = draw_claves(radar, away, home, claves_partido(radar, away, home), out_cl, pie,
+                                  semana=week_num)
+                pdf.savefig(fig, facecolor="#0f1115")
+                plt.close(fig)
+                print(f"  → {out_cl}")
         print(f"\nPDF combinado: {pdf_path}  ({len(matchups)} partidos)")
 
         # Los mismos numeros de los PNG en texto, para el redactor del hilo
@@ -582,6 +967,13 @@ if __name__ == "__main__":
                     + (f"{int(rd['sum'])} TD en {int(rd['size'])} visitas" if rd is not None else "sin visitas")
                     + " · FG "
                     + (f"{fg['hechos']}/{fg['intentos']}" if fg is not None else "0/0"))
+            _cs = claves_partido(radar, away, home)
+            lineas.append("  CLAVES (2º PNG, "
+                          + os.path.basename(salida(nombre_preview(away, home, SEASON, week_num, "_claves"),
+                                                    SEASON, week_num)) + "):")
+            lineas.append("    TITULAR DEL PNG: " + (titular_claves(_cs) or "(sin titular: ningun cruce extremo)"))
+            lineas += [f"    {i}. {linea_clave(c)}" for i, c in enumerate(_cs, 1)]
+            lineas += [f"    {x}" for x in contexto_cob(radar, away, home)]
             lineas.append("")
         txt_path = salida(f"previas_numeros_{SEASON}.txt", SEASON, week_num)
         with open(txt_path, "w", encoding="utf-8") as f:
@@ -594,3 +986,7 @@ if __name__ == "__main__":
                        rz_cnt=rz_cnt, semana=week, d3_cnt=d3_cnt)
         plt.close(fig)
         print(f"\nPNG generado: {out_png}")
+        out_cl = salida(nombre_preview(away, home, SEASON, week, "_claves"), SEASON, week)
+        plt.close(draw_claves(radar, away, home, claves_partido(radar, away, home), out_cl, pie,
+                              semana=week))
+        print(f"PNG de claves: {out_cl}")

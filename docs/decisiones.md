@@ -1072,3 +1072,17 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 **De Sumer no se copia:** el título descriptivo (el nuestro es la conclusión, o ninguno) ni el verde en todos los números (color solo en los 5 mejores y los 5 peores). Concepto de carrera, frente, stunt y press son charting suyo: no están en nuestras fuentes, y no se ha comprobado si los publican en abierto.
 
 **Pendiente:** el logo de NYG (azul oscuro) se ve poco sobre el fondo; ya pasaba con el diseño anterior.
+
+## [2026-10-11] — Cada previa, dos PNG: la tarjeta de cruce y las claves del partido
+
+**Decisión:** `Previas.py` saca dos PNG por partido (Luis: "hacemos dos pngs en las previas en vez de uno"). El primero es la tarjeta de cruce de siempre. El segundo, `NN_preview_X_vs_Y_claves_...png`, son las 5 claves del partido: un radar repasa unas 45 situaciones y se queda con los cruces más desiguales entre un ataque y la defensa de enfrente, en los dos sentidos. Una de las cinco es siempre el receptor más buscado contra lo que concede el rival a su posición. Las claves van también al PDF y a `previas_numeros`.
+
+**Motivo:** un tuit con los screens de San Francisco (1º) contra Seattle (29ª). El dato estaba en FTN y con nuestros números salía igual (3º contra 29ª), pero la previa solo miraba 7 métricas fijas y se nos escapó en el duelo del sábado. Luis: "Estos son los datos que no se nos pueden escapar en una previa".
+
+**Qué mira el radar:** down y distancia, zona roja, formación, profundidad y zona del pase, hueco de la carrera, sin huddle y últimos 2 minutos (PBP); screens, play action, motion, RPO, backfield vacío, blitz, rushers y caja (FTN); three-and-outs, pérdidas, sacks y series con puntos; pases a WR, TE y RB (roster); presión y placajes fallados (PFR semanal); personal (SumerSports); yardas antes del contacto y carreras frenadas (Sharp). Las coberturas (% de man, y el slot si es extremo) van como línea de contexto: de Sharp solo hay el lado de la defensa.
+
+**Reglas:** mínimo 10 jugadas por lado y la muestra siempre a la vista; como mucho una clave por familia y sentido; color solo en top 5 y últimos 5; titular solo si la primera clave es top 5 contra las 5 peores. Cada fuente auxiliar que falte se avisa y se salta.
+
+**Descartado por Luis:** primera serie del partido, primera parte contra segunda, 2º down largo, 4º down, penalizaciones, posición de campo, yardas tras la recepción y carrera por izquierda o derecha.
+
+**Cautelas:** el receptor más buscado sale del PBP y no sabe de lesiones (mirar el parte antes de publicar); la tabla de personal de SumerSports puede traer ya el partido del jueves; Sharp no da número de jugadas. El titular es una plantilla seca ("Screens: X, 3º en ataque; Y, 29ª en defensa."), mejorable por tipo de clave.

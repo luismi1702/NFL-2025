@@ -2,6 +2,44 @@
 
 ---
 
+## [2026-10-10/11] — Duelo del sábado con formato fijo, previas en dos PNG (cruce y claves) y `cabecera()`
+
+**Que se hizo:**
+- **Duelo del sábado SF @ SEA**: hilo de 9 tuits y formato fijo para los sábados; el ángulo lo marca el partido, no siempre un ataque contra una defensa (commits d13b987 y a932900)
+- **Previas rediseñadas** (idea de SumerSports, con logos en vez de fotos): `draw_png` de `Previas.py` es ahora una tarjeta de cruce, con los dos logos en la cabecera y ataque contra defensa en espejo, la métrica en el centro. Mismos datos que antes (el txt de números sale idéntico). Las 15 de la semana 5 y el PDF, regenerados (521bf89)
+- **`cabecera()` en `estilo.py`**: banda con el color del equipo y su logo, para piezas de uno o dos equipos; `Previas.py` ya la usa. Prueba de un solo equipo en `lab/sf_sea_png3_logo.py` (2fad6f8)
+- **Segundo PNG por previa, las claves del partido**: un radar dentro de `Previas.py` repasa unas 45 situaciones (screens, play action, blitz, personal, presión, placajes fallados, receptores por posición, el receptor más buscado) y saca los 5 cruces más desiguales, con coberturas de contexto. Nace de un tuit con los screens de SF contra SEA que se nos escapó teniéndolo en FTN. También va al PDF y a `previas_numeros`. Semana 5 regenerada (30 PNG)
+- **Podcasts**: nuevo solo el 100 Yardas del 09-oct, transcrito y escuchado entero. Una pieza: los 4 three-and-outs de Jacksonville (11% de sus series) frente a los 15 de Philadelphia (36%, 2º que más), con [A]/[B] en la conversación. No cuadran con el PBP: Seattle "28º corriendo en 1er down" (es 12º) y Denver en 3er down largo (28º en distancia)
+
+**Archivos modificados:** `Previas.py`, `estilo.py`, `lab/previa_cruce_ejemplo.py`, `lab/sf_sea_png3_logo.py` y `lab/radar_previas.py` (nuevos), `docs/decisiones.md`, `docs/estilo-visual.md`, `docs/scripts-catalog.md`, `docs/podcasts_revisados.md`, `CLAUDE.md`, `salidas/2026/w05/previas/`
+
+**Pendiente:**
+- Publicar la respuesta de los three-and-outs antes del PHI @ JAX (15:30 de Madrid): después caduca
+- Sin push desde 489b164
+- Claves: mirar el parte de lesiones antes de publicar (el receptor más buscado sale del PBP); el titular es una plantilla seca, mejorable por tipo de clave; del slot y de man/zona solo hay el lado de la defensa
+- 8 de las 15 previas salen sin titular en el primer PNG (ningún cruce extremo)
+- El logo de NYG (azul oscuro) se ve poco sobre la banda de la cabecera
+- Resto de scripts de equipo: pasan a `cabecera()` según se vayan tocando; el PNG publicado de Seattle no se rehízo
+- PepeDiario: no se puede revisar sin el enlace
+- Siguen: `cola_posts.py` y el disparador del boletín con la regla de la Preview; titular del 22% de `resumen_partido.py`
+
+## [2026-10-09] — Viernes: análisis del TNF (TB 24-16 DAL) repasado contra el PBP
+
+**Que se hizo:**
+- **Borradores del viernes** (batch de las 10:17) comprobados contra el PBP; propuestos dos posts retocados, uno por equipo (en la conversación, no en fichero)
+- **Pérdidas de Dallas**: son 3. `destacados.py` cuenta 2 (las intercepciones, dentro de las 56 jugadas de ataque, −9,2 EPA) y el resumen 3 porque suma el fumble de Turpin en un kickoff (−5,1). El post dice "intercepciones" y "jugadas de ataque"
+- **El 22% del titular del resumen**: correcto, pero es el primer snap de la segunda mitad (10-7 abajo), justo la carrera de 72 yardas de Irving; el mínimo del partido fue un 12% en el primer cuarto
+- Cuadran con el PBP: 8 de 11 facetas, 3er down (7/13 y 4/10), Irving 21-165, Pickens 9/13-130, bajo centro 51%. Las 243 yardas de carrera del resumen son 241 con los dos kneels
+
+**Archivos modificados:** `CHANGELOG.md`
+
+**Pendiente:**
+- Los dos posts retocados no están en `w05/textos/`: la cola sigue con los del batch, y el fichero quedó apartado como `borradores_viernes_previo.md` con el aviso de datos sin verificar
+- El resultado no se confirmó con un recap en web desde la sesión (solo previas); los enlaces de ESPN que dejó el batch no se abrieron
+- Sábado: duelo SF @ SEA, mirando antes el parte del viernes (Mike Evans, Juszczyk, Trent Williams)
+- Valorar: titular "en la segunda mitad llegó a tener solo un X%" de `resumen_partido.py` cuando el mínimo es el primer snap tras el descanso
+- Siguen: `cola_posts.py` y el disparador del boletín con la regla de la Preview; hilo de los Jaguars (domingo 11-oct)
+
 ## [2026-10-08] — Jornada 5: la previa del TNF espera a la Preview, duelo SF @ SEA y podcasts
 
 **Que se hizo:**
