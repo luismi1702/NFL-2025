@@ -14,9 +14,8 @@ from matplotlib.colors import LinearSegmentedColormap
 from pbp_loader import cargar_pbp, salida, season_cli, week_cli, orden_partido, sello
 from estilo import (lienzo, guardar, antetitulo, titular, tarjeta, poner_logo, etiqueta,
                     linea_h, color_equipo, colores_pareja, color_rango, num, pie as pie_fn, L, R, TXT,
-                    FG, GRIS1, GRIS2, DISP)
+                    FG, GRIS1, GRIS2, DISP, cabecera, Y_BAJO_CABECERA)
 from matplotlib.patches import FancyBboxPatch
-from matplotlib.colors import to_rgb
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # === Config ===
@@ -319,28 +318,13 @@ def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path, pie="
     rz_cnt = rz_cnt or {}
     cnt = {"rz": rz_cnt, "d3": d3_cnt or {}}
     rz_n = {k: v[1] for k, v in rz_cnt.items()}
-    COLP = colores_pareja(team_a, team_b)
     XM = 0.5
     fig = lienzo()
+    recs = {t: (record_equipo(t), rol) for t, rol in ((team_a, "visitante"), (team_b, "local"))}
+    COLP = cabecera(fig, (team_a, team_b),
+                    {t: f"{rec} · {rol}" if rec else rol for t, (rec, rol) in recs.items()})
 
-    # Cabecera: cada mitad teñida con el color de su equipo, logo, siglas y record
-    alto_cab = 0.15
-    for t, x0, rol in ((team_a, 0.0, "visitante"), (team_b, 0.5, "local")):
-        ax = fig.add_axes([x0, 1 - alto_cab, 0.5, alto_cab], zorder=-2)
-        g = np.zeros((60, 2, 4))
-        g[..., :3] = to_rgb(COLP[t])
-        g[..., 3] = np.linspace(0.50, 0.0, 60)[:, None]
-        ax.imshow(g, aspect="auto", extent=(0, 1, 0, 1))
-        ax.axis("off")
-        poner_logo(fig, t, x0 + 0.16, 0.925, zoom=0.07)
-        fig.text(x0 + 0.27, 0.935, t, family=DISP, weight="bold", size=20, color=FG, va="center")
-        rec = record_equipo(t)
-        fig.text(x0 + 0.27, 0.902, f"{rec} · {rol}" if rec else rol, family=TXT, size=7.5,
-                 color=FG, alpha=0.75, va="center")
-    fig.text(XM, 0.925, "@", family=TXT, weight="bold", size=9, color=GRIS1, ha="center",
-             va="center")
-
-    antetitulo(fig, f"Previa · semana {semana}" if semana else "Previa", y=0.84)
+    antetitulo(fig, f"Previa · semana {semana}" if semana else "Previa", y=Y_BAJO_CABECERA)
     d = mayor_desajuste(team_a, team_b, off_r, deff_r, rz_n)
     y_top = (titular(fig, frase_titular(d), y=0.82, size=18.5) - 0.02) if d else 0.815
     destacado = (d[0], d[2][0]) if d else None

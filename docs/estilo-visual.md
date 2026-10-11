@@ -134,6 +134,23 @@ segundo usa su siguiente candidato.
 - Los ejemplos rehechos con piezas ya publicadas están en
   `lab/estilo_ejemplos.py` (dato de la semana, bajo centro y duelo BAL).
 
+### Cabecera con logos (11-oct-2026)
+
+Las piezas de UN equipo y las de DOS equipos abren con `cabecera()`: una banda
+arriba teñida con el color del equipo y su logo en grande (idea de SumerSports,
+con logos en vez de fotos).
+- Un equipo: `cabecera(fig, "SEA", ("SEATTLE", "CÓMO DEFIENDE"))`, nombre a la
+  izquierda y logo a la derecha.
+- Dos equipos: `cabecera(fig, ("CHI", "GB"), {"CHI": "3-1 · visitante", ...})`,
+  cada uno en su mitad; devuelve los colores de la pareja.
+- Debajo, `antetitulo(fig, ..., y=Y_BAJO_CABECERA)` y `titular(fig, ..., y=0.82)`.
+- Con cabecera no se repite dentro de la tarjeta la fila del logo pequeño con
+  las siglas, y la tarjeta se estira hasta el pie (sin hueco debajo).
+- No va en rankings de 32 equipos ni en piezas de liga: ahí no hay un
+  protagonista.
+- Ya la usa `Previas.py`. El resto de piezas de equipo se pasan al migrarlas
+  o al tocarlas; ejemplo de un equipo en `lab/sf_sea_png3_logo.py`.
+
 ## 7. Pie
 
 - Izquierda, en `GRIS2` cursiva a 6,5: las definiciones ("Blitz = 1+ blitzer

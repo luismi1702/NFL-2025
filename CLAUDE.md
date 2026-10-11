@@ -113,6 +113,7 @@ Guía completa: `docs/estilo-visual.md` (02-oct-2026). Se aplica importando
 `fonts/`, lienzo 4:5 (`lienzo()`), `titular()`, `contexto()`, `tarjeta()`,
 `color_equipo()`/`colores_pareja()`, `color_rango()`, `num()` (coma decimal),
 `pista32()`, `pie()` y `guardar()` (sin `bbox_inches="tight"`: descoloca los logos).
+Piezas de uno o dos equipos (11-oct-2026): abren con `cabecera()`, la banda con el color del equipo y su logo en grande; en rankings de 32 y piezas de liga, no.
 BG="#0f1115" · CARD="#151924" · FG="#EDEDED" · GRID="#2a2f3a" · ACCENT="#2d6cdf"
 RYG=["#d84a4a","#ffd166","#06d6a0"] — SOLO para los extremos de un ranking (1º-5º verde, 28º-32º rojo). El color del equipo, solo para identificarlo; los números resaltados del texto, en FG negrita
 Títulos en los PNG (02-oct-2026, sustituye a la regla "sin título" de sep-2026): SÍ, pero solo un TITULAR CON LA CONCLUSIÓN, al estilo de SumerSports ("Both defenses give up big plays. Both offenses score on them."). Nunca un título descriptivo ("Intel de Matchup · SF vs SEA · NFL 2025", "Baltimore: carrera por formación"), que es lo que Luis no quería. Si no hay una conclusión que contar, sin título. En los scripts semanales el titular es AUTOMÁTICO (decisión de Luis): plantillas que solo afirman hechos que el script calcula

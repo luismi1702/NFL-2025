@@ -22,6 +22,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from matplotlib.colors import to_rgb
 from matplotlib.patches import FancyBboxPatch, Rectangle
 
 # ── Fuentes (fonts/, Google Fonts, OFL)
@@ -178,6 +179,49 @@ def poner_logo(fig, team, x, y, zoom=0.02):
     im = logo(team, zoom)
     if im is not None:
         fig.add_artist(AnnotationBbox(im, (x, y), xycoords="figure fraction", frameon=False))
+
+
+# ── Cabecera con logos (11-oct-2026, idea de SumerSports sin las fotos)
+Y_BAJO_CABECERA = 0.84                     # y del antetitulo cuando hay cabecera
+
+
+def cabecera(fig, equipos, textos=None, alto=0.15):
+    """Banda superior teñida con el color del equipo y su logo en grande.
+
+    Un equipo ("SEA"): nombre a la izquierda y logo a la derecha;
+    `textos` = (grande, pequeño), p. ej. ("SEATTLE", "CÓMO DEFIENDE").
+    Dos equipos (("CHI", "GB"), visitante primero): cada uno en su mitad con
+    logo y siglas; `textos` = {equipo: linea pequeña}, p. ej. "3-1 · visitante".
+    Despues: antetitulo(fig, ..., y=Y_BAJO_CABECERA) y titular(fig, ..., y=0.82)."""
+    uno = isinstance(equipos, str)
+    lista = [equipos] if uno else list(equipos)
+    col = {lista[0]: color_equipo(lista[0])} if uno else colores_pareja(*lista)
+    ancho = 1.0 / len(lista)
+    yc = 1 - alto / 2
+    for i, t in enumerate(lista):
+        ax = fig.add_axes([i * ancho, 1 - alto, ancho, alto], zorder=-2)
+        g = np.zeros((60, 2, 4))
+        g[..., :3] = to_rgb(col[t])
+        g[..., 3] = np.linspace(0.50, 0.0, 60)[:, None]
+        ax.imshow(g, aspect="auto", extent=(0, 1, 0, 1))
+        ax.axis("off")
+        if uno:
+            grande, chico = textos or (nombre_equipo(t).upper(), "")
+            poner_logo(fig, t, R - 0.11, yc, zoom=0.075)
+            xt, size = L, 22
+        else:
+            grande, chico = t, (textos or {}).get(t, "")
+            poner_logo(fig, t, i * ancho + 0.16, yc, zoom=0.07)
+            xt, size = i * ancho + 0.27, 20
+        fig.text(xt, yc + (0.011 if chico else 0), grande, family=DISP, weight="bold", size=size,
+                 color=FG, va="center")
+        if chico:
+            fig.text(xt, yc - 0.024, chico, family=TXT, weight="semibold" if uno else "normal",
+                     size=8 if uno else 7.5, color=FG, alpha=0.75, va="center")
+    if not uno:
+        fig.text(0.5, yc, "@", family=TXT, weight="bold", size=9, color=GRIS1, ha="center",
+                 va="center")
+    return col
 
 
 # ── Texto
