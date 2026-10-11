@@ -14,8 +14,9 @@ from matplotlib.colors import LinearSegmentedColormap
 from pbp_loader import cargar_pbp, salida, season_cli, week_cli, orden_partido, sello
 from estilo import (lienzo, guardar, antetitulo, titular, tarjeta, poner_logo, etiqueta,
                     linea_h, color_equipo, colores_pareja, color_rango, num, pie as pie_fn, L, R, TXT,
-                    FG, GRIS1)
+                    FG, GRIS1, GRIS2, DISP)
 from matplotlib.patches import FancyBboxPatch
+from matplotlib.colors import to_rgb
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # === Config ===
@@ -309,85 +310,94 @@ def fmt_val(v, is_pct=False, nd=2):
     return f"{v:.1f}%" if is_pct else f"{v:.{nd}f}"
 
 
-def valor_celda(v, formato, team=None, lado=None, rz_cnt=None, d3_cnt=None):
-    if pd.isna(v):
-        return "–"
-    if formato == "num":
-        return num(v)
-    cnt = rz_cnt if formato == "rz" else d3_cnt if formato == "d3" else None
-    if cnt:
-        hechos, visitas = cnt.get((lado, team), (None, None))
-        if visitas:
-            return f"{v:.0f}% ({hechos}/{visitas})"
-    return f"{v:.0f}%"
-
-
 def draw_png(team_a, team_b, off, deff, st, off_r, deff_r, st_r, out_path, pie="",
              rz_cnt=None, semana=None, d3_cnt=None):
-    """Previa de un partido (team_a visita a team_b), estilo docs/estilo-visual.md:
-    titular con el mayor desajuste y los dos cruces ataque contra defensa."""
+    """Previa de un partido (team_a visita a team_b) como tarjeta de cruce
+    (11-oct-2026, idea de SumerSports): cabecera con los dos logos sobre el
+    color de cada equipo, titular con el mayor desajuste y los dos cruces con
+    el ataque a la izquierda, la defensa a la derecha y la metrica en el centro."""
     rz_cnt = rz_cnt or {}
+    cnt = {"rz": rz_cnt, "d3": d3_cnt or {}}
     rz_n = {k: v[1] for k, v in rz_cnt.items()}
     COLP = colores_pareja(team_a, team_b)
+    XM = 0.5
     fig = lienzo()
-    antetitulo(fig, f"Previa · semana {semana}" if semana else "Previa")
+
+    # Cabecera: cada mitad teñida con el color de su equipo, logo, siglas y record
+    alto_cab = 0.15
+    for t, x0, rol in ((team_a, 0.0, "visitante"), (team_b, 0.5, "local")):
+        ax = fig.add_axes([x0, 1 - alto_cab, 0.5, alto_cab], zorder=-2)
+        g = np.zeros((60, 2, 4))
+        g[..., :3] = to_rgb(COLP[t])
+        g[..., 3] = np.linspace(0.50, 0.0, 60)[:, None]
+        ax.imshow(g, aspect="auto", extent=(0, 1, 0, 1))
+        ax.axis("off")
+        poner_logo(fig, t, x0 + 0.16, 0.925, zoom=0.07)
+        fig.text(x0 + 0.27, 0.935, t, family=DISP, weight="bold", size=20, color=FG, va="center")
+        rec = record_equipo(t)
+        fig.text(x0 + 0.27, 0.902, f"{rec} · {rol}" if rec else rol, family=TXT, size=7.5,
+                 color=FG, alpha=0.75, va="center")
+    fig.text(XM, 0.925, "@", family=TXT, weight="bold", size=9, color=GRIS1, ha="center",
+             va="center")
+
+    antetitulo(fig, f"Previa · semana {semana}" if semana else "Previa", y=0.84)
     d = mayor_desajuste(team_a, team_b, off_r, deff_r, rz_n)
-    y_top = (titular(fig, frase_titular(d), y=0.925) - 0.03) if d else 0.90
+    y_top = (titular(fig, frase_titular(d), y=0.82, size=18.5) - 0.02) if d else 0.815
     destacado = (d[0], d[2][0]) if d else None
 
-    # Cabecera de equipos (la tarjeta se dibuja al final, ajustada al contenido)
-    yc = y_top - 0.045
-    for x, t, rol in ((L + 0.035, team_a, "visitante"), (0.535, team_b, "local")):
-        poner_logo(fig, t, x, yc, zoom=0.022)
-        fig.text(x + 0.045, yc + 0.008, t, family=TXT, weight="bold", size=10,
-                 color=COLP[t], va="center")
-        rec = record_equipo(t)
-        fig.text(x + 0.045, yc - 0.017, f"{rec} · {rol}" if rec else rol, family=TXT, size=7.5,
-                 color=GRIS1, va="center")
-
     # Dos cruces: cuando ataca el visitante y cuando ataca el local
-    y = yc - 0.06
-    alto_fila = 0.030
+    # Sin titular sobra sitio: se reparte entre las filas para que la tarjeta
+    # llegue igual de abajo que en las previas que si lo llevan
+    alto_fila = 0.0325 + max(0.0, y_top - 0.73) / 16
+    y = y_top - 0.03
     for atk, dfn in ((team_a, team_b), (team_b, team_a)):
-        linea_h(fig, y + 0.018)
-        etiqueta(fig, f"Cuando ataca {atk}", L + 0.01, y)
-        fig.text(0.60, y, f"{atk} ATAQUE", family=TXT, weight="semibold", size=6.8,
-                 color=COLP[atk], va="center", ha="right")
-        fig.text(R - 0.005, y, f"{dfn} DEFENSA", family=TXT, weight="semibold", size=6.8,
+        poner_logo(fig, atk, L + 0.022, y, zoom=0.017)
+        fig.text(L + 0.05, y, f"ATAQUE {atk}", family=TXT, weight="bold", size=7.5,
+                 color=COLP[atk], va="center")
+        poner_logo(fig, dfn, R - 0.022, y, zoom=0.017)
+        fig.text(R - 0.05, y, f"DEFENSA {dfn}", family=TXT, weight="bold", size=7.5,
                  color=COLP[dfn], va="center", ha="right")
-        y -= 0.034
+        fig.text(XM, y, "contra", family=TXT, size=7, color=GRIS2, va="center", ha="center")
+        linea_h(fig, y - 0.021)
+        y -= 0.043
         for co, cd, lab, formato, _, _ in CRUCES:
-            vo = off.loc[atk, co] if (atk in off.index and co in off.columns) else np.nan
-            vd = deff.loc[dfn, cd] if (dfn in deff.index and cd in deff.columns) else np.nan
-            ro = off_r.loc[atk, co] if (atk in off_r.index and co in off_r.columns) else np.nan
-            rd = deff_r.loc[dfn, cd] if (dfn in deff_r.index and cd in deff_r.columns) else np.nan
             if destacado == (atk, co):
                 fig.add_artist(FancyBboxPatch((L, y - alto_fila / 2), R - L, alto_fila,
                                               boxstyle="round,pad=0,rounding_size=0.006",
                                               transform=fig.transFigure, fc="#1e2433",
                                               ec="none", zorder=-0.5))
-            fig.text(L + 0.01, y, lab, family=TXT, size=8.5, color=FG, va="center")
-            for xv, v, rk, team, lado in ((0.60, vo, ro, atk, "of"),
-                                          (R - 0.005, vd, rd, dfn, "df")):
-                fig.text(xv - 0.075, y, valor_celda(v, formato, team, lado, rz_cnt, d3_cnt), family=TXT,
-                         weight="semibold", size=8.5, color=FG, va="center", ha="right")
+            fig.text(XM, y, lab, family=TXT, size=8, color=GRIS1, va="center", ha="center")
+            # sg: +1 dibuja hacia la derecha (ataque), -1 hacia la izquierda (defensa)
+            for lado, team, tabla, rangos, c, ha, sg in ((("of", atk, off, off_r, co, "left", 1)),
+                                                        (("df", dfn, deff, deff_r, cd, "right", -1))):
+                x = L + 0.01 if ha == "left" else R - 0.01
+                v = tabla.loc[team, c] if (team in tabla.index and c in tabla.columns) else np.nan
+                rk = rangos.loc[team, c] if (team in rangos.index and c in rangos.columns) else np.nan
+                txt = "–" if pd.isna(v) else num(v) if formato == "num" else f"{v:.0f}%"
+                fig.text(x, y, txt, family=DISP, weight="bold", size=13, color=FG, va="center",
+                         ha=ha)
+                hechos, visitas = cnt.get(formato, {}).get((lado, team), (None, None))
+                if visitas and pd.notna(v):
+                    fig.text(x + sg * 0.075, y - 0.001, f"{hechos}/{visitas}", family=TXT,
+                             size=6.5, color=GRIS2, va="center", ha=ha)
                 if pd.notna(rk):
-                    fig.text(xv, y, f"{int(rk)}º", family=TXT, weight="bold", size=8.5,
-                             color=color_rango(int(rk)), va="center", ha="right")
+                    fig.text(XM - sg * 0.185, y, f"{int(rk)}º", family=TXT, weight="bold",
+                             size=8.5, color=color_rango(int(rk)), va="center",
+                             ha="right" if ha == "left" else "left")
             y -= alto_fila
         y -= 0.022
 
     # Especiales en una linea
-    linea_h(fig, y + 0.012)
-
     def esp(t):
         fg = st.loc[t, "FG%"] if t in st.index else np.nan
         rk = st_r.loc[t, "FG%"] if t in st_r.index else np.nan
         return f"{t} {fg:.0f}% ({int(rk)}º)" if pd.notna(fg) and pd.notna(rk) else f"{t} –"
-    etiqueta(fig, "Field goals", L + 0.01, y - 0.012)
-    fig.text(R - 0.005, y - 0.012, f"{esp(team_a)}   ·   {esp(team_b)}", family=TXT, size=8,
-             color=GRIS1, va="center", ha="right")
-    tarjeta(fig, y - 0.045, y_top)
+    linea_h(fig, y + 0.014)
+    etiqueta(fig, "Field goals", XM, y - 0.008, ha="center")
+    fig.text(L + 0.01, y - 0.008, esp(team_a), family=TXT, size=8, color=GRIS1, va="center")
+    fig.text(R - 0.01, y - 0.008, esp(team_b), family=TXT, size=8, color=GRIS1, va="center",
+             ha="right")
+    tarjeta(fig, y - 0.035, y_top)
 
     pie_fn(fig, "Rango 1 = el mejor de 32 (en defensa, el que menos concede) · Éxito = EPA > 0 · "
                 "Explosiva = pase de 15+ o carrera de 10+", pie)

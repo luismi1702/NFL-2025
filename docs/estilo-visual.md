@@ -173,7 +173,7 @@ conclusión, verificar a tamaño de móvil y marcarlo aquí.
 
 | Script | Bloque | Estado |
 |---|---|---|
-| Previas.py | semanal | hecho en rama (02-oct): titular = mayor desajuste extremo; 6 cruces + FG |
+| Previas.py | semanal | hecho (02-oct): titular = mayor desajuste extremo; 7 cruces + FG. Desde el 11-oct, tarjeta de cruce con logos en la cabecera (ver decisiones.md) |
 | resumen_partido.py | semanal | hecho en rama (02-oct): titular = remontada, ganó con peor EPA, pérdidas o paliza; claves con nombres legibles |
 | ficha_tactica.py | semanal | hecho en rama (02-oct): titular = facetas ganadas contadas por el script; colores_pareja() |
 | DatoSemana.py | semanal | hecho en rama (02-oct): "Ninguna..." solo si es 1º/último en bruto; si no, "X: valor, Nº de n" |

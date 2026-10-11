@@ -1060,3 +1060,15 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 - El parte del viernes puede cambiar el hilo entero (Juszczyk, baja, con SF jugando el 42% en 21 personnel).
 - "Running backs" o "RB", nunca "corredores".
 **Alternativas descartadas (solo en este partido):** meter también el ataque de Seattle contra la defensa de SF: se calculó y se dejó fuera porque el partido estaba en el otro cruce.
+
+## [2026-10-11] — Las previas, como tarjeta de cruce (idea de SumerSports)
+
+**Decisión:** desde la jornada 5 de 2026, `Previas.py` dibuja cada previa como tarjeta de cruce (Luis: "Este es el modelo que quiero para las previas a partir de hoy"). Cabecera con los dos logos en grande, cada mitad teñida con el color de su equipo, siglas y récord; y los dos cruces con el ataque a la izquierda, la defensa a la derecha y la métrica en el centro. El valor va en grande y su muestra (27/57) en pequeño al lado.
+
+**Qué no cambia:** los datos. Las 7 métricas de cada cruce, los field goals, los rangos, la fila resaltada y el titular automático salen de las mismas funciones (`previas_numeros` de la jornada 5 quedó idéntico tras el cambio).
+
+**Contexto:** Luis enseñó una tarjeta de SumerSports (una situación, ataque contra defensa en espejo, con foto de jugador y entrenador) y pidió imitarla con logos en vez de fotos. La primera prueba copió también lo de "una sola situación" (3er down de CHI @ GB, con blitz, sacks, targets y cobertura) y le pareció corta de datos: quería el diseño, no perder la previa. Esa prueba queda en `lab/previa_cruce_ejemplo.py` por si sirve para el duelo del sábado.
+
+**De Sumer no se copia:** el título descriptivo (el nuestro es la conclusión, o ninguno) ni el verde en todos los números (color solo en los 5 mejores y los 5 peores). Concepto de carrera, frente, stunt y press son charting suyo: no están en nuestras fuentes, y no se ha comprobado si los publican en abierto.
+
+**Pendiente:** el logo de NYG (azul oscuro) se ve poco sobre el fondo; ya pasaba con el diseño anterior.
