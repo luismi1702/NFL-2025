@@ -46,7 +46,7 @@ Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`
    prohibidas las preguntas retóricas de relleno; tono humano.
 6. Terminología: "3er down"/"4º down" (nunca "bajada"); equipos y ciudades en
    inglés (New England, no Nueva Inglaterra); "proteger al QB"/"pass pro"
-   (nunca "proteger al pasador"); "forzar turnovers" (nunca "robar balones");
+   (nunca "proteger al pasador"); "forzar turnovers" (nunca "robar balones"); "big play" (nunca "jugada grande");
    nada de "jugadores de franquicia".
 7. No centrar el post en el QB salvo que el visual sea de QBs.
 8. **Gancho antes del dato.** Los posts que mejor rindieron abren con nombres

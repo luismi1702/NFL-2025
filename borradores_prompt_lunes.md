@@ -83,7 +83,7 @@ UN post y sus dos alternativas de siempre.
    cierre corto con opinion. El cierre NO tiene por que ser pregunta y estan
    prohibidas las preguntas retoricas de relleno.
 6. Terminologia: "3er down"/"4o down" (nunca "bajada"); equipos y ciudades en
-   ingles; "proteger al QB"/"pass pro"; "forzar turnovers"; nada de "jugadores
+   ingles; "proteger al QB"/"pass pro"; "forzar turnovers"; "big play" (nunca "jugada grande"); nada de "jugadores
    de franquicia".
 7. No centrar el post en el QB salvo que el visual sea de QBs.
 8. **Cierre: hashtags y menciones**, en este orden y formato:

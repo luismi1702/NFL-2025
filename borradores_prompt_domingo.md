@@ -83,7 +83,7 @@ no lo nombres y anotalo en la verificacion para revisarlo el lunes.
     acabaron en TD" es mejor que "100%". Y un % con muestra ridicula (FG% con
     un solo intento, red zone con 1 visita) NO se usa.
 - Terminologia: "3er down"/"4º down" (nunca "bajada"); equipos y ciudades en
-  ingles (New England); "proteger al QB"; "forzar turnovers"; nada de
+  ingles (New England); "proteger al QB"; "forzar turnovers"; "big play" (nunca "jugada grande"); nada de
   "jugadores de franquicia".
 - No centrar el tuit en el QB. Una baja de QB se cuenta en una frase si
   cambia el partido.

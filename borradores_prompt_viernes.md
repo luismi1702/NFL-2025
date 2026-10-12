@@ -58,7 +58,7 @@ FTN (play action, blitz) NO esta publicado todavia el viernes: nada de eso.
    Nada de preguntas retoricas de relleno. Decimales con COMA (`+0,33`),
    rangos en ordinal y en prosa (`30º ataque`), nunca `#12`.
 6. Terminologia: "3er down"/"4º down" (nunca "bajada"); equipos y ciudades en
-   ingles; "proteger al QB"/"pass pro"; "forzar turnovers"; nada de
+   ingles; "proteger al QB"/"pass pro"; "forzar turnovers"; "big play" (nunca "jugada grande"); nada de
    "jugadores de franquicia". No centrar el post en el QB.
 7. Cierre: `#NFL | #Equipo | @cuenta1 @cuenta2`, con `#Equipo` en ingles y
    las cuentas de ESE equipo, SOLO de `docs/cuentas-fans.md`. **PROHIBIDO
