@@ -216,8 +216,15 @@ for team in [team_a, team_b]:
     tdc = int(off_all["third_down_converted"].fillna(0).sum())
     tdf = int(off_all["third_down_failed"].fillna(0).sum())
 
-    turnovers  = int(off_all["interception"].fillna(0).sum() +
-                     off_all["fumble_lost"].fillna(0).sum())
+    # El fumble perdido es de quien lo suelta, no de quien tenia la posesion:
+    # un punt que se le escapa al retornador contaba como perdida del equipo
+    # que pateaba (SF @ SEA, sem. 5 de 2026: salia SEA 5 - SF 2 y fue 4 - 3)
+    if "fumbled_1_team" in game_df.columns:
+        fum_perd = int(((game_df["fumble_lost"] == 1) &
+                        (game_df["fumbled_1_team"] == team)).sum())
+    else:
+        fum_perd = int(off_all["fumble_lost"].fillna(0).sum())
+    turnovers  = int(off_all["interception"].fillna(0).sum()) + fum_perd
     explosivas = int((pass_p["yards_gained"].fillna(0) >= 20).sum() +
                      (run_p["yards_gained"].fillna(0) >= 10).sum())
 
