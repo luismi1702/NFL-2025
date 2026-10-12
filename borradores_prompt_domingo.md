@@ -26,6 +26,9 @@ lado. En la linea `IMAGEN:` va SOLO el nombre del fichero, sin carpeta.
   El tuit no puede contradecir el titular del PNG; puede contarlo con otras
   palabras o elegir otro cruce de la imagen.
 - `{DIR}/../previas/NN_preview_VIS_vs_LOC_*.png` — un PNG por partido.
+- `{DIR}/../previas/NN_preview_VIS_vs_LOC_claves_*.png` — el segundo PNG de cada
+  partido, las claves (Luis, 11-oct-2026: cada previa, dos PNG). En `IMAGEN:`
+  van LOS DOS, separados por coma: primero la tarjeta de cruce, luego las claves.
 - El DIA de cada partido esta en su linea `== NN` del TXT (Thursday, Sunday,
   Monday...), sacado del calendario oficial. Manda sobre todo lo demas:
   - **Sunday**: va en el hilo. TODOS, tambien el partido de la pieza de
@@ -130,7 +133,7 @@ Verificación:
 - los tres ganchos: previas_numeros (BUF, LV, CIN y PIT)
 
 ## DOMINGO — Hilo de previas 1/14: 02 LAC @ BUF
-IMAGEN: 02_preview_LAC_vs_BUF_2026_w03.png
+IMAGEN: 02_preview_LAC_vs_BUF_2026_w03.png, 02_preview_LAC_vs_BUF_claves_2026_w03.png
 
 **[A]** (268 chars)
 ```post

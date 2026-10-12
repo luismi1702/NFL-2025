@@ -19,6 +19,7 @@
 import argparse
 import html
 import io
+import json
 import os
 import re
 import sys
@@ -175,6 +176,11 @@ PNG_DEL_DIA = [r"^(01_preview_|manning_picks_)", r"^01_\d_(ficha|resumen)_", r"^
                None, r"^power_rankings"]
 
 
+# Lo que construir() acaba de ordenar, para textos/cola_posts.json: la misma
+# cola que la pagina, pero legible por la skill /publicar (12-oct-2026)
+COLA = []
+
+
 def dia_de(sec):
     """Indice del dia de publicacion segun el titulo. Las tarjetas 'SIN POST'
     son partidos: el 01 es el TNF (viernes) y el resto van con el lunes."""
@@ -263,6 +269,7 @@ def construir(md, dir_semana, season, week, imagenes=None):
     secciones = [s for _, s in sorted(enumerate(secciones), key=orden)]
     tarjetas, idx, vacias = [], 0, []
     bloqueadas = set()
+    del COLA[:]
     dia_actual = None
     n_tarjetas = 0
     por_dia = {}            # dia -> nº de posts para copiar (para la barra de dias)
@@ -292,6 +299,14 @@ def construir(md, dir_semana, season, week, imagenes=None):
             if dia_de(sec) < len(DIAS):
                 vacias.append(sec["titulo"])
             continue
+        COLA.append({
+            "dia": DIAS[d][1] if d < len(DIAS) else "OTROS",
+            "titulo": sec["titulo"],
+            "bloqueado": boletin_que_falta(sec, dir_semana, season, week),
+            "imagenes": [os.path.normpath(os.path.join(dir_semana, imagenes[n.lower()]))
+                         if n.lower() in imagenes else None for n in sec["imagenes"]],
+            "posts": [{"letra": p_["letra"], "texto": p_["texto"],
+                       "caracteres": len(p_["texto"])} for p_ in sec["posts"]]})
         for post in sec["posts"]:
             falta = boletin_que_falta(sec, dir_semana, season, week)
             if falta:
@@ -535,6 +550,12 @@ def main():
     destino = os.path.join(dir_semana, "cola_posts.html")
     io.open(destino, "w", encoding="utf-8", newline="\n").write(
         construir(md, dir_semana, season, int(week)))
+    os.makedirs(os.path.join(dir_semana, "textos"), exist_ok=True)
+    with io.open(os.path.join(dir_semana, "textos", "cola_posts.json"), "w",
+                 encoding="utf-8", newline="\n") as f:
+        json.dump({"season": season, "week": int(week),
+                   "sin_verificar": md.lstrip().startswith("⛔"), "cola": COLA},
+                  f, ensure_ascii=False, indent=1)
 
     banner, secciones = parsear(md)
     n = sum(len(s["posts"]) for s in secciones)
