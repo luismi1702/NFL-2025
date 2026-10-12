@@ -5,6 +5,8 @@ Salida por consola + PNG opcional.
 """
 
 import os
+import sys
+sys.stdout.reconfigure(encoding="utf-8")   # consola cp1252: el − del titular la rompe
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
