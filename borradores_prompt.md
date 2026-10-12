@@ -22,7 +22,7 @@ En `{DIR}/`:
   antes de elegir ángulos (regla del 30-sep-2026): lo que ellos ya contaron no
   se repite, se completa. Sus cifras solo entran citadas como "según
   SumerSports"
-- `NN_resumen_VIS_vs_LOC_*.png` y `NN_ficha_VIS_vs_LOC_*.png` — boxscore y cara
+- `NN_1_resumen_VIS_vs_LOC_*.png` y `NN_2_ficha_VIS_vs_LOC_*.png` — boxscore y cara
   a cara de CADA partido de la jornada. Solo se usan los del Monday Night (ver
   su sección más abajo)
 
@@ -115,7 +115,7 @@ Reglas del formato:
 # Borradores semana {W} — generado {FECHA} (REVISAR ANTES DE PUBLICAR)
 
 ## MARTES — Monday Night (local)
-IMAGEN: 16_ficha_ATL_vs_NO_2026_w04.png, 16_resumen_ATL_vs_NO_2026_w04.png
+IMAGEN: 16_1_resumen_ATL_vs_NO_2026_w04.png, 16_2_ficha_ATL_vs_NO_2026_w04.png
 
 **[A]** (224 chars)
 ```post
@@ -208,7 +208,7 @@ Las secciones, con estos titulos exactos:
     historia y nombra el otro en la verificacion. Si esa semana no hubo partido
     en lunes (la 18, por ejemplo), deja la seccion sin bloques `post` y dilo.
   - `IMAGEN:` lleva las dos, ficha y resumen, en el orden de la carpeta y
-    separadas por coma: `NN_ficha_VIS_vs_LOC_*.png, NN_resumen_VIS_vs_LOC_*.png`. Cada numero
+    separadas por coma: `NN_2_ficha_VIS_vs_LOC_*.png, NN_1_resumen_VIS_vs_LOC_*.png`. Cada numero
     del texto tiene que VERSE en una de las dos. Nunca mezcles numeros de las
     dos para la misma metrica: el EPA por carrera del resumen INCLUYE los scrambles del QB y el
     de la ficha NO. El 15-sep-2026 esa diferencia coloco primero a Chicago en

@@ -36,7 +36,7 @@ automatiza.
   salidas/2026/w03/
     cola_posts.html    <- la página de copiar y pegar, arriba del todo
     previas/           16 PNG numerados por kickoff + previas_2026_w03.pdf
-    partidos/          NN_resumen, NN_resumen_claves y NN_ficha de cada partido
+    partidos/          NN_1_resumen, NN_2_ficha y NN_3_resumen_claves de cada partido
     liga/              power rankings, dato de la semana, bajo centro, duelos
     textos/            borradores, destacados, estado_datos, logs
   ```

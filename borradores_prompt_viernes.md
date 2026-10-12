@@ -17,9 +17,9 @@ sus visuales ya estan generados. Luis lo publica hoy sobre las 10:30.
   contradicciones, cambios de identidad y jugadores desatados.
 - `{DIR}/estado_datos.txt` — semaforo de fuentes.
 - En `{DIR}/../partidos/`, los PNG del partido, con prefijo `01_`:
-  - `01_resumen_VIS_vs_LOC_*.png` — boxscore y curva de probabilidad
-  - `01_resumen_claves_VIS_vs_LOC_*.png` — desviaciones vs su norma
-  - `01_ficha_VIS_vs_LOC_*.png` — cara a cara de las facetas
+  - `01_1_resumen_VIS_vs_LOC_*.png` — boxscore y curva de probabilidad
+  - `01_3_resumen_claves_VIS_vs_LOC_*.png` — desviaciones vs su norma
+  - `01_2_ficha_VIS_vs_LOC_*.png` — cara a cara de las facetas
 - `docs/post-ejemplos.md`, seccion "Como publica Luis de verdad": el estilo
   REAL de la cuenta, con un analisis del TNF publicado. Imitalo.
 - `docs/cuentas-fans.md` — las unicas menciones permitidas.
@@ -65,7 +65,7 @@ FTN (play action, blitz) NO esta publicado todavia el viernes: nada de eso.
    inventar o deducir un handle.** Se etiqueta SIEMPRE, gane o pierda;
    equipo *(pendiente)* va sin mencion y lo anotas.
 8. Imagenes: ficha y resumen, en ese orden:
-   `IMAGEN: 01_ficha_VIS_vs_LOC_*.png, 01_resumen_VIS_vs_LOC_*.png`
+   `IMAGEN: 01_1_resumen_VIS_vs_LOC_*.png, 01_2_ficha_VIS_vs_LOC_*.png`
 
 ## Formato de `{DIR}/borradores_viernes.md`
 
@@ -75,7 +75,7 @@ Formato OBLIGATORIO y literal: lo parsea `cola_posts.py`.
 # Borradores del viernes — TNF semana {W} — generado {FECHA} (REVISAR ANTES DE PUBLICAR)
 
 ## VIERNES — Atlanta gano en Lambeau corriendo (visitante)
-IMAGEN: 01_ficha_ATL_vs_GB_2026_w03.png, 01_resumen_ATL_vs_GB_2026_w03.png
+IMAGEN: 01_1_resumen_ATL_vs_GB_2026_w03.png, 01_2_ficha_ATL_vs_GB_2026_w03.png
 
 **[A]** (224 chars)
 ```post

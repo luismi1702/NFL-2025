@@ -30,9 +30,9 @@ En `{DIR}/`:
   entran en el post salvo citadas como "segun SumerSports", y en la
   verificacion anota que idea del boletin usaste en cada post.
 En `{DIR}/../partidos/` y `{DIR}/../liga/`, los PNG que acompanan a los posts:
-  - `NN_resumen_VIS_vs_LOC_*.png` — boxscore y curva de probabilidad
-  - `NN_resumen_claves_VIS_vs_LOC_*.png` — desviaciones vs su norma
-  - `NN_ficha_VIS_vs_LOC_*.png` — cara a cara de las 14 facetas
+  - `NN_1_resumen_VIS_vs_LOC_*.png` — boxscore y curva de probabilidad
+  - `NN_3_resumen_claves_VIS_vs_LOC_*.png` — desviaciones vs su norma
+  - `NN_2_ficha_VIS_vs_LOC_*.png` — cara a cara de las 14 facetas
   - `under_center_*.png` — uso de formacion bajo centro en la liga
 
 Y para el estilo: la seccion "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`.
@@ -97,7 +97,7 @@ UN post y sus dos alternativas de siempre.
    - Maximo 3 menciones: las de los equipos de los que habla el post (uno o
      los dos del partido).
 9. **Imagenes: SIEMPRE las dos del partido**, ficha y resumen, en el orden de
-   la carpeta: `IMAGEN: NN_ficha_VIS_vs_LOC_*.png, NN_resumen_VIS_vs_LOC_*.png`
+   la carpeta: `IMAGEN: NN_1_resumen_VIS_vs_LOC_*.png, NN_2_ficha_VIS_vs_LOC_*.png`
    (decidido por Luis el 15-sep-2026: se acabo elegir una por post). Cada
    numero del texto tiene que VERSE en una de las dos. Un numero de
    `destacados.txt` que no salga en ninguna (pase profundo, franjas de
@@ -121,7 +121,7 @@ de copiar y pegar. Si te sales del formato, la pagina sale vacia.
 # Borradores del lunes — semana {W} — generado {FECHA} (REVISAR ANTES DE PUBLICAR)
 
 ## LUNES — Green Bay gano casi todo y perdio
-IMAGEN: 13_ficha_GB_vs_MIN_2026_w01.png, 13_resumen_GB_vs_MIN_2026_w01.png
+IMAGEN: 13_1_resumen_GB_vs_MIN_2026_w01.png, 13_2_ficha_GB_vs_MIN_2026_w01.png
 
 **[A]** (224 chars)
 ```post
@@ -145,7 +145,14 @@ Verificación:
 - resultado 39-22 verificado en web (enlace)
 ````
 
-Una seccion por partido jugado antes del lunes, con dos alternativas cada una
+PRIMERA SECCION, SIEMPRE (Luis, 12-oct-2026: el hilo del lunes salio sin
+ella): `## LUNES — Hilo de la jornada: presentación`, con `IMAGEN: ninguna` y
+DOS alternativas [A]/[B] con ganchos distintos. Dos o tres frases con lo mas
+llamativo de la jornada (dos o tres partidos, o un patron comun sacado de
+`destacados.txt`), una linea que anuncie el hilo y acabe en 🧵, y solo `#NFL`:
+sin menciones. Cada gancho, verificado como cualquier otro numero.
+
+Despues, una seccion por partido jugado antes del lunes, con dos alternativas cada una
 y angulos distintos, no la misma frase retocada. Si `destacados.txt` falta o esta vacio, dilo y no inventes:
 deja las secciones sin bloques `post` y explica por que en la verificacion.
 

@@ -171,7 +171,7 @@ CALENDARIO = [
     "sale el día que FTN complete la jornada (tarea NFL2025 dato semana).",
     "Power Rankings + hilo de MVPs de la jornada (batch martes).",
 ]
-PNG_DEL_DIA = [r"^(01_preview_|manning_picks_)", r"^01_(ficha|resumen)_", r"^duelo_", None, None,
+PNG_DEL_DIA = [r"^(01_preview_|manning_picks_)", r"^01_\d_(ficha|resumen)_", r"^duelo_", None, None,
                None, r"^power_rankings"]
 
 
@@ -221,21 +221,21 @@ def construir(md, dir_semana, season, week, imagenes=None):
         imagenes = indexar([dir_semana], dir_semana)
     banner, secciones = parsear(md)
     for sec in secciones:
-        # tambien dentro del post: 01_ficha antes que 01_resumen, como en la carpeta
+        # tambien dentro del post: 01_1_resumen antes que 01_2_ficha, como en la carpeta
         sec["imagenes"] = sorted(sec["imagenes"], key=str.lower)
     # Todo partido de la carpeta tiene tarjeta, aunque nadie le haya escrito
     # post: la cola es un espejo de la carpeta (el 15-sep-2026 faltaba el
     # BAL@IND por estar ya publicado y no habia forma de saberlo mirando)
     usadas = {i.lower() for s in secciones for i in s["imagenes"]}
     for f in sorted((os.path.basename(v) for v in imagenes.values()), key=str.lower):
-        m = re.match(r"(\d\d)_ficha_([A-Z]+)_vs_([A-Z]+)_", f)
+        m = re.match(r"(\d\d)_2_ficha_([A-Z]+)_vs_([A-Z]+)_", f)
         if not m or f.lower() in usadas:
             continue
-        resumen = f.replace("_ficha_", "_resumen_")
+        resumen = f.replace("_2_ficha_", "_1_resumen_")
         titulo = (f"Análisis del TNF — {m.group(2)} vs {m.group(3)}"
                   if m.group(1) == "01" else f"SIN POST — {m.group(2)} vs {m.group(3)}")
         secciones.append({"titulo": titulo,
-                          "imagenes": [f, resumen], "posts": [], "hueco": True})
+                          "imagenes": [resumen, f], "posts": [], "hueco": True})
     # Cada dia del calendario tiene al menos una tarjeta: si nadie ha escrito
     # su post, sale PENDIENTE con lo que toca y los PNG que ya haya
     ocupados = {dia_de(s) for s in secciones if s["posts"] or s.get("hueco")}

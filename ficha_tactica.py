@@ -290,7 +290,7 @@ pie(fig, f"{vals[team_a]['n']} y {vals[team_b]['n']} jugadas · Éxito = EPA > 0
 orden = orden_partido(SEASON, week, team_a, team_b)
 if orden:
     idx, vis, loc = orden
-    nombre = f"{idx:02d}_ficha_{vis}_vs_{loc}_{SEASON}.png"
+    nombre = f"{idx:02d}_2_ficha_{vis}_vs_{loc}_{SEASON}.png"
 else:
     nombre = f"ficha_{team_a}_vs_{team_b}_{SEASON}.png"
 

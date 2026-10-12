@@ -231,13 +231,30 @@ for team in [team_a, team_b]:
                 if (g["td_team"].astype(str) == team).any():
                     rz_tds += 1
 
-    qb_name, qb_epa   = top_player_epa(game_df[game_df["posteam"] == team],
-                                        ["pass"], passer_col)
+    # QB = quien mas dropbacks jugo, no quien mas EPA sumo: un pase de truco
+    # de un receptor (Z.Flowers, BAL @ ATL sem. 5 de 2026) le quitaba la linea
+    # al quarterback de verdad
+    _dp = game_df[(game_df["posteam"] == team) & (game_df["play_type"] == "pass")
+                  & game_df["epa"].notna()]
+    if passer_col and _dp[passer_col].notna().any():
+        qb_name = _dp[passer_col].value_counts().idxmax()
+        qb_epa = _dp.loc[_dp[passer_col] == qb_name, "epa"].sum()
+    else:
+        qb_name, qb_epa = "N/D", float("nan")
     # Excluir a los QBs del apartado RB (sus scrambles son play_type "run")
     qbs_equipo = set(game_df.loc[game_df["posteam"] == team, passer_col].dropna()) \
                  if passer_col else set()
-    rb_name, rb_epa   = top_player_epa(game_df[game_df["posteam"] == team],
-                                        ["run"], rusher_col, excluir=qbs_equipo)
+    # RB = quien mas acarreos tuvo (misma razon: un end-around suelto ponia a
+    # J.Jefferson o a J.Smith-Njigba de RB)
+    _dr = game_df[(game_df["posteam"] == team) & (game_df["play_type"] == "run")
+                  & game_df["epa"].notna()]
+    if rusher_col:
+        _dr = _dr[_dr[rusher_col].notna() & ~_dr[rusher_col].isin(qbs_equipo)]
+    if rusher_col and not _dr.empty:
+        rb_name = _dr[rusher_col].value_counts().idxmax()
+        rb_epa = _dr.loc[_dr[rusher_col] == rb_name, "epa"].sum()
+    else:
+        rb_name, rb_epa = "N/D", float("nan")
     wr_name, wr_epa   = top_player_epa(game_df[game_df["posteam"] == team],
                                         ["pass"], receiver_col)
 
@@ -421,6 +438,11 @@ y = (titular(fig, tit, y=0.925) - 0.025) if tit else 0.905
 
 # Marcador: el ganador en FG, el perdedor en gris
 y_top = y
+# Con titular de tres lineas el contenido (0,721 de alto) pisaba el pie: lo que
+# falte se quita primero a la grafica y despues al paso de las filas
+_falta = max(0.0, 0.085 - (y_top - 0.721))
+_menos_wp = min(_falta, 0.025)
+PASO_FILA = 0.029 - (_falta - _menos_wp) / 9
 yc = y - 0.06
 for x, t, ha in ((L + 0.03, team_a, "left"), (R - 0.03, team_b, "right")):
     gana = _hs is not None and marcador[t] == max(_hs, _as) and _hs != _as
@@ -453,7 +475,7 @@ def fila(lbl, va, vb, txt_a, txt_b, mayor_mejor=True):
     for xv, txt_v, mejor, ha in ((L + 0.01, txt_a, mejor_a, "left"), (R - 0.01, txt_b, mejor_b, "right")):
         fig.text(xv, y, txt_v, family=TXT, size=9, weight="bold" if mejor else "normal",
                  color=FG if mejor else GRIS1, ha=ha, va="center")
-    y -= 0.029
+    y -= PASO_FILA
 
 
 def _tdpct(s):
@@ -508,7 +530,7 @@ linea_h(fig, y + 0.012)
 y -= 0.012
 _wp_nota = "con la línea de apuestas" if wp_col == "vegas_home_wp" else "sin línea previa"
 etiqueta(fig, f"Probabilidad de victoria de {home_g} ({_wp_nota})", L + 0.01, y)
-alto_wp = 0.095
+alto_wp = 0.095 - _menos_wp
 wp_ax = estilo_ejes(fig.add_axes([L + 0.06, y - 0.02 - alto_wp, R - L - 0.07, alto_wp]), x=False)
 if wp_col and game_df[wp_col].notna().any():
     wpd = (game_df.dropna(subset=[wp_col, "game_seconds_remaining"])
@@ -528,9 +550,10 @@ if wp_col and game_df[wp_col].notna().any():
     for i, p in enumerate(top3_plays):
         if not (pd.isna(p["gsr"]) or pd.isna(p["wp"])):
             px_, py_ = 3600 - p["gsr"], p["wp"] * 100
-            wp_ax.scatter([px_], [py_], s=60, color=FG, edgecolors=CARD, linewidths=1.2, zorder=5)
+            wp_ax.scatter([px_], [py_], s=60, color=FG, edgecolors=CARD, linewidths=1.2, zorder=5,
+                          clip_on=False)
             wp_ax.annotate(str(i + 1), (px_, py_), ha="center", va="center", fontsize=5.8,
-                           fontweight="bold", color=CARD, zorder=6)
+                           fontweight="bold", color=CARD, zorder=6, annotation_clip=False)
     wp_ax.set_xlim(0, x_max)
     wp_ax.set_ylim(0, 100)
     wp_ax.text(-40, 92, home_g, ha="right", va="center", color=ch, fontsize=6.5, weight="bold")
@@ -541,7 +564,7 @@ for i, p in enumerate(top3_plays[:3]):
     while desc.startswith("("):            # quita "(8:40)", "(Shotgun)", "(No Huddle...)"
         desc = desc[desc.find(")") + 1:].strip()
     try:
-        cuarto = f"{int(float(p['qtr']))}º cuarto"
+        cuarto = f"{int(float(p['qtr']))}º cuarto" if float(p["qtr"]) <= 4 else "prórroga"
     except (TypeError, ValueError):
         cuarto = "prórroga"
     fig.text(L + 0.01, y, f"{i + 1}", family=TXT, weight="bold", size=7.5, color=FG, va="center")
@@ -559,7 +582,9 @@ pie(fig, "Explosiva = pase de 20+ o carrera de 10+ · Puntos = jugadas de mayor 
 _orden = orden_partido(SEASON, week, team_a, team_b)
 if _orden:
     _idx, _visit, _local = _orden
-    MOTE = f"{_idx:02d}_resumen_{_visit}_vs_{_local}"
+    # 1_resumen, 2_ficha, 3_resumen_claves: el orden en que Luis quiere ver
+    # cada partido en la carpeta (12-oct-2026)
+    MOTE = f"{_idx:02d}_1_resumen_{_visit}_vs_{_local}"
 else:
     MOTE = f"resumen_{team_a}_vs_{team_b}"
 
@@ -790,6 +815,8 @@ tarjeta(fig2, y + 0.005, y_top)
 pie(fig2, "Mayores desviaciones sobre la norma · " + pie_norma,
     f"NFL {SEASON} · semana {week} · nflverse PBP")
 
-outfile2 = salida(f"{MOTE.replace('resumen_', 'resumen_claves_', 1)}_{SEASON}.png",
+_mote2 = (MOTE.replace("1_resumen_", "3_resumen_claves_", 1) if _orden
+          else MOTE.replace("resumen_", "resumen_claves_", 1))
+outfile2 = salida(f"{_mote2}_{SEASON}.png",
                   SEASON, week)
 guardar(fig2, outfile2)
