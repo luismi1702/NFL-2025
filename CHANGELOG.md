@@ -2,23 +2,23 @@
 
 ---
 
-## [2026-10-13] — Martes: la prórroga en el resumen de partido, El Capologist como fuente y FTN de la semana 5 sin chartear
+## [2026-10-13] — Martes: la cola bloquea lo no verificado, la prórroga en el resumen de partido y El Capologist como fuente
 
 **Que se hizo:**
-- **`resumen_partido.py`**: la prórroga ya no se confunde con el 4º cuarto (`game_seconds_remaining` se reinicia al empezarla). El BUF 37-34 LA salía con "remontó… 22% en la segunda mitad" (ese 22% era de la prórroga; el mínimo en 3º-4º cuarto fue 32%) y con la prórroga pintada encima del 4º cuarto en la gráfica de WP. Ahora el eje va por segundos jugados, la prórroga tiene su tramo ("PR") y el titular dice "lo ganó en la prórroga". Regenerados BUF vs LA y NYG vs WAS
-- **Seattle perdió 4 balones ante San Francisco, no 5** (el punt que soltó Cowing es de SF: 4 y 3). Corregido en el Dato de la semana [B], en el MVP de Jason Myers y en `ideas_boletin_review.md`; cola reconstruida
-- **El Capologist, nueva fuente de podcasts** (a petición de Luis): RSS de iVoox y YouTube con subtítulos automáticos. Se revisan el del lunes y El Previologist; fantasy, college y Talking Football, no (reparto decidido por Claude)
-- **Podcasts**: El Capologist 7x31 (4º downs de la semana 5 y Tennessee por serie) y 100 Yardas del 13-oct (segundas partes de los Eagles y penalties de Jacksonville), con [A]/[B] en la conversación. Ecos y El Nickel, sin episodio nuevo
-- **FTN de la semana 5**: trae los 15 partidos, pero 14 son filas de relleno a cero; solo está charteado el TB @ DAL. Aviso en `CLAUDE.md` con la forma de contar los partidos con datos
-- **Big Data Bowl 2027** (Kaggle): leídas la descripción, los datos y las reglas. Sin decidir si se entra
+- **Se publicó un dato falso**: el Dato de la semana [B] salió con "Seattle perdió cinco balones" (fueron 4, y San Francisco 3: el punt que soltó Cowing es de SF). Claude lo recomendó sin pasarlo por el PBP y lo encontró horas después. Corregido en el Dato, en el MVP de Jason Myers y en `ideas_boletin_review.md`
+- **La cola bloquea lo no verificado** (`cola_posts.py`): ninguna tarjeta se puede copiar, lleve o no el banner ⛔, hasta que su borrador tiene en la cabecera `VERIFICADO: fecha — qué se comprobó`. Salen como `bloqueado: "sin verificar"`, que `/publicar` respeta. Rige desde la semana 5 (regenerada, todo bloqueado)
+- **`resumen_partido.py`**: la prórroga ya no se confunde con el 4º cuarto (`game_seconds_remaining` se reinicia). El BUF 37-34 LA salía como remontada "desde el 22% en la segunda mitad" y con la prórroga pintada sobre el 4º cuarto. Eje por segundos jugados, tramo "PR" y titular propio. Regenerados BUF vs LA y NYG vs WAS
+- **El Capologist, nueva fuente de podcasts** (a petición de Luis): se revisan el del lunes y El Previologist (reparto decidido por Claude). Revisados el 7x31 y el 100 Yardas del 13-oct, con [A]/[B] en la conversación; Ecos y El Nickel, sin episodio nuevo
+- **FTN de la semana 5**: 15 partidos, pero 14 son filas de relleno a cero. Aviso en `CLAUDE.md` con la forma de contar los partidos con datos
+- **Big Data Bowl 2027** (Kaggle): leídas descripción, datos y reglas. Sin decidir si se entra. Commit 78a6495 y push hechos (lo del bloqueo, posterior, sin commitear)
 
-**Archivos modificados:** `resumen_partido.py`, `CLAUDE.md`, `docs/podcasts_revisados.md`, `salidas/2026/w05/`
+**Archivos modificados:** `resumen_partido.py`, `cola_posts.py`, `.claude/skills/publicar/SKILL.md`, `CLAUDE.md`, `docs/podcasts_revisados.md`, `docs/decisiones.md`, `salidas/2026/w05/`
 
 **Pendiente:**
-- El resumen de NYG vs WAS publicado el lunes lleva la gráfica de WP con la prórroga mal pintada. El post del lunes del SF @ SEA, opción [B], decía "Seattle perdió 5 balones": sin confirmar cuál salió
-- `estado_datos.py` y `DatoSemana` dan por completo un FTN con filas de relleno: los candidatos de "bajo centro" de la semana 5 no son fiables
-- Sin comprobar el blitz de Minnesota contra Shough (falta el charting)
-- Siguen de antes los pendientes del 12-oct
+- **Miércoles: estrenar `/publicar`** con los MVPs (Luis publicó a mano los tres del martes). Antes, verificar sus seis tarjetas, que están bloqueadas
+- Luis no ha dicho qué letra publicó de Rams, Bills y Dato (para `publicar_cola.py --marcar`), ni si borró o corrigió el post de los "cinco balones". El post del lunes del SF @ SEA [B] decía lo mismo; el resumen de NYG vs WAS del lunes lleva la gráfica de WP mal
+- Con el bloqueo, el hilo de previas del domingo (batch del sábado a las 23:00) no se puede copiar sin una sesión de verificación antes
+- `estado_datos.py` y `DatoSemana` dan por completo un FTN con filas de relleno (candidatos de "bajo centro" de la semana 5, no fiables; blitz de Minnesota sin comprobar). Siguen los pendientes del 12-oct
 
 ## [2026-10-12] — Lunes: skill `/publicar`, arreglos del resumen de partido y PNG de partido reordenados
 

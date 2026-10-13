@@ -17,7 +17,10 @@ borradores. Argumento opcional: el día (`/publicar martes`). Sin argumento, hoy
 2. **El texto sale tal cual está en la cola.** Si algo hay que cambiar, se lo
    dices a Luis, se cambia en el borrador y se vuelve a listar.
 3. **Nunca se publica** una tarjeta con `bloqueado` (falta el boletín de
-   SumerSports), con `faltan_imagenes`, con `se_pasa` (más de 280), ni las
+   SumerSports, o vale "sin verificar": nadie ha pasado las cifras del borrador
+   por el PBP; se comprueban todas, se apunta
+   `VERIFICADO: fecha — qué se comprobó` en la cabecera del borrador y se
+   relanza `cola_posts.py`), con `faltan_imagenes`, con `se_pasa` (más de 280), ni las
    `manual` (respuestas a podcasts: esas las pone Luis).
 4. **EN UN HILO, CADA RESPUESTA SALE SIN MENCIONAR A LAS CUENTAS DEL POST
    ANTERIOR.** Es lo más importante de esta skill (Luis, 12-oct-2026). Ver

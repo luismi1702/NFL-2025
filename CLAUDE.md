@@ -142,6 +142,7 @@ ax.text(0.99, 0.01, "@CuartayDato", transform=ax.transAxes, ha="right", va="bott
   catálogo?" sino "¿lo tiene alguien más?". Si el lector lo encuentra a un clic
   en cualquier web generalista, no aporta (así se descartó la clasificación, el
   parte de lesiones y el QBR). Ver docs/backlog.md
+- REGLA (13-oct-2026, tras publicarse "Seattle perdió cinco balones" y ser cuatro): TODO borrador, lleve o no el banner ⛔, sale en la cola SIN botón de copiar (`bloqueado: "sin verificar"`). Se desbloquea pasando cada cifra de sus textos por el PBP y apuntando en la cabecera del fichero, antes de la primera sección, `VERIFICADO: fecha — qué se comprobó`; luego `python cola_posts.py`. Esa línea no se escribe sin haber hecho la comprobación. Y cuando se corrige un cálculo, se busca la cifra vieja en todos los borradores de la semana y se rehacen en el momento
 - SIEMPRE buscar web antes de escribir cualquier post — nunca asumir datos del modelo actualizados
 - REGLA (30-sep-2026): ninguna previa ni post de la jornada se propone ni se publica sin haber leído el boletín de SumerSports ("Stats & Scheme"): la Preview del jueves (`textos/ideas_boletin_preview.md`) para la previa del TNF (08-oct-2026: no se prepara hasta que llega ese correo), viernes-domingo y la previa del MNF, la Review del lunes (`ideas_boletin_review.md`) para lunes-jueves. La cola los marca BLOQUEADO sin botón de copiar hasta que existe el fichero. Si falta, leerlo antes (`python semana_auto.py --dia boletin`)
 

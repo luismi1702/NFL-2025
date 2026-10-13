@@ -118,6 +118,29 @@ def boletin_que_falta(sec, dir_semana, season, week):
     return "" if ok else tipo.capitalize()
 
 
+# REGLA (Luis, 13-oct-2026, tras publicarse "Seattle perdió cinco balones" y
+# ser cuatro): NINGUN borrador se puede copiar, lleve o no el banner ⛔, hasta
+# que sus cifras se pasan por el PBP y se apunta en la cabecera del fichero,
+# antes de la primera seccion, una linea "VERIFICADO: fecha — que se comprobo".
+# SIN_VERIFICAR guarda los titulos de las secciones pendientes; lo rellena main()
+SIN_VERIFICAR = set()
+RE_VERIFICADO = re.compile(r"^VERIFICADO:\s*\S", re.MULTILINE)
+PENDIENTE = "sin verificar"
+VERIFICAR_DESDE = (2026, 5)   # las semanas archivadas antes de la regla, libres
+
+
+def pendiente_de_verificar(trozo):
+    cabecera = re.split(r"(?m)^## +", trozo, maxsplit=1)[0]
+    return not RE_VERIFICADO.search(cabecera)
+
+
+def bloqueo_de(sec, dir_semana, season, week):
+    """Por que no se puede copiar esa tarjeta: 'Preview', 'Review',
+    PENDIENTE o ''. Lo primero que falta es el boletin."""
+    return (boletin_que_falta(sec, dir_semana, season, week)
+            or (PENDIENTE if sec["titulo"] in SIN_VERIFICAR else ""))
+
+
 def tarjeta(sec, post, idx, imagenes, falta=""):
     texto = post["texto"]
     n = len(texto)
@@ -135,7 +158,7 @@ def tarjeta(sec, post, idx, imagenes, falta=""):
   <article class="card">
     <header>
       <h2>{numero_png(sec)}{html.escape(sec["titulo"])} <span class="letra">[{post["letra"]}]</span></h2>
-      {'<span class="bloqueo">🔒 BLOQUEADO</span>' if falta else f'<button class="copiar" data-id="p{idx}">Copiar</button>'}
+      {'<span class="bloqueo">⛔ SIN VERIFICAR</span>' if falta == PENDIENTE else '<span class="bloqueo">🔒 BLOQUEADO</span>' if falta else f'<button class="copiar" data-id="p{idx}">Copiar</button>'}
     </header>
     {img}
     <pre class="post" id="p{idx}">{html.escape(texto)}</pre>
@@ -302,14 +325,14 @@ def construir(md, dir_semana, season, week, imagenes=None):
         COLA.append({
             "dia": DIAS[d][1] if d < len(DIAS) else "OTROS",
             "titulo": sec["titulo"],
-            "bloqueado": boletin_que_falta(sec, dir_semana, season, week),
+            "bloqueado": bloqueo_de(sec, dir_semana, season, week),
             "imagenes": [os.path.normpath(os.path.join(dir_semana, imagenes[n.lower()]))
                          if n.lower() in imagenes else None for n in sec["imagenes"]],
             "posts": [{"letra": p_["letra"], "texto": p_["texto"],
                        "caracteres": len(p_["texto"])} for p_ in sec["posts"]]})
         for post in sec["posts"]:
-            falta = boletin_que_falta(sec, dir_semana, season, week)
-            if falta:
+            falta = bloqueo_de(sec, dir_semana, season, week)
+            if falta and falta != PENDIENTE:
                 bloqueadas.add(falta)
             tarjetas.append(tarjeta(sec, post, idx, imagenes, falta)
                             .replace('<article class="card"', f'<article class="card" data-dia="{d}"', 1))
@@ -325,8 +348,10 @@ def construir(md, dir_semana, season, week, imagenes=None):
                   f'semana (tarjetas sin boton de copiar). Se desbloquea sola '
                   f'cuando la rutina deja textos/ideas_boletin_{tipo.lower()}.md</div>')
     if banner:
-        aviso = ('<div class="banner">⛔ DATOS SIN VERIFICAR — '
-                 'no publicar sin revisar la frescura de las fuentes</div>')
+        aviso = ('<div class="banner">⛔ DATOS SIN VERIFICAR — las tarjetas '
+                 'marcadas salen sin boton de copiar. Se desbloquean al '
+                 'pasar sus cifras por el PBP y apuntar "VERIFICADO: fecha — '
+                 'que se comprobo" en la cabecera del borrador</div>')
     if vacias:
         aviso += ('<div class="banner suave">Secciones sin borrador: '
                   + html.escape(", ".join(vacias)) +
@@ -534,13 +559,24 @@ def main():
         for f in sorted(os.listdir(anterior)):
             if (f.startswith("borradores_") and f.endswith(".md")
                     and "_previo" not in f and f not in QUIETOS):
-                jue = solo_jueves(io.open(os.path.join(anterior, f),
-                                          encoding="utf-8").read(), True)
+                entero = io.open(os.path.join(anterior, f), encoding="utf-8").read()
+                jue = solo_jueves(entero, True)
                 if jue.strip():
+                    # la cabecera (banner y VERIFICADO) se queda en el fichero
+                    # de origen: se le repone para que el jueves herede su estado
+                    if not pendiente_de_verificar(entero):
+                        jue = "VERIFICADO: en su fichero" + chr(10) + jue
                     trozos.append(jue)
                     origenes.append(os.path.join(anterior, f) + " (jueves)")
     # El banner de datos sin verificar de cualquiera de los dos va arriba
-    banner = any(t.lstrip().startswith("⛔") for t in trozos)
+    # y solo si alguno sigue pendiente (los que llevan su linea VERIFICADO, no)
+    SIN_VERIFICAR.clear()
+    for t in trozos:
+        if (season, int(week)) >= VERIFICAR_DESDE and pendiente_de_verificar(t):
+            SIN_VERIFICAR.update(s.strip() for s in re.findall(r"(?m)^## +(.+)$", t))
+    banner = bool(SIN_VERIFICAR)
+    # El banner propio de cada fichero se quita: quedaria en medio del markdown
+    trozos = [re.sub(r"\A\s*⛔[^\n]*\n", "", t) for t in trozos]
     md = ("⛔ DATOS SIN VERIFICAR" + chr(10) if banner else "") + (2 * chr(10)).join(trozos)
     print("Borradores: " + ", ".join(
         os.path.join(os.path.basename(os.path.dirname(o)), os.path.basename(o))

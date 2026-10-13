@@ -1107,3 +1107,10 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 
 **Alternativas descartadas:** ordenar solo en la cola (la carpeta seguiría al revés). Las semanas 1 a 4 conservan los nombres antiguos.
 
+## [2026-10-13] — La cola no deja copiar ningún post sin la línea `VERIFICADO`
+
+**Decisión:** en `cola_posts.py`, toda tarjeta sale sin botón de copiar (y `/publicar` no la publica) hasta que su borrador lleva en la cabecera, antes de la primera sección, `VERIFICADO: fecha — qué se comprobó`. Esa línea solo se escribe después de pasar cada cifra del texto por el PBP. Rige desde la semana 5.
+
+**Motivo:** el Dato de la semana se publicó con "Seattle perdió cinco balones" (eran cuatro). El recuento se había arreglado el lunes en `resumen_partido.py`, pero los borradores ya escritos con la cifra vieja no se rehicieron, y el aviso de "sin verificar" era solo un banner que no impedía nada. Luis: "estas cosas no pueden pasar, no es serio".
+
+**Alternativas descartadas:** bloquear solo los borradores con el banner ⛔ (fue la primera versión, del mismo día): ese banner lo pone el batch cuando `estado_datos` trae avisos de frescura, así que una semana sin avisos habría salido libre sin que nadie comprobara las cifras. Luis eligió la versión estricta sabiendo el coste: nada se copia sin una sesión de verificación, tampoco el hilo de previas del domingo.
