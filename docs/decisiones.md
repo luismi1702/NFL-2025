@@ -1086,3 +1086,24 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 **Descartado por Luis:** primera serie del partido, primera parte contra segunda, 2º down largo, 4º down, penalizaciones, posición de campo, yardas tras la recepción y carrera por izquierda o derecha.
 
 **Cautelas:** el receptor más buscado sale del PBP y no sabe de lesiones (mirar el parte antes de publicar); la tabla de personal de SumerSports puede traer ya el partido del jueves; Sharp no da número de jugadas. El titular es una plantilla seca ("Screens: X, 3º en ataque; Y, 29ª en defensa."), mejorable por tipo de clave.
+
+## [2026-10-12] — Publicar en X desde el navegador, con una skill, y no por la API
+
+**Decisión:** los posts los publica Claude con la skill `/publicar`, en el Chrome de Luis y con su sesión, leyendo la cola del día (`publicar_cola.py`). Luis elige [A] o [B] y da el visto bueno de cada tanda. Vale para cualquier día de la semana.
+
+**Motivo:** Luis no quiere seguir copiando y pegando. El navegador no cuesta nada ni pide dar de alta nada, y se puede probar ya.
+
+**Alternativas descartadas:** la API de X (de pago por uso, unos 0,015 $ por post según blogs de terceros; sin nivel gratuito para cuentas nuevas desde feb-2026; no confirmado que cubra la subida de imágenes). Queda como segundo paso si se quiere que salga solo a su hora. Publicar sin visto bueno: descartado, un error sale con su nombre.
+
+**Regla que manda en los hilos (Luis: "es SUPER importante"):** en cada respuesta se abre "Respondiendo a" y se desmarca "Otros en esta conversación", para no arrastrar las menciones del tuit anterior. Si no se puede comprobar, esa respuesta no se publica.
+
+**Fuera de la skill:** respuestas a podcasts y a otras cuentas. Las fotos de los MVPs se buscan como hace Luis (Google Imágenes, "jugador vs rival"), se le enseñan dos o tres y elige él.
+
+## [2026-10-12] — Los PNG de partido se nombran `NN_1_resumen`, `NN_2_ficha`, `NN_3_resumen_claves`
+
+**Decisión:** el nombre lleva un dígito de orden detrás del número de partido (Luis: "cada partido lo quiero así, resumen, ficha y resumen clave").
+
+**Motivo:** la carpeta y la cola ordenan por nombre y salía primero la ficha.
+
+**Alternativas descartadas:** ordenar solo en la cola (la carpeta seguiría al revés). Las semanas 1 a 4 conservan los nombres antiguos.
+

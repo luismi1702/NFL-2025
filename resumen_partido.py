@@ -179,6 +179,19 @@ desc_col     = pick_col(game_df, "desc", "play_description")
 wpa_col      = pick_col(game_df, "vegas_wpa", "wpa")
 qtr_col      = pick_col(game_df, "qtr")
 
+# Segundos jugados desde el kickoff. game_seconds_remaining vuelve a empezar en
+# la prorroga (600 en temporada regular, 900 en playoffs): con 3600 - gsr la
+# prorroga se pintaba ENCIMA del ultimo cuarto y el titular la contaba como
+# "segunda mitad" (13-oct-2026, BUF 37-34 LA)
+_gsr = pd.to_numeric(game_df["game_seconds_remaining"], errors="coerce")
+_q = (pd.to_numeric(game_df[qtr_col], errors="coerce") if qtr_col
+      else pd.Series(1, index=game_df.index))
+game_df["_prorroga"] = _q >= 5
+_dur_pr = 900 if _gsr[game_df["_prorroga"]].max() > 600 else 600
+game_df["_seg_jugados"] = np.where(game_df["_prorroga"],
+                                   3600 + (_q - 5) * _dur_pr + (_dur_pr - _gsr),
+                                   3600 - _gsr)
+
 # ── STATS PER TEAM ─────────────────────────────────────────────────────────────
 team_stats = {}
 
@@ -316,7 +329,7 @@ if wpa_col:
                 "wpa":     wpa_val,
                 "epa":     epa_val,
                 "desc":    desc_raw,
-                "gsr":     float(row.get("game_seconds_remaining", float("nan"))),
+                "gsr":     float(row.get("_seg_jugados", float("nan"))),
                 "wp":      float(row.get(wp_col, float("nan"))) if wp_col else float("nan"),
             })
 
@@ -394,7 +407,8 @@ def titular_resumen():
     # bajo del 25% en esa segunda mitad (02-oct-2026: el titular dijo que
     # Cleveland "remonto" por un 20% del primer cuarto en un partido que fue
     # ganando casi entero)
-    segunda = gsr <= 1800
+    prorroga = g["_prorroga"]
+    segunda = (gsr <= 1800) & ~prorroga
     if wp_col and g[wp_col].notna().any() and (dif_w[segunda] < 0).any():
         wp_home = pd.to_numeric(g[wp_col], errors="coerce")
         wp_w = (wp_home if W == home_g else 1 - wp_home)[segunda].dropna()
@@ -405,11 +419,19 @@ def titular_resumen():
     # 2. Decidido al final: el ganador se pone por delante (desde el empate o
     # por detras) en los dos ultimos minutos. Sin segundos exactos: el reloj
     # del PBP es el del snap, no el del final de la jugada
+    # En la prorroga el reloj vuelve a empezar: "los dos ultimos minutos" serian
+    # los de la prorroga, asi que ese partido se cuenta como lo que fue
     previo = dif_w.shift(1).fillna(0)
-    clave = g[(gsr <= 120) & (previo <= 0) & (dif_w > 0) & (g["posteam"] == W)]
+    if prorroga.any():
+        clave = g[prorroga & (previo <= 0) & (dif_w > 0)]
+    else:
+        clave = g[(gsr <= 120) & (previo <= 0) & (dif_w > 0) & (g["posteam"] == W)]
     if not clave.empty:
         j = clave.iloc[-1]
-        cuando = "en el último minuto" if j["game_seconds_remaining"] <= 60 else "en los dos últimos minutos"
+        if prorroga.any():
+            cuando = "en la prórroga"
+        else:
+            cuando = "en el último minuto" if j["game_seconds_remaining"] <= 60 else "en los dos últimos minutos"
         if str(j.get("field_goal_result", "")) == "made" and pd.notna(j.get("kick_distance")):
             como = f"con un field goal de {int(j['kick_distance'])} yardas"
         elif j.get("touchdown", 0) == 1:
@@ -540,9 +562,8 @@ etiqueta(fig, f"Probabilidad de victoria de {home_g} ({_wp_nota})", L + 0.01, y)
 alto_wp = 0.095 - _menos_wp
 wp_ax = estilo_ejes(fig.add_axes([L + 0.06, y - 0.02 - alto_wp, R - L - 0.07, alto_wp]), x=False)
 if wp_col and game_df[wp_col].notna().any():
-    wpd = (game_df.dropna(subset=[wp_col, "game_seconds_remaining"])
-           .sort_values("game_seconds_remaining", ascending=False))
-    xw = 3600 - wpd["game_seconds_remaining"]
+    wpd = game_df.dropna(subset=[wp_col, "_seg_jugados"]).sort_values("_seg_jugados")
+    xw = wpd["_seg_jugados"]
     yw = wpd[wp_col] * 100
     x_max = max(3600.0, float(xw.max()))
     ch, ca = COLP[home_g], COLP[away_g]
@@ -554,9 +575,12 @@ if wp_col and game_df[wp_col].notna().any():
         wp_ax.axvline(q, color=GRID, lw=0.6)
     for qi, q_lbl in enumerate(["1º", "2º", "3º", "4º"]):
         wp_ax.text(450 + qi * 900, 3, q_lbl, ha="center", va="bottom", color=GRIS2, fontsize=6.5)
+    if x_max > 3600:
+        wp_ax.axvline(3600, color=GRID, lw=0.6)
+        wp_ax.text((3600 + x_max) / 2, 3, "PR", ha="center", va="bottom", color=GRIS2, fontsize=6.5)
     for i, p in enumerate(top3_plays):
         if not (pd.isna(p["gsr"]) or pd.isna(p["wp"])):
-            px_, py_ = 3600 - p["gsr"], p["wp"] * 100
+            px_, py_ = p["gsr"], p["wp"] * 100
             wp_ax.scatter([px_], [py_], s=60, color=FG, edgecolors=CARD, linewidths=1.2, zorder=5,
                           clip_on=False)
             wp_ax.annotate(str(i + 1), (px_, py_), ha="center", va="center", fontsize=5.8,

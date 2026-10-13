@@ -19,6 +19,11 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   lo daba por OK (solo comprueba que la semana existe, no cuenta partidos como
   hace con PFR). Antes de usar FTN para una pieza, contar partidos:
   `ftn.groupby("week").nflverse_game_id.nunique()`
+  OJO (13-oct-2026): contar partidos TAMPOCO basta. La semana 5 traía los 15
+  partidos, pero 14 eran filas de relleno con todo a cero (`n_blitzers`,
+  `is_play_action`, `n_defense_box`, `n_pass_rushers`); solo estaba charteado
+  el del jueves, y `estado_datos` y `DatoSemana` lo daban por completo. Contar
+  los partidos CON datos: `ftn[ftn.n_pass_rushers > 0].groupby("week").nflverse_game_id.nunique()`
 - solo_reg=False solo en scripts de partido/semana concreta (resumen, previas, semanales)
 - No usar pd.read_csv contra URLs de nflverse en scripts nuevos
 - `player_stats/player_stats.csv.gz` se congeló en 2024 y sigue descargando sin
@@ -94,6 +99,8 @@ plt.savefig(salida(f"mi_grafico_{SEASON}.png", SEASON), ...)
   `liga/` (power rankings, dato de la semana, bajo centro, piezas temáticas)
   y `textos/` (borradores, destacados, estado de datos, logs). `cola_posts.html`
   se queda en la raíz de la semana: es la puerta de entrada
+- Los PNG de partido se llaman `NN_1_resumen`, `NN_2_ficha` y `NN_3_resumen_claves` (12-oct-2026): ese es el orden en que Luis los quiere en la carpeta y en la cola
+- Publicar en X: skill `/publicar` (`.claude/skills/publicar/`), que lee la cola con `publicar_cola.py`. En los hilos, cada respuesta desmarca "Otros en esta conversación" antes de salir
 - La semana de la cola va de JUEVES a MIÉRCOLES (oct-2026): el jueves (previa
   del TNF + picks del bot) vive en la carpeta de la jornada que se juega
 - La semana por defecto es hasta donde llegan los DATOS (ultima_semana()), no

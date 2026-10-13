@@ -2,6 +2,45 @@
 
 ---
 
+## [2026-10-13] — Martes: la prórroga en el resumen de partido, El Capologist como fuente y FTN de la semana 5 sin chartear
+
+**Que se hizo:**
+- **`resumen_partido.py`**: la prórroga ya no se confunde con el 4º cuarto (`game_seconds_remaining` se reinicia al empezarla). El BUF 37-34 LA salía con "remontó… 22% en la segunda mitad" (ese 22% era de la prórroga; el mínimo en 3º-4º cuarto fue 32%) y con la prórroga pintada encima del 4º cuarto en la gráfica de WP. Ahora el eje va por segundos jugados, la prórroga tiene su tramo ("PR") y el titular dice "lo ganó en la prórroga". Regenerados BUF vs LA y NYG vs WAS
+- **Seattle perdió 4 balones ante San Francisco, no 5** (el punt que soltó Cowing es de SF: 4 y 3). Corregido en el Dato de la semana [B], en el MVP de Jason Myers y en `ideas_boletin_review.md`; cola reconstruida
+- **El Capologist, nueva fuente de podcasts** (a petición de Luis): RSS de iVoox y YouTube con subtítulos automáticos. Se revisan el del lunes y El Previologist; fantasy, college y Talking Football, no (reparto decidido por Claude)
+- **Podcasts**: El Capologist 7x31 (4º downs de la semana 5 y Tennessee por serie) y 100 Yardas del 13-oct (segundas partes de los Eagles y penalties de Jacksonville), con [A]/[B] en la conversación. Ecos y El Nickel, sin episodio nuevo
+- **FTN de la semana 5**: trae los 15 partidos, pero 14 son filas de relleno a cero; solo está charteado el TB @ DAL. Aviso en `CLAUDE.md` con la forma de contar los partidos con datos
+- **Big Data Bowl 2027** (Kaggle): leídas la descripción, los datos y las reglas. Sin decidir si se entra
+
+**Archivos modificados:** `resumen_partido.py`, `CLAUDE.md`, `docs/podcasts_revisados.md`, `salidas/2026/w05/`
+
+**Pendiente:**
+- El resumen de NYG vs WAS publicado el lunes lleva la gráfica de WP con la prórroga mal pintada. El post del lunes del SF @ SEA, opción [B], decía "Seattle perdió 5 balones": sin confirmar cuál salió
+- `estado_datos.py` y `DatoSemana` dan por completo un FTN con filas de relleno: los candidatos de "bajo centro" de la semana 5 no son fiables
+- Sin comprobar el blitz de Minnesota contra Shough (falta el charting)
+- Siguen de antes los pendientes del 12-oct
+
+## [2026-10-12] — Lunes: skill `/publicar`, arreglos del resumen de partido y PNG de partido reordenados
+
+**Que se hizo:**
+- **Skill `/publicar`** (`.claude/skills/publicar/`): publica en X la cola de cualquier día desde el Chrome de Luis, con su visto bueno por tanda. En los hilos, cada respuesta desmarca "Otros en esta conversación" y lo comprueba antes de publicar. Lleva la tabla de qué imágenes va en cada pieza (vista en su perfil) y cómo buscar las fotos de los MVPs. **Sin probar todavía con un post real**
+- **`publicar_cola.py`** (nuevo): lista lo que toca un día y apunta lo publicado en `textos/publicados.json`. `cola_posts.py` guarda además la cola en `textos/cola_posts.json`
+- **`resumen_partido.py`**: salida en UTF-8 (el − del titular tumbaba el batch: MIN @ NO se quedó sin resumen); líneas QB y RB por volumen (Z. Flowers salía de QB y J. Jefferson de RB); pie sin solape con titulares de tres líneas; "prórroga" en vez de "5º cuarto"; y el fumble perdido se apunta a quien lo suelta (SF @ SEA salía 2-5 en pérdidas y fue 3-4)
+- **PNG de partido renombrados**: `NN_1_resumen`, `NN_2_ficha`, `NN_3_resumen_claves`, para que carpeta y cola salgan en ese orden. Semana 5 renombrada; prompts y `cola_posts.py` actualizados
+- **Hilo del lunes con presentación** ([A]/[B]) y regla en `borradores_prompt_lunes.md`; el prompt del domingo pide ya los dos PNG de cada previa
+- **Terminología**: "big play", nunca "jugada grande" (CLAUDE.md, prompts y memoria)
+- **Review de SumerSports** leída por el batch (14:15); cerrados contra el PBP los tres puntos abiertos de los borradores del lunes
+- **Podcasts**: Lunes Nickelado de la semana 5, completo. Respuesta combinada (pase profundo de Green Bay por mitades y carrera de Seattle), con [A]/[B] en la conversación. Hilo de Alberto Prieto sobre el SF @ SEA: leído, dos tandas de opciones, Luis decidió no responder. Hilo de Liam Coen en Londres: descartado, los datos no dan conclusión
+
+**Archivos modificados:** `resumen_partido.py`, `ficha_tactica.py`, `cola_posts.py`, `publicar_cola.py` (nuevo), `.claude/skills/publicar/SKILL.md` (nuevo), `borradores_prompt.md`, `borradores_prompt_lunes.md`, `borradores_prompt_viernes.md`, `borradores_prompt_domingo.md`, `CLAUDE.md`, `docs/calendario-posts.md`, `docs/podcasts_revisados.md`, `docs/decisiones.md`, `docs/scripts-catalog.md`, `salidas/2026/w05/`
+
+**Pendiente:**
+- **Martes: estrenar `/publicar`** con el hilo del día. Por confirmar: que Chrome deja subir los PNG de `salidas/`, los saltos de párrafo al escribir y el desplegable de menciones. Miércoles: las fotos de los MVPs
+- El resumen de SF @ SEA publicado el lunes lleva "Pérdidas 2 – 5" (lo correcto, 3 – 4). Sin repasar las pérdidas de los resúmenes de las semanas 1 a 4
+- `generar_caches.py` cuenta los fumbles perdidos con el mismo fallo (punts incluidos): arreglarlo obliga a regenerar las cachés históricas. `informe_equipo.py` y `contenders_tracker.py`, sin comprobar
+- Sin push desde 489b164
+- Siguen de antes: titular de claves de las previas (plantilla seca), 8 de 15 previas sin titular, logo de NYG, resto de scripts a `cabecera()`, PepeDiario sin enlace
+
 ## [2026-10-10/11] — Duelo del sábado con formato fijo, previas en dos PNG (cruce y claves) y `cabecera()`
 
 **Que se hizo:**
