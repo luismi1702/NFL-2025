@@ -83,9 +83,12 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   tooltip y filtro, ataque y defensa, y hasta qué semana llega. Lo no revisado
   se dice "no comprobado", nunca "no existe"
 - Fuentes verificadas que SI se actualizan en temporada (cada 6h o a diario):
-  cargar_pfr (cobertura CB/S, presiones, placajes fallados; el acumulado de
-  PFR solo llega al acabar la temporada, asi que en curso cargar_pfr lo
-  reconstruye desde el semanal: ±1-3% del oficial, sin pocket time),
+  cargar_pfr (cobertura CB/S, presiones, placajes fallados; en curso
+  cargar_pfr reconstruye el acumulado desde el semanal: ±1-3% del oficial,
+  sin pocket time. OJO 14-oct-2026: nflverse ya publica el acumulado en
+  temporada pero se queda PARADO (iba por la sem. 3 con el semanal en la 5;
+  185 jugadores no cuadraban). cargar_pfr lo detecta y reconstruye, avisando
+  con "!! PFR ... se reconstruye"),
   cargar_ngs (separacion, YAC sobre esperado, RYOE), cargar_snaps,
   cargar_lesiones, cargar_qbr (Total QBR de ESPN), cargar_stats_equipo,
   cargar_contratos (OverTheCap, para offseason)

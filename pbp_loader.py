@@ -524,11 +524,27 @@ def cargar_pfr(tipo="def", season=None, semanal=False, refrescar=False):
     if season is None:
         season = temporada_actual()
     out = df[df["season"] == season].copy()
-    if out.empty and tipo in ("def", "pass"):
+    # OJO (14-oct-2026): nflverse ya publica el acumulado EN temporada, pero
+    # se queda parado: el 14-oct traia 2026 hasta la semana 3 (g max = 3) con
+    # el semanal ya en la 5. Travis Hunter salia con 11 targets en vez de 24 y
+    # 185 jugadores no cuadraban. Si el acumulado va por detras del semanal,
+    # se reconstruye igual que si no existiera.
+    # Solo la temporada en curso (las cerradas vienen completas) y con una
+    # semana de margen: con las byes, el maximo de partidos de un jugador puede
+    # ir uno por detras de las semanas publicadas sin que el fichero este viejo
+    if tipo in ("def", "pass") and (out.empty or season == temporada_actual()):
         try:
             sem, _ = cargar_pfr(tipo, season, semanal=True, refrescar=refrescar)
         except DatosNoDisponibles:
             return out, season
+        sem_reg = sem[sem["game_type"].astype(str).str.upper() == "REG"] if not sem.empty else sem
+        semanas = int(sem_reg["week"].nunique()) if not sem_reg.empty else 0
+        g_max = pd.to_numeric(out.get("g"), errors="coerce").max() if not out.empty else 0
+        if not out.empty and semanas and g_max < semanas - 1:
+            print(f"  !! PFR {tipo} {season}: el acumulado de nflverse va por la semana "
+                  f"{int(g_max)} y el semanal por la {int(sem_reg['week'].max())} — se reconstruye")
+            out = out.iloc[0:0]
+    if out.empty and tipo in ("def", "pass"):
         if not sem.empty:
             out = _pfr_acumulado_desde_semanal(tipo, sem, season)
             print(f"  PFR {tipo} {season}: acumulado reconstruido desde el semanal "
