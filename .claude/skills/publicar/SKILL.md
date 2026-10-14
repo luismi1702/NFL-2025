@@ -6,30 +6,46 @@ description: Publica en X (@CuartayDato) los posts de la cola del día, desde el
 # /publicar — publicar la cola del día en X
 
 Publicas tú, en el navegador de Luis (Claude in Chrome), los posts que ya están
-redactados en la cola. No redactas ni corriges aquí: eso es trabajo de los
-borradores. Argumento opcional: el día (`/publicar martes`). Sin argumento, hoy.
+redactados en la cola. No redactas aquí: eso es trabajo de los borradores.
+Argumento opcional: el día (`/publicar martes`). Sin argumento, hoy.
+
+**Luis lo sigue DESDE EL MÓVIL** (14-oct-2026: "lo que quiero es no tener que
+estar en el ordenador"). Todo lo que tenga que VER para decidir (candidatas de
+fotos, el compositor antes de publicar, el hilo publicado) le llega con
+`SendUserFile` (`display: "render"`). Nunca "lo tienes en tu Chrome" ni abrir
+cosas en su PC. Mensajes cortos: qué va a salir y la pregunta.
 
 ## Reglas que no se saltan
 
 1. **Visto bueno de Luis antes de cada tanda.** Enseñas qué va a salir (texto
    exacto, imágenes, orden, qué es hilo y qué va suelto) y esperas su "sí". El
-   visto bueno de una tanda no vale para otra ni para otro día.
-2. **El texto sale tal cual está en la cola.** Si algo hay que cambiar, se lo
-   dices a Luis, se cambia en el borrador y se vuelve a listar.
-3. **Nunca se publica** una tarjeta con `bloqueado` (falta el boletín de
-   SumerSports, o vale "sin verificar": nadie ha pasado las cifras del borrador
-   por el PBP; se comprueban todas, se apunta
-   `VERIFICADO: fecha — qué se comprobó` en la cabecera del borrador y se
-   relanza `cola_posts.py`), con `faltan_imagenes`, con `se_pasa` (más de 280), ni las
-   `manual` (respuestas a podcasts: esas las pone Luis).
+   visto bueno de una tanda no vale para otra ni para otro día. Un hilo entero
+   es UNA tanda: con su sí se publica seguido.
+2. **El texto sale tal cual está en la cola.** Si Luis cambia algo (le pasó con
+   el Power Ranking del 14-oct: tres versiones del cierre en dos minutos), el
+   cambio se hace PRIMERO en el borrador (`salidas/{año}/wNN/textos/borradores_*.md`,
+   recontando el "(N chars)"), se regenera la cola (`python cola_posts.py`) y
+   se comprueba con `publicar_cola.py` que la tarjeta sigue desbloqueada.
+   Después se rehace el compositor. Cola y publicado tienen que coincidir.
+3. **Nunca se publica** una tarjeta con `bloqueado`, con `faltan_imagenes`,
+   con `se_pasa` (más de 280), ni las `manual` (respuestas a podcasts: esas las
+   pone Luis). `bloqueado` es "Preview"/"Review" (falta el boletín de
+   SumerSports) o "sin verificar": nadie ha pasado sus cifras por el PBP. Desde
+   el 14-oct-2026 eso lo hace el batch (`semana_auto.verificar()`); si aun así
+   sale bloqueada, se verifica (`python semana_auto.py --verificar <borrador>`
+   o a mano), se apunta `VERIFICADO: fecha — qué se comprobó` debajo del `## `
+   de ESA sección (o en la cabecera, si se ha revisado el fichero entero) y se
+   relanza `cola_posts.py`. Nunca en la cabecera si hay secciones sin revisar:
+   desbloquearía también las del jueves, que se publican otro día.
 4. **EN UN HILO, CADA RESPUESTA SALE SIN MENCIONAR A LAS CUENTAS DEL POST
    ANTERIOR.** Es lo más importante de esta skill (Luis, 12-oct-2026). Ver
-   "Respuesta dentro de un hilo". Si no puedes comprobar que la casilla está
-   desmarcada, NO publicas esa respuesta: paras y avisas.
+   "Respuesta dentro de un hilo". Si no puedes comprobar que las casillas
+   están desmarcadas, NO publicas esa respuesta: paras y avisas.
 5. Ante un inicio de sesión, un captcha, un aviso de X o cualquier diálogo que
    no esperabas: paras y avisas. No inicias sesión, no aceptas condiciones.
 6. Si algo falla a mitad, **no reintentes a ciegas**: mira primero en el perfil
-   si el post salió. Un duplicado es peor que un hueco.
+   o en el hilo si el post salió (recarga y espera 3-4 s: X tarda en
+   mostrarlo). Un duplicado es peor que un hueco.
 
 ## 1. Qué toca
 
@@ -43,136 +59,193 @@ publicación. De cada post: `titulo`, `imagenes` (rutas absolutas, ya en el
 orden en que se suben), `posts` (`letra`, `texto`, `caracteres`), `publicado`
 (si ya salió, con su URL), `bloqueado`, `manual`, `hilo`.
 
-- Si `aviso` no está vacío (la carpeta nueva no tiene nada y se ha tirado de la
-  anterior), díselo a Luis antes de seguir: puede ser material de la semana pasada.
-- Si `sin_verificar` es true, recuérdale que el borrador lleva el aviso de
-  datos sin verificar y pregúntale si ya lo ha revisado.
+- `aviso` "esto es de la wNN anterior" es lo normal de lunes a miércoles: la
+  semana de la cola va de jueves a miércoles. Díselo en una línea y sigue.
+- `sin_verificar: true` solo dice que el fichero lleva el banner ⛔; lo que
+  manda es `bloqueado` de cada tarjeta. Si ninguna está bloqueada, basta con
+  mencionarlo.
 - Lo que tiene `publicado` se salta.
 
 ## 2. Qué es hilo y qué va suelto
 
-- Una sección con "Hilo" y "presentación" en el título abre un hilo. Las
-  numeradas `1/5`, `2/5`… son ese hilo, en ese orden.
+- Una sección con "Hilo" y "presentación" (o "abre el hilo") en el título abre
+  un hilo. Las numeradas `1/5`, `2/5`… son ese hilo, en ese orden.
 - **Lunes:** el hilo lo abre "Hilo de la jornada: presentación" y cuelgan de él
   todos los posts de partido (los que llevan `NN_1_resumen` y `NN_2_ficha`).
   La "Previa del Monday Night" va suelta.
 - **Domingo:** "Hilo de previas 0/N" abre y cuelgan las previas en orden.
 - Dato de la semana, Power Rankings, bot y previas sueltas: posts independientes.
+- El orden del JSON mezcla sueltos e hilo (el miércoles sale MVPs 1/5, PR,
+  MVPs 2/5…): pregunta a Luis qué va primero. El 14-oct eligió PR primero y
+  luego el hilo entero.
 - Si dudas de si algo cuelga del hilo o va suelto, pregúntalo.
 
 Dentro del hilo cada tuit responde AL ANTERIOR (cadena), no todos al primero.
 
-### Qué imágenes lleva cada cosa
+### Qué imágenes y etiquetas lleva cada cosa
 
 Así publica Luis (visto en su perfil el 12-oct-2026, semanas 2 a 5). Si lo que
 trae el JSON no cuadra con esta tabla, se pregunta antes de publicar.
 
-| Pieza | Estructura | Imágenes |
-|---|---|---|
-| Lunes: hilo de la jornada | presentación + un tuit por partido, en cadena | presentación, ninguna; cada partido, DOS: `NN_1_resumen` y `NN_2_ficha`, en ese orden |
-| Domingo: hilo de previas | presentación + una previa por partido | presentación, ninguna; cada previa, su `NN_preview` (y desde el 11-oct, detrás, el `NN_preview_..._claves`) |
-| Previa suelta (TNF, MNF) | un post | igual que una previa del hilo |
-| Sábado: duelo | hilo | los primeros tuits, un PNG cada uno; los últimos, sin imagen |
-| Miércoles: MVPs | presentación + ataque, defensa, especiales, rookie | presentación, ninguna; cada MVP lleva una FOTO del jugador en ese partido, que no es un PNG nuestro: se busca como en "Fotos de los MVPs" |
-| Jueves: bot | post + respuesta "Cómo funciona" | el post, `manning_picks`; la respuesta, ninguna |
-| Dato de la semana, Power Rankings | un post | su PNG |
-| Respuestas a podcasts u otras cuentas | — | no se publican desde aquí |
+| Pieza | Estructura | Imágenes | Hashtags y menciones |
+|---|---|---|---|
+| Lunes: hilo de la jornada | presentación + un tuit por partido, en cadena | presentación, ninguna; cada partido, DOS: `NN_1_resumen` y `NN_2_ficha`, en ese orden | los del borrador |
+| Domingo: hilo de previas | presentación + una previa por partido | presentación, ninguna; cada previa, su `NN_preview` (y desde el 11-oct, detrás, el `NN_preview_..._claves`) | los del borrador |
+| Previa suelta (TNF, MNF) | un post | igual que una previa del hilo | los del borrador |
+| Sábado: duelo | hilo | los primeros tuits, un PNG cada uno; los últimos, sin imagen | los del borrador |
+| Miércoles: MVPs | presentación + ataque, defensa, especiales, rookie | presentación, ninguna; cada MVP, una FOTO del jugador en ese partido (ver "Fotos de los MVPs") | los del borrador (cada MVP, su afición) |
+| Jueves: bot | post + respuesta "Cómo funciona" | el post, `manning_picks`; la respuesta, ninguna | los del borrador |
+| Dato de la semana | un post | su PNG | los del borrador |
+| **Power Rankings** | un post | su PNG | **NINGUNO, ni `#NFL`** (Luis, 14-oct-2026). Si el borrador los trae, se quitan en el borrador antes (regla 2) |
+| Respuestas a podcasts u otras cuentas | — | no se publican desde aquí | — |
 
 ### Fotos de los MVPs
 
 Luis lo hace así y así se hace aquí (12-oct-2026): Google Imágenes con
 "<jugador> vs <rival>" (el rival de ESE partido; sale del texto del tuit o de
-`MVPsSemana`), y se elige una foto del partido.
+`MVPsSemana`), y se elige una foto del partido. Prepáralas mientras Luis elige
+las opciones [A]/[B], para no hacerle esperar.
 
-1. Busca en Google Imágenes, una búsqueda por MVP. Filtra por reciente si
-   salen fotos viejas.
-2. Elige dos o tres candidatas por jugador. Antes de proponerlas abre la página
-   de origen y comprueba lo que se pueda: que es ese jugador (dorsal, nombre
-   en el pie de foto), ese partido (rival y fecha) y que tiene buena resolución.
-   Lo que no hayas podido confirmar, dilo.
-3. Enséñaselas a Luis con captura y de dónde sale cada una. **Elige él.**
-4. Con su sí para cada fichero (nombre, origen y tamaño), descárgala a
-   `salidas/{año}/wNN/liga/mvp_fotos/` con un nombre claro
-   (`mvp_ataque_mcmillan.jpg`). Solo imágenes (jpg, png, webp), nada más.
-5. Súbela con `file_upload` en el tuit de ese MVP.
+1. Una búsqueda por MVP, filtrada a la última semana:
+   `https://www.google.com/search?q=<jugador>+<rival>&tbm=isch&tbs=qdr:w`
+   (para un defensa, "+interception"; para un kicker, "+field+goal").
+2. Dos o tres candidatas por jugador. Abre la vista previa (clic en la
+   miniatura; si el panel no sale, otro clic) y comprueba con el pie de foto
+   y la imagen: ese jugador (dorsal, nombre), ese partido (rival, fecha; el
+   nombre del fichero a veces lo dice: `CTC-L-BEARS-PACKERS-101126`). Lo que
+   no puedas confirmar, dilo. Descarta las que llevan marca de agua ("Connect
+   partner" de Reuters) o un rótulo de vídeo ("HIGHLIGHTS").
+3. URL original y resolución: con la vista previa abierta, espera 2-3 s y lee
+   con `javascript_tool`:
+   ```js
+   [...document.querySelectorAll('img')].filter(i=>i.src.startsWith('http') && !i.src.includes('gstatic') && i.naturalWidth>300).map(i=>{const u=new URL(i.src);return [u.origin+u.pathname, i.naturalWidth+'x'+i.naturalHeight]})
+   ```
+   Si sale vacío, espera y repite; si sigue vacío, esa web no deja (descártala).
+   Saca la versión grande quitando el redimensionado: el proxy de Yahoo
+   (`s.yimg.com/.../https%3A%2F%2Fmedia.zenfs.com...`) es la URL de
+   `media.zenfs.com`; `i0.wp.com/<web>/...` es `<web>/...`; Cloudinary del
+   NFL (`static.clubs.nfl.com/image/upload/t_..._mobile/...`) sin el `t_...`;
+   minutemedia (SI), cambiando `w_720` por `w_1600`.
+4. Bájalas con `curl -sL -A "Mozilla/5.0"` a una carpeta del scratchpad y
+   monta UNA hoja con PIL (fondo `#0f1115`, cada candidata con su etiqueta
+   "MAYE 1 · ESPN · 1920x1080" en amarillo). Mándala con `SendUserFile` y pide
+   la elección en una línea ("Maye 1, Green 2…").
+5. Las elegidas se copian a `salidas/{año}/wNN/liga/mvp_fotos/` con nombre
+   claro (`mvp_ataque_maye.jpg`, `mvp_defensa_green.jpg`…). Solo imágenes.
+6. Se suben con `file_upload` en el tuit de ese MVP.
 
 Si no aparece una foto clara de ese partido, no se pone una de otro: se le
-dice a Luis y ese tuit lo decide él.
+dice a Luis y ese tuit lo decide él. Si solo hay una a baja resolución (Myers,
+912x513, el 14-oct), dilo junto a la hoja.
 
 ## 3. Elegir [A] o [B] y pedir el visto bueno
 
-Enseña la lista numerada con las dos opciones de cada post y deja que Luis
-elija ("todos los A", "A salvo el 3 y el 7", "sáltate el 5"). Después repite
-en corto lo que va a salir y espera el sí. Los hilos largos se publican
-seguidos; si Luis quiere parar en medio, se para y se retoma con `publicado`.
+Enseña la lista numerada con las dos opciones de cada post (la primera frase
+de cada una basta) y pregunta en una línea: qué letra, y en qué orden. Luis
+contesta en corto ("1B y 2B, 3 primero el power ranking"). Después monta el
+primer post en el compositor, manda la captura (`zoom` con
+`save_to_disk: true` del cuadro → `SendUserFile`) con el resumen de lo que
+sigue, y espera el sí. Los hilos se publican seguidos; si Luis quiere parar en
+medio, se para y se retoma con `publicado`.
 
 ## 4. Navegador
 
-Carga las herramientas en UNA llamada a ToolSearch (tabs_context_mcp,
+Carga las herramientas en UNA llamada a ToolSearch: tabs_context_mcp,
 tabs_create_mcp, navigate, computer, find, read_page, file_upload,
-tabs_close_mcp). `tabs_context_mcp` primero; pestaña nueva; `x.com/home`.
-Comprueba que la sesión abierta es **@CuartayDato**. Si es otra o no hay
-sesión, para.
+javascript_tool, tabs_close_mcp (y `SendUserFile` si no está).
+`tabs_context_mcp` primero; pestaña nueva o la vacía del grupo; `x.com/home`.
+Comprueba que la sesión abierta es **@CuartayDato** (abajo a la izquierda). Si
+es otra o no hay sesión, para. Chrome no abre `file:///`: lo local se le
+manda a Luis con `SendUserFile`, nunca con el navegador.
 
 ## 5. Post suelto (o el primero de un hilo)
 
-1. Abre `https://x.com/compose/post`.
-2. Clic en el cuadro de texto y escribe el texto del post.
-3. Imágenes: localiza el `input` de fichero del compositor (`find`: "file input
-   de imágenes del compositor") y súbelas con `file_upload`, todas en una
-   llamada y en el orden del JSON (primero el resumen, luego la ficha). No
-   hagas clic en el botón de la imagen: abre un diálogo del sistema que no ves.
-4. **Comprueba antes de publicar**, con captura:
-   - el texto es idéntico al de la cola, con sus saltos de párrafo;
-   - las menciones y hashtags están escritos enteros y el desplegable de
-     sugerencias está cerrado (si quedó abierto, no elijas ninguna sugerencia:
-     ciérralo sin tocar el texto y vuelve a comprobar);
-   - están todas las imágenes, en su orden, ya cargadas;
-   - el contador no está en rojo.
-5. Clic en "Postear".
-6. Comprueba que salió y coge su URL (perfil `x.com/CuartayDato`, primer post).
-7. Apúntalo:
-   `python publicar_cola.py --marcar "<titulo exacto>" --letra A --url <url>`
+1. Abre `https://x.com/compose/post` y espera 2 s. `find` "Texto del post".
+2. Clic en el cuadro y escribe el texto con `type` (los saltos de párrafo
+   salen bien).
+3. **Desplegable de sugerencias:** si el texto acaba en una @mención o un
+   #hashtag, queda abierto. Se cierra SIN elegir nada haciendo clic en una
+   zona vacía del texto, a la derecha de la última línea (nunca Escape: puede
+   cerrar el compositor; nunca clic en el desplegable). No escribas un espacio
+   final para cerrarlo: al borrarlo se vuelve a abrir.
+4. Imágenes: `find` "file input de imágenes del compositor" y `file_upload`
+   con todas, en una llamada y en el orden del JSON. Acepta las rutas de
+   `salidas/` y del scratchpad. No hagas clic en el botón de la imagen: abre
+   un diálogo del sistema que no ves. Espera 2-3 s a que cargue (hasta
+   entonces "Postear" sale gris).
+5. Para rehacer el texto (Luis cambia algo): clic en el cuadro, `ctrl+a` y
+   volver a escribir. La imagen se queda.
+6. **Comprueba antes de publicar**, con captura: texto idéntico al de la cola,
+   menciones y hashtags enteros, desplegable cerrado, imágenes cargadas y en
+   orden, contador sin rojo (el círculo muestra lo que QUEDA: 280 − lo que
+   marca = longitud; tiene que cuadrar con `caracteres`).
+7. Clic en "Postear" (`find` "Postear button in compose dialog"). El
+   compositor se cierra y vuelve a /home. Espera 3 s antes de navegar: si no,
+   salta un "Leave site?" y la navegación se bloquea (no fuerces: espera y
+   mira el perfil).
+8. URL: abre `x.com/CuartayDato`, espera 3-4 s (a veces carga con error la
+   primera vez: recarga) y lee el id del primer post:
+   ```js
+   document.querySelector('article a[href*="/status/"] time').closest('a').getAttribute('href').split('/').pop()
+   ```
+   Comprueba con `innerText` que ese article es el post que acabas de
+   publicar (y no uno fijado o anterior).
+9. Apúntalo:
+   `python publicar_cola.py --dia <dia> --marcar "<titulo exacto>" --letra A --url https://x.com/CuartayDato/status/<id>`
 
 ## 6. Respuesta dentro de un hilo
 
-1. Abre la URL del tuit anterior del hilo (la que acabas de apuntar).
-2. Clic en responder. Se abre el compositor con una línea "Respondiendo a…".
-3. **Desmarcar a los demás.** Si el tuit anterior mencionaba cuentas, la línea
-   dice "Respondiendo a @CuartayDato y N más". Haz clic en esa línea: se abre
-   el diálogo "Respondiendo a", con @CuartayDato arriba (fijo) y debajo
-   "Otros en esta conversación" con una casilla general y una por cuenta.
-   Desmarca la casilla general de "Otros en esta conversación" (se desmarcan
-   todas las de debajo), comprueba con una captura que no queda NINGUNA
-   marcada salvo la de @CuartayDato, y pulsa "Listo".
-4. De vuelta en el compositor, la línea tiene que decir solo
-   "Respondiendo a @CuartayDato". Compruébalo con captura (y `zoom` si hace falta).
-   - Si el anterior no mencionaba a nadie (la presentación), la línea ya sale
-     así: se comprueba igual.
-   - Si no consigues dejarla así o no puedes leerla con seguridad: NO
-     publiques. Para y cuéntaselo a Luis con la captura.
-5. Escribe el texto y sube las imágenes como en el punto 5.
-6. **Vuelve a comprobar la línea "Respondiendo a @CuartayDato"** justo antes de
-   pulsar "Responder": al escribir o subir imágenes no debería cambiar, pero es
-   la única regla que no admite fallo.
-7. Publica, comprueba, coge la URL de ESTA respuesta y apúntala. La siguiente
-   responde a esta.
+1. Abre la URL del tuit anterior del hilo y espera 3 s.
+2. `find` "reply button of the focused post '<primeras palabras>'" y clic.
+3. Mira la línea encima del cuadro. Según lo que mencionaba el tuit anterior:
+   - **Nadie** (la presentación sin menciones): el compositor dice "Añadir
+     otro post" y NO hay línea "Respondiendo a". Es correcto: no hay nada que
+     desmarcar.
+   - **Alguna cuenta**: dice "Respondiendo a @CuartayDato y a @X" o "En
+     respuesta a @CuartayDato @X y @Y". Clic en esa línea (los nombres en
+     azul): se abre el diálogo "Respondiendo a", con @CuartayDato arriba (fija)
+     y debajo "Otros en esta conversación". La lista tarda ~2 s en cargar.
+     - **Una sola cuenta**: no hay casilla general; desmarca la de la cuenta.
+     - **Dos o más**: hay casilla general en "Otros en esta conversación";
+       desmárcala y se desmarcan todas.
+     Comprueba con `zoom` que no queda NINGUNA marcada salvo @CuartayDato y
+     pulsa "Listo" (arriba a la derecha).
+4. De vuelta en el compositor, `zoom` a la línea: tiene que decir SOLO
+   "Respondiendo a @CuartayDato". Si no consigues dejarla así o no puedes
+   leerla con seguridad: NO publiques. Para y avisa con la captura.
+5. Clic en el cuadro ("Postea tu respuesta"), escribe, cierra el desplegable
+   (paso 5.3), sube la imagen (paso 5.4; cada respuesta tiene su propio file
+   input: vuelve a hacer `find`).
+6. **Vuelve a comprobar la línea "Respondiendo a @CuartayDato"** con captura
+   justo antes de pulsar "Responder". Es la única regla que no admite fallo.
+7. Publica, espera 4 s, abre el tuit ANTERIOR (no el perfil) y lee el id de la
+   respuesta nueva, que es el último `article` del hilo:
+   ```js
+   [...document.querySelectorAll('article')].map(a=>{const t=a.querySelector('a[href*="/status/"] time');return [t?t.closest('a').getAttribute('href').split('/').pop():'(foco)', a.innerText.replace(/\n/g,' ').slice(0,70)]})
+   ```
+   (el tuit en foco sale sin `time` cuando es el de la URL: su id ya lo
+   tienes). Apúntalo con `--marcar`. La siguiente responde a esta.
 
 Las menciones que van escritas en el texto del propio post (la afición del
 equipo) sí salen: lo que se quita son las heredadas del post anterior.
 
 ## 7. Al terminar
 
-Resume qué salió (con enlaces), qué se saltó y por qué, y qué queda pendiente.
-Cierra la pestaña que abriste. Si paraste a mitad, di exactamente cuál fue el
-último tuit publicado.
+- Captura del hilo o del post publicado (`zoom` de la columna central,
+  `save_to_disk`) → `SendUserFile` con el enlace en el pie.
+- `publicar_cola.py --dia <dia>`: comprueba que todo lo publicado tiene su
+  `publicado` con URL.
+- Resume en una tabla qué salió (con enlaces), qué se saltó y por qué, y qué
+  queda pendiente. Si paraste a mitad, di exactamente cuál fue el último tuit
+  publicado.
+- Cierra la pestaña.
+- Lo nuevo que hayas aprendido de la página de X va a "Notas de campo".
 
 ## Notas de campo
 
-Lo que se vaya aprendiendo de la página de X (dónde está cada cosa, qué falla)
-se apunta aquí, con fecha, para no redescubrirlo.
+Lo que se vaya aprendiendo de la página de X se apunta aquí, con fecha. Lo ya
+incorporado a los pasos de arriba no se repite.
 
-- 12-oct-2026: skill recién escrita, **todavía sin probar con un post real**.
-  La primera vez, ir despacio y con captura en cada paso; confirmar sobre todo
-  que `file_upload` acepta las rutas de `salidas/` y cómo se comportan los
-  saltos de línea y el desplegable de menciones al escribir.
+- 14-oct-2026, estreno: Power Ranking w05 + hilo de MVPs (5 tuits), todo bien
+  a la primera; 15 min de punta a punta, la mitad en las fotos. Lo aprendido
+  está en los pasos 2, 3, 5 y 6.
