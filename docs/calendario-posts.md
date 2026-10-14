@@ -2,8 +2,8 @@
 
 Decidido ago-2026, ampliado con el batch del lunes en sep-2026. La maquina
 GENERA (semana_auto.py, TRES tareas programadas de Windows); Luis revisa y
-publica — la verificacion triple del CLAUDE.md sigue siendo manual y no se
-automatiza.
+publica. Desde el 14-oct-2026 la verificacion de cifras tambien la hace la
+maquina (ver "Nivel 2b"); Luis elige opcion y publica.
 
 ## La semana tipo
 
@@ -177,6 +177,26 @@ dos alternativas por post y su nota de verificacion. No publica nada.
 - **Los borradores son borradores**: la verificacion triple del CLAUDE.md
   sigue siendo de Luis antes de publicar.
 
+## Nivel 2b — verificacion automatica (14-oct-2026)
+
+Despues de cada borrador, `semana_auto.verificar()` lanza un SEGUNDO
+`claude -p` con prompt de revisor (`verificar_prompt.md`) y permisos
+`Read/Glob/Grep/Edit/Write/WebSearch/Bash(python)`. Rehace cada cifra con el
+PBP y el script que la genera, comprueba que la metrica mide lo que dice la
+frase, busca nombres y resultados en web y, seccion a seccion, apunta
+`VERIFICADO: fecha — que` (la cola la desbloquea), corrige con
+`CORREGIDO: antes → ahora` o deja `❌ SIN VERIFICAR: motivo` (sigue
+bloqueada). Log: `borradores_*_verificacion.log`. A mano:
+`python semana_auto.py --verificar salidas/.../textos/borradores_X.md` y
+despues `python cola_posts.py`.
+
+- Por que un segundo Claude y no el redactor: el redactor se revisa mal a si
+  mismo. El 14-oct el tuit de Maye decia "+13,5 EPA. El mejor partido de un
+  QB este año" y su propia nota explicaba que el superlativo era de otra
+  metrica (EPA total); con la del +13,5 era el 2º (Dart, +16,8).
+- Si la verificacion falla o se agota (1 h), el batch sigue: el borrador
+  queda bloqueado en la cola, que es lo seguro.
+
 ### Cierre de los posts: hashtags y menciones (decidido ago-2026)
 
 Los ejemplos de `docs/post-ejemplos.md` son de epoca de draft
@@ -190,9 +210,9 @@ temporada ya esta fijada y vive como regla 9 del `borradores_prompt.md`:
   deducir un handle. Maximo 2-3 por post.
 - Equipo marcado *(pendiente)* en la tabla: post sin menciones, anotado en la
   nota de verificacion.
-- Se etiqueta a las aficiones de los equipos que NOMBRA el post, tambien en
-  power rankings (decidido por Luis el 15-sep-2026; antes las piezas de liga
-  iban sin menciones). Maximo 3 por tuit. Los MVPs van en hilo para que cada
+- Se etiqueta a las aficiones de los equipos que NOMBRA el post. Maximo 3 por
+  tuit. El POWER RANKING va sin hashtags ni menciones (ni `#NFL`): termina en
+  la frase de cierre (Luis, 14-oct-2026; del 15-sep al 14-oct las llevaba). Los MVPs van en hilo para que cada
   jugador lleve las cuentas de su equipo; la apertura, sin menciones.
 - Los caracteres se cuentan CON hashtags y menciones incluidos.
 

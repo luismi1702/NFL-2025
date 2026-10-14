@@ -67,11 +67,12 @@ Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`
    - Si el equipo aparece como *(pendiente)* en la tabla, escribe el post sin
      menciones y anotalo en la nota de verificacion
      ("CHI sin cuenta en la tabla — decidir").
-   - Se etiqueta a las aficiones de los equipos que NOMBRA el post, tambien
-     en power rankings (decidido por Luis el 15-sep-2026; antes las piezas
-     de liga iban sin menciones). Maximo 3 por tuit: si el texto nombra mas
-     equipos, elige los 3 protagonistas y anota el resto en la verificacion.
-     El `#Equipo` sigue la misma regla.
+   - Se etiqueta a las aficiones de los equipos que NOMBRA el post. Maximo 3
+     por tuit: si el texto nombra mas equipos, elige los 3 protagonistas y
+     anota el resto en la verificacion. El `#Equipo` sigue la misma regla.
+   - EXCEPCION, el POWER RANKING (Luis, 14-oct-2026): va SIN hashtags y SIN
+     menciones, ni siquiera `#NFL`. El post termina en la frase de cierre.
+     (Del 15-sep al 14-oct-2026 llevaba las de los equipos nombrados.)
    - Cuenta los caracteres CON hashtags y menciones incluidos.
 10. **Nada de diagnosticos internos en el texto del post.** El `z=+X.XX` de
     `dato_semana.txt` es un z-score ROBUSTO (mediana y MAD), no el z de toda

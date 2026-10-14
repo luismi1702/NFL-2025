@@ -121,7 +121,8 @@ def boletin_que_falta(sec, dir_semana, season, week):
 # REGLA (Luis, 13-oct-2026, tras publicarse "Seattle perdió cinco balones" y
 # ser cuatro): NINGUN borrador se puede copiar, lleve o no el banner ⛔, hasta
 # que sus cifras se pasan por el PBP y se apunta en la cabecera del fichero,
-# antes de la primera seccion, una linea "VERIFICADO: fecha — que se comprobo".
+# antes de la primera seccion, una linea "VERIFICADO: fecha — que se comprobo"
+# (o una por seccion, dentro de ella: ver secciones_sin_verificar).
 # SIN_VERIFICAR guarda los titulos de las secciones pendientes; lo rellena main()
 SIN_VERIFICAR = set()
 RE_VERIFICADO = re.compile(r"^VERIFICADO:\s*\S", re.MULTILINE)
@@ -132,6 +133,21 @@ VERIFICAR_DESDE = (2026, 5)   # las semanas archivadas antes de la regla, libres
 def pendiente_de_verificar(trozo):
     cabecera = re.split(r"(?m)^## +", trozo, maxsplit=1)[0]
     return not RE_VERIFICADO.search(cabecera)
+
+
+# Por seccion (14-oct-2026): el revisor del batch (semana_auto.verificar)
+# apunta "VERIFICADO: ..." dentro de cada seccion que pasa, y lo que no pasa
+# se queda bloqueado sin arrastrar al resto del fichero. La linea en la
+# cabecera sigue valiendo para el fichero entero
+def secciones_sin_verificar(trozo):
+    if not pendiente_de_verificar(trozo):
+        return set()
+    fuera = set()
+    for sec in re.split(r"(?m)^## +", trozo)[1:]:
+        titulo, _, cuerpo = sec.partition(chr(10))
+        if not RE_VERIFICADO.search(cuerpo):
+            fuera.add(titulo.strip())
+    return fuera
 
 
 def bloqueo_de(sec, dir_semana, season, week):
@@ -572,8 +588,8 @@ def main():
     # y solo si alguno sigue pendiente (los que llevan su linea VERIFICADO, no)
     SIN_VERIFICAR.clear()
     for t in trozos:
-        if (season, int(week)) >= VERIFICAR_DESDE and pendiente_de_verificar(t):
-            SIN_VERIFICAR.update(s.strip() for s in re.findall(r"(?m)^## +(.+)$", t))
+        if (season, int(week)) >= VERIFICAR_DESDE:
+            SIN_VERIFICAR.update(secciones_sin_verificar(t))
     banner = bool(SIN_VERIFICAR)
     # El banner propio de cada fichero se quita: quedaria en medio del markdown
     trozos = [re.sub(r"\A\s*⛔[^\n]*\n", "", t) for t in trozos]

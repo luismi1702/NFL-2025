@@ -25,6 +25,7 @@
 import argparse
 import io
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -134,6 +135,10 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
                 f.write("\n--- STDERR ---\n" + r.stderr)
         if r.returncode == 0 and os.path.exists(destino):
             log(f"   OK -> {destino}")
+            # El paso cuenta como hecho con el borrador escrito: lo que no
+            # pase la verificacion se queda bloqueado en la cola, que es su
+            # sitio, pero no tumba el batch
+            verificar(destino)
             # (La cola la regenera el paso siguiente del batch; el desbloqueo
             # tras leer el boletin vive en boletin(). Aqui SEASON no existe:
             # el 02-oct-2026 este paso marcaba FALLO con el borrador ya escrito)
@@ -143,6 +148,56 @@ def borradores(txt_dir, W, prompt_file="borradores_prompt.md"):
         return False
     except subprocess.TimeoutExpired:
         log("   FALLO: timeout de 3600s")
+        return False
+    except Exception as e:
+        log(f"   FALLO: {type(e).__name__}: {e}")
+        return False
+
+
+# Verificacion (14-oct-2026, Luis: "¿por que no se verifican antes de que
+# salgan en la cola?"). Un SEGUNDO claude -p, con prompt de revisor y Python,
+# rehace cada cifra con el PBP, busca nombres y resultados en la web y apunta
+# "VERIFICADO: ..." en cada seccion que pasa (cola_posts.py la desbloquea) o
+# "❌ SIN VERIFICAR: motivo". Va aparte del redactor porque el redactor se
+# revisa mal a si mismo: el "+13,5 EPA, el mejor partido de un QB del año"
+# de Maye llevaba su propia nota explicando que eso era otra metrica.
+VERIFICAR_TOOLS = ["Read", "Glob", "Grep", "Edit", "Write", "WebSearch",
+                   "Bash(python:*)", "Bash(mkdir:*)"]
+
+
+def verificar(destino):
+    import shutil
+    from datetime import date
+    exe = shutil.which("claude")
+    if not exe:
+        log("-> verificacion: claude CLI no encontrado — el borrador queda bloqueado")
+        return False
+    plantilla = io.open(os.path.join(RAIZ, "verificar_prompt.md"),
+                        encoding="utf-8").read()
+    rel = os.path.relpath(destino, RAIZ).replace(os.sep, "/")
+    prompt = (plantilla.replace("{FICHERO}", rel)
+                       .replace("{FECHA}", str(date.today())))
+    log(f"-> verificacion de {os.path.basename(destino)}: claude -p (PBP + web)")
+    try:
+        # Prompt por STDIN, como en borradores()
+        r = subprocess.run(
+            [exe, "-p", "--allowedTools", *VERIFICAR_TOOLS],
+            cwd=RAIZ, input=prompt, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=3600)
+        with io.open(destino.replace(".md", "_verificacion.log"), "w",
+                     encoding="utf-8") as f:
+            f.write(r.stdout or "")
+            if r.stderr:
+                f.write("\n--- STDERR ---\n" + r.stderr)
+        texto = io.open(destino, encoding="utf-8").read()
+        secs = len(re.findall(r"(?m)^## ", texto))
+        ok = len(re.findall(r"(?m)^VERIFICADO:\s*\S", texto))
+        log(f"   {ok}/{secs} secciones verificadas (exit {r.returncode})"
+            + ("" if r.returncode == 0 else ": " + " | ".join(
+                (r.stderr or r.stdout or "").strip().splitlines()[-3:])))
+        return r.returncode == 0
+    except subprocess.TimeoutExpired:
+        log("   FALLO: timeout de 3600s — el borrador queda bloqueado")
         return False
     except Exception as e:
         log(f"   FALLO: {type(e).__name__}: {e}")
@@ -647,7 +702,11 @@ def main():
     ap.add_argument("--dia", choices=["lunes", "martes", "viernes", "domingo", "boletin", "dato"])
     ap.add_argument("--recuperar", action="store_true",
                     help="al iniciar sesion: lanza el ultimo batch si se salto")
+    ap.add_argument("--verificar", metavar="BORRADOR",
+                    help="solo verifica ese borradores_*.md (y rehace la cola a mano)")
     args = ap.parse_args()
+    if args.verificar:
+        sys.exit(0 if verificar(os.path.abspath(args.verificar)) else 1)
     if args.dia == "boletin":
         from pbp_loader import temporada_actual
         sys.exit(0 if boletin(temporada_actual()) else 1)
