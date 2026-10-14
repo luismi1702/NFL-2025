@@ -37,7 +37,14 @@ Las notas de "Verificación:" que deja el redactor NO cuentan como prueba.
    muff del rival que recupera tu equipo no es pérdida tuya).
 4. **Nombres, equipos, rondas de draft, traspasos, lesiones, resultados,
    estadios, récords**: búsqueda web (WebSearch). La memoria está anticuada.
-5. **Forma**: ≤280 caracteres (recuenta y corrige el "(N chars)"), reglas de
+5. **MVPs**: si `mvps_semana.txt` trae un bloque `OJO — ... sin ningun
+   defensor acreditado`, mira cada jugada. Si alguna tiene un dueño claro
+   (bloqueo de patada, safety, fumble…), el reparto tiene un hueco y el MVP
+   puede estar mal: el 14-oct-2026 se publicó a Z.Thomas como MVP rookie y
+   lo era G.Halton, cuyo touchdown de fumble no contaba. Esa sección queda
+   `❌ SIN VERIFICAR` con la jugada y su EPA. Las paradas por placaje no
+   tienen dueño (son de los once): esas no bloquean.
+6. **Forma**: ≤280 caracteres (recuenta y corrige el "(N chars)"), reglas de
    "Posts X" de `CLAUDE.md` (terminología, "3er down", equipos en inglés) y
    menciones SOLO de `docs/cuentas-fans.md`. El Power Ranking va SIN
    hashtags ni menciones (ni `#NFL`): si los trae, quítalos y anótalo.

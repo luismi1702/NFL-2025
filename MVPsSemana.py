@@ -1,7 +1,7 @@
 # MVPsSemana.py
 # Líderes semanales de EPA — Ataque, Defensa, Equipos Especiales y Rookie
 # Ataque: 50% QB / 50% receptor en pases, 100% portador en carreras
-# Defensa: EPA negativo generado por intercepciones y sacks
+# Defensa: EPA negativo de intercepciones, sacks y fumbles forzados perdidos
 # Equipos especiales: retornos, FGs, XPs y punts
 
 import pandas as pd
@@ -70,27 +70,79 @@ def calc_ataque(d, play_type, passer, receiver, rusher, posteam):
 
 
 def calc_defensa(d, interception, sack_p, defteam):
-    credits = {}
+    """EPA defensivo (con signo cambiado) de las jugadas con dueño claro:
+    intercepciones, sacks (tambien los compartidos, a medias) y fumbles
+    forzados que acaban en pérdida.
 
-    # Intercepciones: EPA negativo
+    Fumbles (14-oct-2026): el touchdown de fumble de G.Halton en la semana 5
+    (+6,94) no contaba porque solo se miraban INT y sacks, y Halton era el MVP
+    rookie real (+8,5 contra +5,4 de Z.Thomas). MVPsSeason.py ya los contaba:
+    los dos scripts tienen que medir lo mismo. Quien fuerza el fumble se lleva
+    la jugada; si la recupera otro defensor, mitad y mitad (como QB/receptor).
+    Cada jugada se acredita UNA vez por jugador: un strip-sack no cuenta doble.
+    Placajes y TFL fuera: su EPA es de los once, no del que placa.
+    """
+    base = d[d["epa"].notna()]
+    por_jugada = {}   # idx -> {clave: fraccion}
+
+    def _dar(idx, nombre, equipo, frac):
+        if pd.isna(nombre):
+            return
+        k = f"{str(nombre).strip()} ({equipo if pd.notna(equipo) else '?'})"
+        jug = por_jugada.setdefault(idx, {})
+        jug[k] = max(jug.get(k, 0.0), frac)
+
+    tm = defteam
     if interception:
-        ints = d[d[interception].notna() & d["epa"].notna()].copy()
-        if not ints.empty:
-            ints["_key"] = make_key(ints[interception], ints[defteam] if defteam else pd.Series("", index=ints.index))
-            int_total = ints.groupby("_key")["epa"].sum() * -1
-            for k, v in int_total.items():
-                credits[k] = credits.get(k, 0.0) + v
+        for idx, r in base[base[interception].notna()].iterrows():
+            _dar(idx, r[interception], r[tm] if tm else None, 1.0)
+    if sack_p and "sack" in base.columns:
+        for idx, r in base[(base["sack"] == 1) & base[sack_p].notna()].iterrows():
+            _dar(idx, r[sack_p], r[tm] if tm else None, 1.0)
 
-    # Sacks: EPA negativo
-    if sack_p and "sack" in d.columns:
-        sacks = d[(d["sack"] == 1) & d["epa"].notna() & d[sack_p].notna()].copy()
-        if not sacks.empty:
-            sacks["_key"] = make_key(sacks[sack_p], sacks[defteam] if defteam else pd.Series("", index=sacks.index))
-            sack_total = sacks.groupby("_key")["epa"].sum() * -1
-            for k, v in sack_total.items():
-                credits[k] = credits.get(k, 0.0) + v
+    # Sacks compartidos: el PBP los deja en half_sack_1/2 con sack_player_name
+    # vacio (53 en las semanas 1-5 de 2026, ninguno contaba). Mitad y mitad
+    h1, h2 = "half_sack_1_player_name", "half_sack_2_player_name"
+    if h1 in base.columns and "sack" in base.columns:
+        for idx, r in base[(base["sack"] == 1) & base[h1].notna()].iterrows():
+            _dar(idx, r[h1], r[tm] if tm else None, 0.5)
+            _dar(idx, r.get(h2), r[tm] if tm else None, 0.5)
 
+    ff, rec = "forced_fumble_player_1_player_name", "fumble_recovery_1_player_name"
+    if ff in base.columns and "fumble_lost" in base.columns:
+        perdidos = base[(base["fumble_lost"] == 1) & base[ff].notna()]
+        for idx, r in perdidos.iterrows():
+            equipo = r[tm] if tm else None
+            rec_nom = r.get(rec)
+            rec_def = (pd.notna(rec_nom) and r.get("fumble_recovery_1_team") == equipo
+                       and rec_nom != r[ff])
+            if rec_def:
+                _dar(idx, r[ff], equipo, 0.5)
+                _dar(idx, rec_nom, equipo, 0.5)
+            else:
+                _dar(idx, r[ff], equipo, 1.0)
+
+    calc_defensa.acreditadas = set(por_jugada)
+    credits = {}
+    for idx, jug in por_jugada.items():
+        epa = -base.at[idx, "epa"]
+        for k, frac in jug.items():
+            credits[k] = credits.get(k, 0.0) + epa * frac
     return credits
+
+
+UMBRAL_SIN_DUENO = 3.0
+
+
+def jugadas_sin_dueno(d, acreditadas, umbral=UMBRAL_SIN_DUENO):
+    """Alarma (14-oct-2026, "esto no puede pasar"): jugadas en las que el
+    ataque pierde mucho EPA y ningun defensor se lleva credito en el reparto.
+    Asi se vio tarde el touchdown de fumble de Halton. Si aparece una jugada
+    con dueño claro (bloqueo de patada, safety, fumble...), el reparto tiene
+    un hueco: se mira antes de publicar los MVPs."""
+    grandes = d[(d["epa"] <= -umbral) & d["play_type"].isin(["pass", "run"])
+                & ~d.index.isin(acreditadas)]
+    return grandes.sort_values("epa")
 
 
 def _serie(d, name):
@@ -226,6 +278,10 @@ def claves_rookies(d, season):
              ("rusher_player_name", "rusher_player_id", "posteam"),
              ("interception_player_name", "interception_player_id", "defteam"),
              ("sack_player_name", "sack_player_id", "defteam"),
+             ("half_sack_1_player_name", "half_sack_1_player_id", "defteam"),
+             ("half_sack_2_player_name", "half_sack_2_player_id", "defteam"),
+             ("forced_fumble_player_1_player_name", "forced_fumble_player_1_player_id", "defteam"),
+             ("fumble_recovery_1_player_name", "fumble_recovery_1_player_id", "defteam"),
              ("kicker_player_name", "kicker_player_id", "posteam"),
              ("punter_player_name", "punter_player_id", "posteam"),
              ("kickoff_returner_player_name", "kickoff_returner_player_id", "posteam"),
@@ -296,6 +352,14 @@ def main():
             if k in rookies:
                 rk_credit[k] = rk_credit.get(k, 0.0) + v
     rk_series = print_top("ROOKIE", rk_credit)
+
+    sin_dueno = jugadas_sin_dueno(d, getattr(calc_defensa, "acreditadas", set()))
+    if not sin_dueno.empty:
+        print(f"\nOJO —{len(sin_dueno)} jugada(s) de -{UMBRAL_SIN_DUENO:.0f} EPA o peor para "
+              "el ataque sin ningun defensor acreditado. Si alguna tiene dueño "
+              "claro, el reparto tiene un hueco: revisar antes de publicar.")
+        for _, r in sin_dueno.head(8).iterrows():
+            print(f"  {r['epa']:+.2f}  {r.get('defteam', '?')}  {str(r.get('desc', ''))[:120]}")
 
     show_top3 = input("\nMostrar top-3 por categoria? (s/n): ").strip().lower()
     if show_top3 == "s":

@@ -287,42 +287,59 @@ def _add_def_credits(sub, name_col1, name_col2, team_col, credits, rook_credits,
 def calc_defensa(d, int_nm, sack_nm, tfl1_nm, tfl2_nm, ff1_nm, ff2_nm, pd1_nm, pd2_nm, defteam, rookie_ids,
                  int_id=None, sack_id=None, tfl1_id=None, tfl2_id=None,
                  ff1_id=None, ff2_id=None, pd1_id=None, pd2_id=None):
-    credits = {}
-    rook_credits = {}
-
+    """Mismo reparto que MVPsSemana.calc_defensa (14-oct-2026): el acumulado
+    tiene que ser la suma de las semanas. Antes contaba ademas TFL y pases
+    defendidos, cualquier fumble forzado (aunque no hubiera perdida), no
+    contaba los sacks compartidos y sumaba varias veces la misma jugada (un
+    strip-sack era sack + fumble + TFL). Ahora: INT y sack enteros, sack
+    compartido a medias, fumble forzado PERDIDO para quien lo fuerza (a medias
+    si lo recupera otro defensor); cada jugada, una vez por jugador.
+    tfl*/pd* se aceptan por compatibilidad y no se usan."""
     base = d[d["epa"].notna()]
+    por_jugada = {}   # idx -> {clave: (fraccion, player_id)}
 
-    # Intercepciones
+    def _dar(idx, nombre, pid, equipo, frac):
+        if pd.isna(nombre):
+            return
+        k = f"{str(nombre).strip()} ({equipo if pd.notna(equipo) else '?'})"
+        jug = por_jugada.setdefault(idx, {})
+        if frac > jug.get(k, (0.0, None))[0]:
+            jug[k] = (frac, pid)
+
+    def _col(r, c):
+        return r[c] if c and c in r.index else None
+
+    tm = defteam
     if int_nm:
-        sub = base[base[int_nm].notna()]
-        _add_def_credits(sub, int_nm, None, defteam, credits, rook_credits, rookie_ids, id_col1=int_id)
+        for idx, r in base[base[int_nm].notna()].iterrows():
+            _dar(idx, r[int_nm], _col(r, int_id), _col(r, tm), 1.0)
+    if sack_nm and "sack" in base.columns:
+        for idx, r in base[(base["sack"] == 1) & base[sack_nm].notna()].iterrows():
+            _dar(idx, r[sack_nm], _col(r, sack_id), _col(r, tm), 1.0)
+    h1, h2 = "half_sack_1_player_name", "half_sack_2_player_name"
+    if h1 in base.columns and "sack" in base.columns:
+        for idx, r in base[(base["sack"] == 1) & base[h1].notna()].iterrows():
+            _dar(idx, r[h1], _col(r, "half_sack_1_player_id"), _col(r, tm), 0.5)
+            _dar(idx, _col(r, h2), _col(r, "half_sack_2_player_id"), _col(r, tm), 0.5)
+    rec = "fumble_recovery_1_player_name"
+    if ff1_nm and "fumble_lost" in base.columns:
+        for idx, r in base[(base["fumble_lost"] == 1) & base[ff1_nm].notna()].iterrows():
+            equipo = _col(r, tm)
+            rec_nom = _col(r, rec)
+            if (pd.notna(rec_nom) and _col(r, "fumble_recovery_1_team") == equipo
+                    and rec_nom != r[ff1_nm]):
+                _dar(idx, r[ff1_nm], _col(r, ff1_id), equipo, 0.5)
+                _dar(idx, rec_nom, _col(r, "fumble_recovery_1_player_id"), equipo, 0.5)
+            else:
+                _dar(idx, r[ff1_nm], _col(r, ff1_id), equipo, 1.0)
 
-    # Sacks
-    if sack_nm and "sack" in d.columns:
-        sub = base[(base["sack"] == 1) & base[sack_nm].notna()]
-        _add_def_credits(sub, sack_nm, None, defteam, credits, rook_credits, rookie_ids, id_col1=sack_id)
-
-    # TFL
-    if tfl1_nm or tfl2_nm:
-        mask = pd.Series(False, index=base.index)
-        if tfl1_nm: mask |= base[tfl1_nm].notna()
-        if tfl2_nm: mask |= base[tfl2_nm].notna()
-        _add_def_credits(base[mask], tfl1_nm, tfl2_nm, defteam, credits, rook_credits, rookie_ids, id_col1=tfl1_id, id_col2=tfl2_id)
-
-    # Fumbles forzados
-    if ff1_nm or ff2_nm:
-        mask = pd.Series(False, index=base.index)
-        if ff1_nm: mask |= base[ff1_nm].notna()
-        if ff2_nm: mask |= base[ff2_nm].notna()
-        _add_def_credits(base[mask], ff1_nm, ff2_nm, defteam, credits, rook_credits, rookie_ids, id_col1=ff1_id, id_col2=ff2_id)
-
-    # Passes defendidos
-    if pd1_nm or pd2_nm:
-        mask = pd.Series(False, index=base.index)
-        if pd1_nm: mask |= base[pd1_nm].notna()
-        if pd2_nm: mask |= base[pd2_nm].notna()
-        _add_def_credits(base[mask], pd1_nm, pd2_nm, defteam, credits, rook_credits, rookie_ids, id_col1=pd1_id, id_col2=pd2_id)
-
+    credits, rook_credits = {}, {}
+    for idx, jug in por_jugada.items():
+        epa = -base.at[idx, "epa"]
+        for k, (frac, pid) in jug.items():
+            credits[k] = credits.get(k, 0.0) + epa * frac
+            if pid is not None and str(pid) in rookie_ids:
+                rook_credits[k] = rook_credits.get(k, 0.0) + epa * frac
     return credits, rook_credits
 
 
