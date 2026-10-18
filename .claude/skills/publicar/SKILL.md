@@ -94,7 +94,7 @@ trae el JSON no cuadra con esta tabla, se pregunta antes de publicar.
 | Previa suelta (TNF, MNF) | un post | igual que una previa del hilo | los del borrador |
 | Sábado: duelo | hilo | los primeros tuits, un PNG cada uno; los últimos, sin imagen | los del borrador |
 | Miércoles: MVPs | presentación + ataque, defensa, especiales, rookie | presentación, ninguna; cada MVP, una FOTO del jugador en ese partido (ver "Fotos de los MVPs") | los del borrador (cada MVP, su afición) |
-| Jueves: bot | post + respuesta "Cómo funciona" | el post, `manning_picks`; la respuesta, ninguna | los del borrador |
+| Jueves: bot | post + respuesta "Cómo funciona" | el post, `manning_picks`; la respuesta, ninguna | solo `#NFL`: **ni menciones ni `#Equipo`** (Luis, 15-oct-2026). Si el borrador las trae, se quitan antes (regla 2) |
 | Dato de la semana | un post | su PNG | los del borrador |
 | **Power Rankings** | un post | su PNG | **NINGUNO, ni `#NFL`** (Luis, 14-oct-2026). Si el borrador los trae, se quitan en el borrador antes (regla 2) |
 | Respuestas a podcasts u otras cuentas | — | no se publican desde aquí | — |
@@ -249,3 +249,42 @@ incorporado a los pasos de arriba no se repite.
 - 14-oct-2026, estreno: Power Ranking w05 + hilo de MVPs (5 tuits), todo bien
   a la primera; 15 min de punta a punta, la mitad en las fotos. Lo aprendido
   está en los pasos 2, 3, 5 y 6.
+- 16-oct-2026, hilo Jaguars: la presentación salió con "@JaguarsESPsi". Entre
+  la captura del visto bueno y el clic se coló un "si" en el compositor
+  abierto (con el foco en el texto), y el primer clic en "Postear" no publicó.
+  Luis lo borró y se republicó. Regla: JUSTO antes de cada clic en
+  "Postear"/"Responder" (también al reintentar), leer el texto con
+  `javascript_tool` (`[role="dialog"] [data-testid="tweetTextarea_0"]`,
+  cambiando `\n\n\n` por `\n\n`) y compararlo con la cola carácter a
+  carácter. No dejar el compositor con el foco esperando el sí: montarlo,
+  capturar y, si tarda, recomprobar.
+- En un hilo propio, la primera respuesta a un tuit con mención sale como
+  "Añadir otro post" sin línea "Respondiendo a": X no hereda la mención. Las
+  siguientes dicen "Respondiendo a @CuartayDato". En ambos casos no hay nada
+  que desmarcar.
+- El contador de X cuenta "−" (signo menos, U+2212) como 2: un 261 de la cola
+  sale como 262. No es un error del texto.
+- 17-oct-2026, hilo CHI @ ATL (7 tuits): en el 6/7, un clic en el cuadro de
+  respuesta por `ref` (de `find`) cayó en el botón de programar
+  (`/compose/post/schedule`) y el compositor volvió vacío como post nuevo. No
+  salió nada, pero hubo que rehacer la respuesta. Clic al cuadro por
+  coordenadas sacadas de la captura, y antes de publicar, la comprobación JS
+  de una vez: texto, línea "Respondiendo a", nº de imágenes
+  (`[data-testid="attachments"] img`) y que el botón diga "Responder" (si
+  dice "Postear", no es una respuesta). Publicar con
+  `document.querySelector('[role="dialog"] [data-testid="tweetButton"]').click()`
+  funciona y evita fallar el botón.
+- 18-oct-2026, hilo de previas w06 (13 tuits, ~20 min): todo a la primera.
+  · En la primera respuesta ("Añadir otro post", sin línea "Respondiendo a")
+    el botón dice "Postear" y ES una respuesta (el compositor muestra el
+    tuit anterior encima con la línea del hilo). La regla "si dice Postear,
+    no es respuesta" vale solo cuando hay línea "Respondiendo a".
+  · Abrir la respuesta sin fallar: `[...document.querySelectorAll('article')]
+    .find(a=>a.innerText.includes('<inicio del tuit>'))
+    .querySelector('[data-testid="reply"]').click()`.
+  · Desmarcar en el diálogo "Respondiendo a" por JS funciona: si hay casilla
+    general (un `input[type=checkbox]` no deshabilitado fuera de
+    `[data-testid="UserCell"]`) y está marcada, `.click()`; si no, click en
+    cada una marcada y no deshabilitada. Leer luego `checked` de todas.
+  · Cerrar el desplegable de @menciones cuando la última línea llena el
+    ancho: clic en la línea en blanco entre el último párrafo y los hashtags.
