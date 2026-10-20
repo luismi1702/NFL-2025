@@ -47,6 +47,104 @@ def log(msg):
         f.write(linea + "\n")
 
 
+# Candados (20-oct-2026). Ese dia el PC estaba apagado a las 8:00: al
+# encenderlo, "recuperar batch" lanzo el batch del martes (12:33) y dos
+# minutos despues Windows lanzo tambien la tarea atrasada "batch martes".
+# Dos redactores escribieron el mismo borradores_posts.md y dos verificadores
+# lo editaban a la vez, pisandose las marcas VERIFICADO. Ahora cada trabajo
+# coge su candado (fichero creado con O_EXCL, atomico) y una segunda copia
+# del mismo trabajo sale sin hacer nada. Un candado de un proceso muerto, o de
+# mas de CANDADO_MAX_H horas, se da por caducado y se quita.
+CANDADOS = os.path.join(RAIZ, "salidas", ".candados")
+CANDADO_MAX_H = 6
+
+
+def _proceso_vivo(pid):
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        # os.kill(pid, 0) en Windows MATA el proceso: se pregunta por ctypes
+        import ctypes
+        from ctypes import wintypes
+        k = ctypes.WinDLL("kernel32", use_last_error=True)
+        k.OpenProcess.restype = wintypes.HANDLE
+        k.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        h = k.OpenProcess(0x1000, False, pid)   # QUERY_LIMITED_INFORMATION
+        if not h:
+            return ctypes.get_last_error() == 5  # acceso denegado = existe
+        try:
+            code = wintypes.DWORD()
+            ok = k.GetExitCodeProcess(h, ctypes.byref(code))
+            return bool(ok) and code.value == 259  # STILL_ACTIVE
+        finally:
+            k.CloseHandle(h)
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def _leer_candado(ruta):
+    """(pid, desde, quien) o None si no se puede leer."""
+    try:
+        partes = io.open(ruta, encoding="utf-8").read().split(maxsplit=2)
+        return int(partes[0]), float(partes[1]), (partes[2] if len(partes) > 2 else "")
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def coger_candado(nombre, quien=""):
+    """Devuelve la ruta del candado si se consigue, o None si otro proceso
+    vivo ya hace ese trabajo (y lo apunta en el log)."""
+    import time
+    os.makedirs(CANDADOS, exist_ok=True)
+    ruta = os.path.join(CANDADOS, nombre + ".lock")
+    for _ in range(3):
+        try:
+            fd = os.open(ruta, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            info = _leer_candado(ruta)
+            try:
+                edad = time.time() - (info[1] if info else os.path.getmtime(ruta))
+            except OSError:
+                continue                       # lo acaban de soltar: reintenta
+            if info is None and edad < 60:
+                # Recien creado y aun sin escribir: es de otro que va delante
+                log(f"-> {nombre}: otro proceso lo esta arrancando ahora — este sale")
+                return None
+            if info and _proceso_vivo(info[0]) and edad < CANDADO_MAX_H * 3600:
+                log(f"-> {nombre}: ya lo esta haciendo otro proceso (pid {info[0]}, "
+                    f"desde las {datetime.fromtimestamp(info[1]):%H:%M}"
+                    + (f", {info[2]}" if info[2] else "") + ") — este sale sin hacer nada")
+                return None
+            log(f"   candado {nombre} caducado (proceso muerto o > {CANDADO_MAX_H} h): se quita")
+            try:
+                os.remove(ruta)
+            except OSError:
+                pass
+            continue
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(f"{os.getpid()} {time.time()} {quien}")
+        return ruta
+    log(f"-> {nombre}: no se pudo coger el candado — este sale")
+    return None
+
+
+def soltar_candado(ruta):
+    if not ruta:
+        return
+    info = _leer_candado(ruta)
+    if info and info[0] != os.getpid():
+        return                                 # ya no es nuestro
+    try:
+        os.remove(ruta)
+    except OSError:
+        pass
+
+
 def paso(nombre, args, stdin_text=None, captura=None, timeout=1200,
          sin_muestra=None):
     """Ejecuta un script del proyecto. Si `captura`, vuelca stdout a ese TXT.
@@ -166,6 +264,17 @@ VERIFICAR_TOOLS = ["Read", "Glob", "Grep", "Edit", "Write", "WebSearch",
 
 
 def verificar(destino):
+    # Un verificador por fichero: dos a la vez se pisan las marcas VERIFICADO
+    cand = coger_candado("verificar_" + os.path.basename(destino), destino)
+    if not cand:
+        return False
+    try:
+        return _verificar(destino)
+    finally:
+        soltar_candado(cand)
+
+
+def _verificar(destino):
     import shutil
     from datetime import date
     exe = shutil.which("claude")
@@ -234,7 +343,7 @@ def _ultimo_boletin(ahora=None):
     return tipo, horas[tipo]
 
 
-def boletin(SEASON):
+def boletin(SEASON, tipo=None):
     """Lee el ultimo boletin de SumerSports con `claude -p` y deja
     `ideas_boletin.md` en textos/: que angulos se pueden rehacer con nuestros
     datos y cuales no. No redacta posts ni toca el buzon (solo buscar y leer).
@@ -247,7 +356,10 @@ def boletin(SEASON):
     import shutil
     from datetime import date
     from pbp_loader import ultima_semana, proxima_semana
-    tipo, _ = _ultimo_boletin()
+    # tipo forzado: el correo llega antes de su hora (15-oct-2026, Preview
+    # antes de las 13:24 con la tarea programada a las 15:00)
+    if tipo is None:
+        tipo, _ = _ultimo_boletin()
     W = ultima_semana() if tipo == "review" else (proxima_semana()
                                                   or (ultima_semana() or 0) + 1)
     if not W:
@@ -292,6 +404,19 @@ def boletin(SEASON):
             # escribira el, que ya encontrara la Review
             if tipo == "review" and os.path.exists(os.path.join(txt_dir, "destacados.txt")):
                 borradores(txt_dir, W, "borradores_prompt_lunes.md")
+            # La Preview dispara la previa del TNF (15-oct-2026; antes se
+            # escribia a mano): los PNG de la jornada y el borrador, que
+            # borradores() manda al verificador. Si ya hay un
+            # borradores_jueves.md (escrito a mano, con respuestas a podcasts)
+            # no se toca
+            if tipo == "preview":
+                if os.path.exists(os.path.join(txt_dir, "borradores_jueves.md")):
+                    log("   previa del TNF: ya hay borradores_jueves.md — no se rehace")
+                else:
+                    paso(f"previas semana {W} (PNG del TNF)",
+                         ["Previas.py", "--season", str(SEASON), "--week", str(W)],
+                         stdin_text="j\n\n\n")
+                    borradores(txt_dir, W, "borradores_prompt_jueves.md")
             # Desbloquea su cola; la Review, ademas, el JUEVES de la jornada
             # siguiente, que ya vive en la cola de W+1 (01-oct-2026)
             for w in ([W, W + 1] if tipo == "review" else [W]):
@@ -636,6 +761,15 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
                            ["contenders_tracker.py", "--season", str(SEASON),
                             "--week", str(W)],
                            captura=os.path.join(txt_dir, "contenders.txt")))
+            # Se publica el JUEVES (Luis, 16-oct-2026), que vive en la cola de
+            # W+1: el PNG se copia alli, como el dato de la semana
+            import shutil
+            png = os.path.join(RAIZ, "salidas", str(SEASON), f"w{W:02d}", "liga",
+                               f"contenders_{SEASON}_w{W:02d}.png")
+            if os.path.exists(png):
+                destino = os.path.join(RAIZ, "salidas", str(SEASON), f"w{W + 1:02d}", "liga")
+                os.makedirs(destino, exist_ok=True)
+                shutil.copy2(png, destino)
         else:
             log(f"-> contenders: se salta hasta la semana {CONTENDERS_DESDE} "
                 f"(jugadas {W})")
@@ -700,6 +834,8 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
 def main():
     ap = argparse.ArgumentParser(description="Batch semanal de generacion de PNGs")
     ap.add_argument("--dia", choices=["lunes", "martes", "viernes", "domingo", "boletin", "dato"])
+    ap.add_argument("--tipo", choices=["review", "preview"],
+                    help="con --dia boletin: fuerza cual leer (si el correo llega antes de su hora)")
     ap.add_argument("--recuperar", action="store_true",
                     help="al iniciar sesion: lanza el ultimo batch si se salto")
     ap.add_argument("--verificar", metavar="BORRADOR",
@@ -709,22 +845,48 @@ def main():
         sys.exit(0 if verificar(os.path.abspath(args.verificar)) else 1)
     if args.dia == "boletin":
         from pbp_loader import temporada_actual
-        sys.exit(0 if boletin(temporada_actual()) else 1)
+        sys.exit(0 if _con_candado("boletin", boletin, temporada_actual(), args.tipo) else 1)
     if args.dia == "dato":
         from pbp_loader import temporada_actual
-        sys.exit(0 if dato(temporada_actual()) else 1)
+        sys.exit(0 if _con_candado("dato", dato, temporada_actual()) else 1)
     if args.recuperar:
         # El boletin va aparte del batch: no cuenta para batch_pendiente y se
         # salta solo si su fichero ya existe
         from pbp_loader import temporada_actual
-        boletin(temporada_actual())
-        dato(temporada_actual())
+        _con_candado("boletin", boletin, temporada_actual())
+        _con_candado("dato", dato, temporada_actual())
         args.dia = batch_pendiente()
         if not args.dia:
             return
-        log(f"RECUPERACION: el batch {args.dia} no llego a arrancar a su hora")
     elif not args.dia:
         ap.error("hace falta --dia o --recuperar")
+
+    # Un solo batch de cada dia a la vez (20-oct-2026): la recuperacion al
+    # encender el PC y la tarea atrasada de Windows arrancaban los dos. Se
+    # coge ANTES de escribir "===== BATCH", para que la copia que sale no
+    # cuente como intento en batch_pendiente
+    cand = coger_candado(f"batch_{args.dia}", "recuperacion" if args.recuperar else "tarea/mano")
+    if not cand:
+        return
+    try:
+        if args.recuperar:
+            log(f"RECUPERACION: el batch {args.dia} no llego a arrancar a su hora")
+        _batch(args)
+    finally:
+        soltar_candado(cand)
+
+
+def _con_candado(nombre, fn, *a):
+    cand = coger_candado(nombre)
+    if not cand:
+        return True        # otro proceso ya lo hace: no es un fallo
+    try:
+        return fn(*a)
+    finally:
+        soltar_candado(cand)
+
+
+def _batch(args):
 
     # Semana jugada segun schedules (la fuente de verdad del proyecto)
     from pbp_loader import ultima_semana, temporada_actual

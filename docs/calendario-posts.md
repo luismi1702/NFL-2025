@@ -16,6 +16,7 @@ maquina (ver "Nivel 2b"); Luis elige opcion y publica.
 | Miercoles | Power Rankings | power_rankings | batch martes |
 | Miercoles | MVPs de la jornada: HILO de 5 (apertura + ataque, defensa, especiales, rookie) | MVPsSemana (TXT, sin PNG) | batch martes |
 | Jueves | Bot: balance jornada anterior + picks (gancho: previa TNF) | Manning_bot --no-retrain | batch martes (2 TXT) |
+| Jueves | Contenders (formula del campeon): que ha cambiado desde la semana anterior; si no cambia nada, no sale (Luis, 16-oct-2026; estreno el 22-oct con la semana 6) | contenders_tracker (PNG copiado a la carpeta del jueves) | batch martes |
 | Viernes | Analisis del TNF jugado la noche anterior (resumen + ficha) | resumen_partido + ficha_tactica + destacados | batch viernes 9:00 → `borradores_viernes.md` |
 | Sabado | Pieza de DUELO: un partido del domingo a fondo, hilo con el cruce que decide el partido (profundidad del 10-oct-2026, SF @ SEA; el ángulo lo marca cada partido: ver `docs/decisiones.md`) | `textos/cruces_semana_*.txt` (batch del viernes) para elegirlo; `copiar_sharp_defensa.py` + `copiar_personal_web.py` para como defiende y el personal; PNG a mano en `lab/` con la plantilla `lab/sf_sea_png*.py` | manual (el TXT sale solo) |
 | Domingo AM | HILO de la jornada: presentacion (con el gancho del partido gordo) + una previa por partido del DOMINGO, EN EL ORDEN DE LOS PNG (el del duelo del sabado tambien; el MNF no, va el lunes) | Previas modo jornada (+ `previas_numeros_*.txt`) | batch sabado 23:00 → PNG y `borradores_domingo.md` |
@@ -52,7 +53,9 @@ maquina (ver "Nivel 2b"); Luis elige opcion y publica.
   batch del martes en `w{N-1}/textos/borradores_posts.md`; `cola_posts.py` lo
   lleva a la cola de `w{N}` y lo quita de la de `w{N-1}`. El batch del martes
   crea ya la carpeta y la cola de `w{N}` para que el jueves exista. La previa
-  del TNF se escribe a mano en `w{N}/textos/borradores_jueves.md` con la
+  del TNF la escribe SOLA la tarea del boletin al leer la Preview (desde el
+  15-oct-2026: `Previas.py --week N` + `borradores_prompt_jueves.md` + verificador;
+  si ya existe `borradores_jueves.md`, no lo toca) en `w{N}/textos/borradores_jueves.md` con la
   imagen de siempre: `01_preview_*` de `Previas.py --week N` (el jueves hay
   que lanzarlo a mano; el batch del sabado la rehace con el resto). El post del bot del jueves lo desbloquea la Review de
   `w{N-1}`; la Review del lunes rehace las dos colas. La PREVIA DEL TNF, en
@@ -108,6 +111,14 @@ maquina (ver "Nivel 2b"); Luis elige opcion y publica.
   `previas_numeros_*.txt` (los numeros de los PNG, con rangos y conteos) +
   `borradores_domingo.md` (prompt `borradores_prompt_domingo.md`) + la cola
 
+- **"NFL2025 podcasts"** — todos los dias, cada hora de 9:05 a 23:05 (19-oct-2026):
+  `python podcasts_auto.py`. Mira los feeds de Ecos de la NFL, 100 Yardas, El
+  Capologist/Previologist y El Nickel; cada episodio nuevo (de menos de 4 dias)
+  se transcribe, `claude -p` con `podcasts_prompt.md` deja la respuesta [A]/[B]
+  en `textos/borradores_podcast_<programa>_<MMDD>.md` y su fila en
+  `docs/podcasts_revisados.md`, pasa el verificador y entra en la cola de la
+  semana como tarjeta manual. Estado: `python podcasts_auto.py --estado`; skill `/podcasts`
+
 - **"NFL2025 boletin SumerSports"** — lunes 14:15, 15:30, 17:00 y 19:00 (los dos ultimos desde el 05-oct-2026: la Review de la semana 4 llego a las 15:38) (antes 15:00 y 17:00: la
   Review llega entre las 13:00 y las 14:00 y los posts del lunes salen a las 14:00),
   jueves 15:00 y 17:00. Deja `ideas_boletin_review.md` o `ideas_boletin_preview.md`
@@ -132,6 +143,15 @@ abrio hasta las 10:47 y el batch del martes se salto sin dejar rastro;
 "ejecutar aunque no haya sesion" (S4U) necesita admin. Ese dia tambien se quito
 "no iniciar con bateria" de las tres tareas.
 
+Candados (20-oct-2026): con el PC apagado a las 8:00, al encenderlo arrancaron
+DOS batch del martes (la recuperacion a las 12:33 y la tarea atrasada de
+Windows, por `StartWhenAvailable`, a las 12:35), con dos redactores y dos
+verificadores sobre el mismo `borradores_posts.md`. Ahora cada trabajo coge un
+candado en `salidas/.candados/` (`batch_{dia}`, `boletin`, `dato` y
+`verificar_{fichero}`) y una segunda copia sale con "ya lo esta haciendo otro
+proceso" en el log, sin contar como intento. Un candado de un proceso muerto o
+de mas de 6 h se quita solo.
+
 Log de cada ejecucion: `salidas/auto_log.txt`. Un paso caido no arrastra a los
 demas. Si nflverse esta caido, estado_datos.txt lo grita: NO publicar sin leerlo.
 
@@ -141,6 +161,9 @@ demas. Si nflverse esta caido, estado_datos.txt lo grita: NO publicar sin leerlo
 - contenders_tracker (formula del campeon): entra en el batch del martes desde
   la semana 5 (`CONTENDERS_DESDE` en `semana_auto.py`, decidido 24-sep-2026).
   Deja `liga/contenders_{año}_wNN.png` y `textos/contenders.txt`.
+  Se publica el JUEVES de la jornada siguiente (Luis, 16-oct-2026): el
+  borrador es la seccion `## JUEVES — Contenders` de `borradores_posts.md` y
+  el batch copia el PNG a `w{N+1}/liga/`, igual que el bot.
 - Bot: MIN_GAMES=2 — NO hay post del bot el jueves de la semana 2 porque no
   hay picks. (Hasta el 24-sep-2026 tampoco salian los de la semana 3: el bot
   no sabia predecir partidos sin jugar. Arreglado en la v7.) Sin muestra, el
@@ -214,6 +237,7 @@ temporada ya esta fijada y vive como regla 9 del `borradores_prompt.md`:
   tuit. El POWER RANKING va sin hashtags ni menciones (ni `#NFL`): termina en
   la frase de cierre (Luis, 14-oct-2026; del 15-sep al 14-oct las llevaba). Los MVPs van en hilo para que cada
   jugador lleve las cuentas de su equipo; la apertura, sin menciones.
+  Los posts del MANNING BOT van SIN menciones ni `#Equipo`: solo `#NFL` (Luis, 15-oct-2026).
 - Los caracteres se cuentan CON hashtags y menciones incluidos.
 
 Los borradores de la w18 de 2025 son anteriores a esta regla y usan el formato

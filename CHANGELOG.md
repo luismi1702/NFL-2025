@@ -2,6 +2,94 @@
 
 ---
 
+## [2026-10-20] — Martes: candado para que no corran dos batch a la vez
+
+**Que se hizo:**
+- El batch del martes corrió DOS veces a la vez (PC apagado a las 8:00: al encenderlo lo lanzaron la recuperación, a las 12:33, y la tarea atrasada de Windows, a las 12:35). Dos redactores y dos verificadores trabajaron sobre el mismo `borradores_posts.md`. Al final quedó bien (11/11 verificadas, posts del MNF desbloqueados), pero por suerte
+- `semana_auto.py`: candados atómicos en `salidas/.candados/` para el batch de cada día, el boletín, el dato y cada fichero que se verifica. La segunda copia sale sin hacer nada y no cuenta como intento de la recuperación; los candados de procesos muertos o de más de 6 h se quitan solos
+
+**Archivos modificados:** `semana_auto.py`, `docs/calendario-posts.md`
+
+---
+
+## [2026-10-19] — Lunes: hilo de la jornada, previa del MNF y podcasts automáticos
+
+**Que se hizo:**
+- **Hilo de la jornada w06** (13 tuits) publicado con la Review de SumerSports leída; sin el post de Dallas. Regla nueva de Luis: el post de partido del lunes va del equipo que GANÓ (prompt del lunes, memoria y skill)
+- **Previa del MNF WAS @ SF** [A] publicada: https://x.com/CuartayDato/status/2112219678802362614. Antes se corrigió "19 TD en 22 visitas" → 21: `Previas.py` contaba como visita a la red zone un extra point sin serie (`drive` nulo). Arreglado y PNG rehecho (SF 90%, sigue 1º). Las previas ya publicadas del domingo llevan ese conteo viejo (rankings casi iguales)
+- El 31º de WAS en la PNG de claves no era un error: es EPA por jugada dentro de la 20, otra métrica que el 32º en TD por visita
+- **Podcasts automáticos**: `podcasts_auto.py` + `podcasts_prompt.md` + skill `/podcasts` + tarea "NFL2025 podcasts" (cada hora, 9-23). Transcribe, redacta [A]/[B], verifica y deja la tarjeta manual en la cola. Primer episodio procesado solo: 100 Yardas "Los Rams encienden las alarmas" (verificado)
+- `verificar_prompt.md`: las respuestas a podcasts van sin hashtags, menciones ni nombre del programa, y se comprueba contra la transcripción lo que el post dice que dijo el programa
+
+**Archivos modificados:** `Previas.py`, `podcasts_auto.py`, `podcasts_prompt.md`, `.claude/skills/podcasts/SKILL.md` (nuevos los tres últimos), `.claude/skills/publicar/SKILL.md`, `borradores_prompt_lunes.md`, `verificar_prompt.md`, `CLAUDE.md`, `docs/calendario-posts.md`, `docs/decisiones.md`, `salidas/2026/w06/previas/14_preview_WAS_vs_SF*.png`, `salidas/2026/w06/textos/borradores_domingo.md`, `lab/verificacion/rz_mnf_w06*.py`
+
+**Pendiente:**
+- Las respuestas automáticas a podcasts salen sin el enlace al tuit del episodio (en el RSS de 100 Yardas no viene ni el `link`): buscar el tuit o, al menos, poner el enlace al episodio
+- Respuesta a 100 Yardas [A]/[B]: la publica Luis a mano
+- Títulos de las fichas PNG del lunes: a veces se centran en el perdedor (propuesto hacerlos del ganador, sin respuesta)
+- La tarea "batch lunes" muestra las 9:00 como próxima ejecución (¿cambio de hora?): revisar
+- Commit de todo lo que sigue sin guardar, cuando Luis lo pida
+
+## [2026-10-18] — Domingo: hilo de previas w06 publicado
+
+**Que se hizo:**
+- El duelo CHI @ ATL ya había salido el 17-oct (Luis creía que no); comprobado en `publicados.json` y con fxtwitter
+- **Hilo de previas w06** publicado con `/publicar`: presentación [A] + 12 previas en cadena, cada una con sus dos PNG (`preview` y `claves`), menciones heredadas desmarcadas en todas y los 13 marcados en la cola. Abre en https://x.com/CuartayDato/status/2111753701249728825
+- `/publicar`: notas de campo nuevas (la primera respuesta dice "Postear" y sí es respuesta, abrir la respuesta por JS, desmarcar menciones por JS, cerrar el desplegable de @menciones). Commit `e3999d6` con push (solo la skill)
+
+**Archivos modificados:** `.claude/skills/publicar/SKILL.md`, `salidas/2026/w06/textos/publicados.json`, `salidas/2026/w06/cola_posts.*`
+
+**Pendiente:**
+- Lunes: previa del Monday Night WAS @ SF (suelta). Antes, confirmar quién es el QB titular de Washington
+- Commit de los demás cambios sin guardar (CLAUDE.md, semana_auto.py, publicar_cola.py, CSV de Sharp…) cuando Luis lo pida
+
+## [2026-10-17] — Viernes y sábado publicados: Denver, hilo de los Jaguars y duelo CHI @ ATL
+
+**Que se hizo:**
+- **Viernes (w06)**: publicado "Denver ganó sin ataque, con defensa" [B] y el hilo de los Jaguars (presentación [B] + 5, la presentación borrada y republicada a petición de Luis). El post de Seattle NO salió. Contenders: los jueves, desde el 22-oct (ya en `docs/calendario-posts.md`)
+- **Duelo del sábado CHI @ ATL**, a mano y con la Preview leída: carrera contra caja ligera (CHI 1º en éxito, ATL 1º frenándola), sin Monangai, lo de Baltimore con siete en la caja, el play action como punto débil de ATL y Caleb en duda. 7 tuits con presentación [B] y 3 PNG, todos verificados por sección y publicados
+- Descartado por no sostenerse: "a Atlanta se le corre con siete" (es un solo partido, BAL) y "ATL sufre los pases al centro" de SumerSports (27 pases, 8ª en EPA)
+- Sharp de defensa copiado a `datos_web/*_2026_w05.csv` (`copiar_sharp_defensa.py 5`: sin el argumento de semana da IndexError)
+- `/publicar`: nota de campo nueva. Hacer clic en el cuadro de respuesta por `find` dio una vez en "programar" y vació el compositor. Ahora se hace clic por coordenadas y se comprueba todo con JS (texto, "Respondiendo a", nº de imágenes, botón "Responder") antes de publicar
+
+**Archivos modificados:** `lab/chi_atl_duelo.py`, `lab/chi_atl_duelo2.py`, `lab/chi_atl_duelo3.py`, `lab/chi_atl_pase.py`, `lab/chi_atl_png.py` (nuevos), `salidas/2026/w06/textos/borradores_sabado.md` (nuevo), `salidas/2026/w06/liga/duelo_chi_atl_*.png`, `salidas/2026/w06/cola_posts.*`, `salidas/2026/w06/textos/publicados.json`, `datos_web/sharp_*_2026_w05.csv`, `.claude/skills/publicar/SKILL.md`
+
+**Pendiente:**
+- Mirar en X > Borradores si quedó un borrador vacío del tropiezo del 6/7 y borrarlo (lo hace Luis)
+- Domingo: hilo de previas del batch (`/publicar domingo`)
+- Commit de los cambios del 14 al 17-oct cuando Luis lo pida
+
+## [2026-10-15] — Jueves: TNF y bot publicados, previa del TNF automática y la Preview en toda previa
+
+**Que se hizo:**
+- **Publicado** con `/publicar`: bot picks [A] + respuesta "cómo funciona" y previa del TNF SEA @ DEN [A] (con dos PNG). Todo marcado en la cola de la w06
+- **Manning Bot**: sin menciones ni `#Equipo`, solo `#NFL` (norma nueva de Luis); el PNG ordena por kickoff, sacado del calendario si aún no hay `previas_numeros` (antes iba por seguridad del pick)
+- **Previa del TNF automática**: `semana_auto.py --dia boletin --tipo preview` lee la Preview y, si no hay `borradores_jueves.md`, lanza `Previas.py` y redacta con `borradores_prompt_jueves.md` (nuevo), pasando por el revisor. Probada hoy: 14 previas y la del TNF verificada
+- **La Preview se lee en TODA previa** (`borradores_prompt_domingo.md`, `CLAUDE.md`): no tiene por qué salir nada, pero un ángulo importante no se escapa; contado con nuestros números o citado "según SumerSports". El [B] del TNF (Myers 10/10) salió del boletín
+- `--tipo` en `boletin()`: a las 15:00 elegía la Review. `publicar_cola.py`: "respuesta al" ya no marca un post como manual
+- El batch de previas sigue el sábado (FTN incompleto el jueves y parte final de lesiones el viernes)
+
+**Archivos modificados:** `manning_picks.py`, `semana_auto.py`, `publicar_cola.py`, `borradores_prompt_jueves.md` (nuevo), `borradores_prompt_domingo.md`, `borradores_prompt.md`, `CLAUDE.md`, `.claude/skills/publicar/SKILL.md`, `docs/calendario-posts.md`, `docs/decisiones.md`, `salidas/2026/w05/textos/borradores_posts.md`, `salidas/2026/w06/`
+
+**Pendiente:**
+- Viernes: hilo de los Jaguars (`/publicar viernes`); mirar si juega Caleb Williams para decidir si el duelo del sábado es CHI @ ATL (propuesta del boletín)
+- Commit de los cambios del 14 y 15-oct cuando Luis lo pida
+
+## [2026-10-14] — Miércoles: verificación automática, estreno de `/publicar`, MVPs corregidos, faster-whisper y radiografía de Jacksonville
+
+**Que se hizo:**
+- **Verificación automática de borradores**: tras cada borrador, el batch lanza un segundo `claude -p` revisor (`verificar_prompt.md`, con Python y web) que apunta `VERIFICADO`, corrige o deja `❌ SIN VERIFICAR` sección a sección; `cola_posts.py` acepta `VERIFICADO` por sección. Probado con la w05: 10/10. Ya había pillado el "+13,5, el mejor partido de un QB del año" de Maye (era el 2º con esa métrica; corregido a "por EPA total")
+- **Estreno de `/publicar`**: Power Ranking [B] (sin hashtags ni menciones: norma nueva solo para esa pieza) e hilo de MVPs con fotos elegidas desde el móvil. Skill reescrita con lo aprendido (Luis la sigue desde el móvil: todo por `SendUserFile`)
+- **MVPs**: el MVP rookie de la semana 5 era G.Halton, no Z.Thomas (el TD de fumble no contaba). `MVPsSemana.py` cuenta fumbles forzados perdidos y sacks compartidos, con alarma de jugadas sin dueño; `MVPsSeason.py` igualado (antes contaba jugadas dos y tres veces). Lo publicado se deja como está
+- **Bug de `cargar_pfr`**: nflverse publica el acumulado en temporada pero parado en la sem. 3; ahora se detecta y se reconstruye desde el semanal. Ninguna pieza publicada afectada
+- **Podcasts**: `transcribir_podcast.py` (faster-whisper): 45 min en 2 min sin cortes. Revisados Ecos 2X22 (Luis respondió: Denver y el último cuarto) y 100 Yardas del 14-oct (descartado). VoiceStudio cerrado (2,2 GB)
+- **Radiografía de Jacksonville**: `radiografia_equipo.py` (4 PNG) y hilo de presentación + 5 tuits en la cola del viernes (w06), con personal y formaciones de SumerSports/Sharp
+
+**Archivos modificados:** `semana_auto.py`, `cola_posts.py`, `verificar_prompt.md` (nuevo), `MVPsSemana.py`, `MVPsSeason.py`, `pbp_loader.py`, `transcribir_podcast.py` (nuevo), `radiografia_equipo.py` (nuevo), `borradores_prompt.md`, `CLAUDE.md`, `.claude/skills/publicar/SKILL.md`, `docs/calendario-posts.md`, `docs/podcasts_revisados.md`, `datos_web/`, `salidas/2026/w05/` y `w06/`
+
+**Pendiente:**
+- Viernes: el hilo de los Jaguars se desbloquea al leer la Preview de SumerSports (jueves ~15:00); publicarlo con `/publicar viernes`. Jueves: previa del TNF y bot (verificados por el revisor)
+
 ## [2026-10-13] — Martes: la cola bloquea lo no verificado, la prórroga en el resumen de partido y El Capologist como fuente
 
 **Que se hizo:**
