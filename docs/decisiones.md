@@ -2,6 +2,25 @@
 
 ---
 
+## [2026-10-27] — Un solo post por partido, también en primetime, y del ganador
+
+**Decisión:** TNF, SNF, MNF y cualquier partido marcado como grande llevan
+**un post**, como el resto, contado desde el equipo que **ganó** (sus dos
+alternativas también). Se acaba el post del perdedor.
+
+**Motivo:** Luis: "la regla de hablar de los dos equipos en partidos marcados
+mejor la quitamos, solo hablamos del ganador". Ya se hacía así en los partidos
+normales del lunes desde el 19-oct.
+
+**Deroga:** la decisión del 18-sep-2026 (dos posts en primetime, más abajo).
+
+**Alcance:** `borradores_prompt.md` (MNF: sección `## MARTES — Monday Night`),
+`borradores_prompt_lunes.md` (SNF), `borradores_prompt_viernes.md` (TNF),
+`docs/calendario-posts.md` y el texto del calendario de `cola_posts.py`. Las
+previas siguen llevando a los dos equipos y sus cuentas.
+
+---
+
 ## [2026-09-20] — Cada pieza vive en la carpeta de la jornada de la que habla
 
 **Decisión:** Los borradores de lunes a jueves van en `w{N}` (hablan de la jornada
@@ -20,7 +39,7 @@ texto de su imagen, que es justo lo que se quería evitar.
 
 ---
 
-## [2026-09-18] — Dos posts en los partidos de primetime
+## [2026-09-18] — Dos posts en los partidos de primetime (DEROGADA el 27-oct-2026)
 
 **Decisión:** En TNF, SNF, MNF y en cualquier partido que Luis marque como
 grande se publican **dos posts, uno por equipo**, cada uno desde su lado y con

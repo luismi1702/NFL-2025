@@ -207,7 +207,7 @@ CALENDARIO = [
     "HILO de la jornada: una previa por partido, abre el gordo. PNG en previas/; "
     "el texto va en textos/borradores_domingo.md.",
     "Un post por partido jugado, sin el MNF (batch lunes 10:00).",
-    "Monday Night, dos posts, uno por equipo (batch martes 8:00). El dato de la semana "
+    "Monday Night, un post desde el ganador (batch martes 8:00). El dato de la semana "
     "sale el día que FTN complete la jornada (tarea NFL2025 dato semana).",
     "Power Rankings + hilo de MVPs de la jornada (batch martes).",
 ]

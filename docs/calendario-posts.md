@@ -10,7 +10,7 @@ maquina (ver "Nivel 2b"); Luis elige opcion y publica.
 | Dia | Post | Fuente | Generacion |
 |---|---|---|---|
 | Lunes | Un post por partido jugado (sin el MNF) + la PREVIA del Monday Night (fuera del hilo del domingo) | destacados + fichas + Review de SumerSports; la previa sale del batch del sabado | visuales: batch lunes 10:00; textos: tras leer la Review (14:15) |
-| Martes | Monday Night (dos posts, uno por equipo) | resumen + ficha del MNF | batch martes 8:00 |
+| Martes | Monday Night (un post, desde el ganador) | resumen + ficha del MNF | batch martes 8:00 |
 | Martes (cuando FTN tiene todo menos el MNF, hacia las 13:00) | Dato de la semana | DatoSemana (21 situaciones, contra la jornada y la historia) | tarea "NFL2025 dato semana", 10:30, 20:00 y 22:30 (FTN suele completar el miércoles hacia las 19:00) |
 | Martes | Resumen del Monday Night (2 PNGs + ficha) | resumen_partido | batch martes: regenera TODA la jornada, que es cuando entra el MNF que el lunes faltaba |
 | Miercoles | Power Rankings | power_rankings | batch martes |
@@ -22,14 +22,11 @@ maquina (ver "Nivel 2b"); Luis elige opcion y publica.
 | Domingo AM | HILO de la jornada: presentacion (con el gancho del partido gordo) + una previa por partido del DOMINGO, EN EL ORDEN DE LOS PNG (el del duelo del sabado tambien; el MNF no, va el lunes) | Previas modo jornada (+ `previas_numeros_*.txt`) | batch sabado 23:00 → PNG y `borradores_domingo.md` |
 | Quincenal | Pieza tematica rotatoria (presion, PROE, rankings posicion...) | grupo B del catalogo | manual |
 
-- Posts de partido: UNO por partido, desde el lado con mejor historia (gane o
-  pierda), con resumen + ficha. Descartado el 15-sep-2026 hacer uno por equipo
+- Posts de partido: UNO por partido, desde el equipo que GANO (19-oct-2026), con resumen + ficha. Descartado el 15-sep-2026 hacer uno por equipo
   (32 a la semana, satura y la mitad serian flojos).
-- EXCEPCION (18-sep-2026): los partidos de PRIMETIME (TNF, SNF, MNF) y los que
-  Luis marque como grandes llevan DOS posts, uno por equipo, cada uno con su
-  angulo y las cuentas de ESE equipo, y cada uno con DOS alternativas: cuatro
-  textos por partido, de los que Luis publica dos. Deroga la parte del 15-sep
-  que descartaba el mix de dos posts en esos partidos.
+- Desde el 27-oct-2026 los de PRIMETIME (TNF, SNF, MNF) tambien llevan UNO,
+  y siempre desde el equipo que GANO (Luis: "solo hablamos del ganador"). Se
+  acabo la excepcion del 18-sep de dos posts, uno por equipo.
 - Dentro de cada `w{N}` hay cuatro cajones (21-sep-2026), porque la carpeta
   plana mezclaba 16 previas, 45 PNG de partido, los gráficos de liga y los TXT:
 

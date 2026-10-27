@@ -26,14 +26,16 @@ sus visuales ya estan generados. Luis lo publica hoy sobre las 10:30.
 
 ## Que escribir
 
-El TNF es primetime y lleva DOS posts, uno por equipo (decidido por Luis el
-18-sep-2026), cada uno contado desde SU equipo, con su angulo y las cuentas de
-ESE equipo, y con DOS alternativas (`**[A]**` y `**[B]**`) cada uno. Titulos
-`## VIERNES — <resumen en 4-6 palabras> (local)` y
-`## VIERNES — <resumen en 4-6 palabras> (visitante)`.
+El TNF lleva UN post, contado desde el equipo que GANO (Luis, 27-oct-2026:
+deroga los dos posts por equipo del 18-sep-2026), con DOS alternativas
+(`**[A]**` y `**[B]**`) de angulos distintos, las dos del ganador: sujeto,
+gancho y aficion etiquetada (la del rival puede ir ademas si el post habla
+de el). Las contradicciones se cuentan desde el ganador ("gano jugando
+peor"), nunca desde el perdedor. Titulo
+`## VIERNES — <resumen en 4-6 palabras>`.
 
 Para elegir el angulo, por este orden: contradicciones (gano jugando peor,
-perdio ganando facetas), cambios de identidad, extremos y jugadores
+gano perdiendo facetas), cambios de identidad, extremos y jugadores
 desatados. Ejemplo publicado: "Llegaba con el peor ataque de la NFL en EPA por
 jugada y se fue de Lambeau con 502 yardas y +0,33 por jugada."
 
@@ -74,7 +76,7 @@ Formato OBLIGATORIO y literal: lo parsea `cola_posts.py`.
 ````
 # Borradores del viernes — TNF semana {W} — generado {FECHA} (REVISAR ANTES DE PUBLICAR)
 
-## VIERNES — Atlanta gano en Lambeau corriendo (visitante)
+## VIERNES — Atlanta gano en Lambeau corriendo
 IMAGEN: 01_1_resumen_ATL_vs_GB_2026_w03.png, 01_2_ficha_ATL_vs_GB_2026_w03.png
 
 **[A]** (224 chars)

@@ -115,7 +115,7 @@ Reglas del formato:
 ````
 # Borradores semana {W} — generado {FECHA} (REVISAR ANTES DE PUBLICAR)
 
-## MARTES — Monday Night (local)
+## MARTES — Monday Night
 IMAGEN: 16_1_resumen_ATL_vs_NO_2026_w04.png, 16_2_ficha_ATL_vs_NO_2026_w04.png
 
 **[A]** (224 chars)
@@ -143,8 +143,7 @@ Verificación:
 
 Las secciones, con estos titulos exactos:
 
-- `## MARTES — Monday Night (local)`
-- `## MARTES — Monday Night (visitante)`
+- `## MARTES — Monday Night`
 - `## MIÉRCOLES — Power Rankings`
 - `## MIÉRCOLES — MVPs 1/5: abre el hilo`
 - `## MIÉRCOLES — MVPs 2/5: ataque`
@@ -195,13 +194,13 @@ Las secciones, con estos titulos exactos:
   este hilo si se puede centrar en el (es la categoria). Una alternativa por
   tuit basta, salvo el 1/5, la presentacion, que lleva SIEMPRE dos con
   ganchos distintos (Luis, 27-sep-2026: toda presentacion de hilo, dos opciones).
-- El Monday Night lleva DOS posts, uno por equipo (decidido por Luis el
-  18-sep-2026 para TNF, SNF y MNF: en los partidos grandes se publica a los dos
-  lados). Cada seccion cuenta el partido desde SU equipo, con su angulo y las
-  cuentas de ESE equipo; no valen dos versiones de la misma frase. Uno puede
-  ser el del ganador y el otro el del que perdio. Dentro de cada seccion van
-  DOS alternativas, `**[A]**` y `**[B]**`, con angulos distintos: Luis elige
-  una por equipo, asi que un partido de primetime deja cuatro textos.
+- El Monday Night lleva UN post, contado desde el equipo que GANO (Luis,
+  27-oct-2026: deroga los dos posts por equipo del 18-sep-2026). Sujeto,
+  gancho y aficion etiquetada, la del ganador (la del rival puede ir ademas si
+  el post habla de el). Las contradicciones se cuentan desde el ganador
+  ("Dallas gano perdiendo la red zone"), nunca desde el perdedor. Dos
+  alternativas, `**[A]**` y `**[B]**`, con angulos distintos, las dos del
+  ganador. En caso de empate, se elige.
 - El post del Monday Night cuenta el partido del lunes con su resumen:
   - Cual es: el prefijo `NN_` es el orden de kickoff, asi que el MNF es el
     `NN` MAS ALTO de la carpeta. Confirma en web que ese partido se jugo en
