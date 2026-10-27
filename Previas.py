@@ -92,7 +92,10 @@ def compute_defense(df: pd.DataFrame) -> pd.DataFrame:
 
 # --------- Drives: RZ y %RedZone ----------
 def compute_drive_level(df: pd.DataFrame):
-    dsub = df[df["posteam"].notna()].copy()
+    # Sin serie asignada (algún extra point suelto) no es una visita: con
+    # dropna=False contaba como una serie más (19-oct-2026: SF salía 19/22
+    # en la red zone y eran 19/21)
+    dsub = df[df["posteam"].notna() & df["drive"].notna()].copy()
     for col in ["game_id","drive","posteam","defteam","yardline_100","touchdown","td_team"]:
         if col not in dsub.columns:
             dsub[col] = np.nan

@@ -2,13 +2,108 @@
 
 ---
 
-## [2026-10-20] — Martes: candado para que no corran dos batch a la vez
+## [2026-10-26] — Lunes: hilo de la jornada w07 y previa del MNF publicados
 
 **Que se hizo:**
-- El batch del martes corrió DOS veces a la vez (PC apagado a las 8:00: al encenderlo lo lanzaron la recuperación, a las 12:33, y la tarea atrasada de Windows, a las 12:35). Dos redactores y dos verificadores trabajaron sobre el mismo `borradores_posts.md`. Al final quedó bien (11/11 verificadas, posts del MNF desbloqueados), pero por suerte
-- `semana_auto.py`: candados atómicos en `salidas/.candados/` para el batch de cada día, el boletín, el dato y cada fichero que se verifica. La segunda copia sale sin hacer nada y no cuenta como intento de la recuperación; los candados de procesos muertos o de más de 6 h se quitan solos
+- **Hilo de la jornada w07** publicado: presentación + 12 partidos, cada uno con resumen y ficha; abre en https://x.com/CuartayDato/status/2114725956162339258. KC visitante descartado (el post va del ganador)
+- **Previa del MNF DAL @ PHI** publicada con [A]: https://x.com/CuartayDato/status/2114817914562031619
+- Descartadas de la cola las respuestas a podcasts de la w07 que ya no tocaban (100 Yardas y El Capologist del 23-oct; El Nickel ya lo estaba)
+- Notas de campo de `/publicar`: `find` "input type=file in the reply dialog", rutas de imágenes copiadas del JSON (nunca deducidas), posición de "Listo" y de la línea "Respondiendo a"
 
-**Archivos modificados:** `semana_auto.py`, `docs/calendario-posts.md`
+**Archivos modificados:** `.claude/skills/publicar/SKILL.md`, `salidas/2026/w07/` (publicados y descartes de la cola)
+
+**Pendiente:**
+- Respuesta a 100 Yardas del 26-oct ("Los Seahawks sacan las vergüenzas de los Chiefs"), ya verificada: la publica Luis con [A] o [B] y se marca con su enlace
+- Commit de los cambios sin subir (solo si Luis lo pide)
+
+---
+
+## [2026-10-24] — Sábado: hilo del duelo KC @ SEA publicado
+
+**Que se hizo:**
+- **Duelo KC @ SEA (SNF)** publicado entero, 8 tuits con [A] (Walker vuelve a Seattle): https://x.com/CuartayDato/status/2114010369249386865. Los cuatro puntos de la Preview de SumerSports: Walker y la carrera, el blitz de Macdonald, play action y motion, y el antecedente
+- `lab/kc_sea_png.py`: cuatro PNG del duelo (cómo defiende Seattle con Sharp, Walker por fuera, blitz, play action + motion); exploración en `lab/kc_sea_duelo.py` y `_duelo2.py`
+- **`run_gap.py` migrado al estilo nuevo** con modo cruce (`--cruce KC SEA`, también `--equipo KC`): éxito por hueco con su puesto entre 32, huecos con poca muestra en gris, titular automático solo con huecos de 15+ carreras, defensa debajo alineada a cada hueco. Sustituye a las maquetas a mano (`lab/kc_sea_huecos.py`), que Luis descartó
+- Borrador `salidas/2026/w07/textos/borradores_sabado.md` verificado (PBP, FTN con todos los partidos charteados, NGS, Sharp del 20-oct y web para lesiones y SB LX)
+- Publicación: un "Algo salió mal" de X en el 2/8; se comprobó en otra pestaña que no había salido y se reintentó una vez (sin duplicado). Nota de campo en `/publicar`
+
+**Archivos modificados:** `run_gap.py`, `docs/scripts-catalog.md`, `.claude/skills/publicar/SKILL.md`, `lab/kc_sea_*.py`, `salidas/2026/w07/` (liga, textos, publicados)
+
+**Pendiente:**
+- Respuestas a podcasts de la cola (El Nickel, 100 Yardas, El Capologist): las pone Luis
+- `run_gap.py --heatmap` y `run_gap_defensa.py` siguen con el estilo viejo
+- Commit de los cambios sin subir (solo si Luis lo pide)
+
+---
+
+## [2026-10-22] — Jueves noche: previa del TNF publicada
+
+**Que se hizo:**
+- **Previa TNF NE @ CHI [A]** (big plays de New England) publicada con sus dos PNG: https://x.com/CuartayDato/status/2113361284800327682. Marcada en la cola (`publicar_cola.py --marcar`)
+- Leído el hilo de Brian Burke (ESPN) sobre el "51%" de Shanahan e incertidumbre en los modelos de 4º down: sin post de reacción (debate muy contado en inglés). Idea apuntada abajo
+- Respuesta a un fan que proponía a "William III" (Kenneth Walker III, KC) como MVP de la sem. 6: dos opciones redactadas con PBP (128 yardas, máximo de la semana; 2 TD; 6,7 por carrera; 8 primeros downs; 4º RB en EPA de carrera, +2,8; Stroud +6,4). Luis no eligió todavía
+- `/podcasts`: nada nuevo. Error mío: le enseñé otra vez la respuesta a El Nickel del 22-oct, que Luis ya había descartado a mediodía
+
+**Archivos modificados:** `salidas/2026/w07/textos/publicados.json`, `salidas/2026/w07/cola_posts.html`
+
+**Pendiente:**
+- Responder al fan de Walker III ([A] o [B]) si Luis quiere
+- Idea (backlog, sin empezar): 4º downs de Shanahan en 2026 contra un modelo de decisión (no tenemos modelo de 4º down hecho)
+
+---
+
+## [2026-10-22] — Jueves: bot publicado y previa del TNF lista
+
+**Que se hizo:**
+- **Bot w07 publicado**: picks [B] con `manning_picks_2026_w07.png` (https://x.com/CuartayDato/status/2113221387259134040) y "Cómo funciona" como respuesta (https://x.com/CuartayDato/status/2113221555899801863)
+- **Bug en `cola_posts.py`**: quitaba las secciones `## JUEVES` de los `borradores_podcast_*.md` de la carpeta de la semana (las daba por de la semana siguiente) y la respuesta a El Nickel del 22-oct no salía en la cola. Ahora esos ficheros se tratan como `borradores_jueves.md`/`borradores_dato.md` (se quedan donde están)
+- Preview de SumerSports leída a mano a las 13:04 (`semana_auto.py --dia boletin --tipo preview`): `ideas_boletin_preview.md`, previas w07 (14 partidos + PDF), `borradores_jueves.md` con la previa del TNF NE @ CHI, verificada 1/1
+- Luis descarta las respuestas a podcasts de hoy (El Nickel 22-oct) y la de 100 Yardas 21-oct: "no me convencen"
+
+**Archivos modificados:** `cola_posts.py`, `salidas/2026/w07/` (previas, textos, cola), `salidas/2026/w07/textos/publicados.json`
+
+**Pendiente:**
+- Publicar la previa del TNF NE @ CHI (Luis elige [A] big plays o [B] guards de baja + play action según SumerSports) más tarde, antes de las 2:15 (hora de Madrid)
+
+---
+
+## [2026-10-21] — Miércoles: hilo de MVPs, power ranking rehecho y podcasts
+
+**Que se hizo:**
+- **Hilo de MVPs w06** publicado entero (presentación + Stroud, Emerson, Slye y Cisse): https://x.com/CuartayDato/status/2112919239245889860. Fotos en `salidas/2026/w06/liga/mvp_fotos/`
+- **Power Ranking w06 [B]** publicado con la fórmula vieja (SF 9º siendo 6-0 y 1º en EPA de ataque) y Luis pidió borrarlo (lo borra él: https://x.com/CuartayDato/status/2112919077983580376). Decisión de Luis: esta semana NO se republica
+- **power_rankings.py**: pesos 42,5% ataque, 42,5% defensa, 10% especiales y 5% tendencia (antes 35/35/10/20, y la tendencia solo miraba el ataque). Ahora la tendencia suma ataque y defensa; función `calcular()`, puesto previo con la misma fórmula y pie construido desde `PESOS`. w06: KC 1º, SF 2º, MIN 3º, JAX 4º. PNG/TXT y borrador rehechos
+- Raritos del Football recomendó seguir @cuartaydato en el directo del 20-oct (7tQG7MkHDtY, 1:40:57) y usó nuestro dato de red zone (1:34:13)
+- Podcasts: 100 Yardas 21-oct procesado (SF se apaga en segundas partes). Luis lo descarta con razón: es efecto marcador (SF iba +11, +8 y +17 al descanso y la defensa juega en prevención); el verificador no lo detectó. No se publica ninguna respuesta a podcasts esta semana
+- Repaso de `RankingEPAadjustado.py` (EPA ajustado por rival): ajuste de una pasada, estilo viejo, fuera del batch; ajusta por rival, no por marcador
+- Notas de campo nuevas en la skill `/publicar` (esperar al compositor, Claude no borra posts, miniaturas de Google por coordenadas, townnews sin `?resize`)
+
+**Archivos modificados:** `power_rankings.py`, `salidas/2026/w06/liga/power_rankings_2026_w06.png`, `salidas/2026/w06/textos/power_rankings.txt`, `salidas/2026/w06/textos/borradores_posts.md`, `salidas/2026/w06/textos/publicados.json`, `salidas/2026/w06/liga/mvp_fotos/` (nuevo), `docs/scripts-catalog.md`, `docs/decisiones.md`, `.claude/skills/publicar/SKILL.md`
+
+**Pendiente:**
+- Luis borra el PR viejo; el PR w06 sigue marcado como publicado en `publicados.json` (no se republica esta semana)
+- Propuesta sin aprobar: regla en `podcasts_prompt.md`/`verificar_prompt.md` para que las comparaciones por mitades o de "se relaja cuando gana" controlen el marcador (p. ej. win probability 20-80%)
+- Opcional: lanzar `RankingEPAadjustado.py` sem. 1-6 (SF, KC, MIN ajustados); migrarlo a `estilo.py` si se publica
+
+---
+
+## [2026-10-20] — Martes: candados en el batch, MNF, contenders y podcasts
+
+**Que se hizo:**
+- **Batch del martes duplicado**: con el PC apagado a las 8:00, lo lanzaron a la vez la recuperación (12:33) y la tarea atrasada de Windows (12:35): dos redactores y dos verificadores sobre el mismo `borradores_posts.md`. Quedó bien (11/11 verificadas) por suerte. Arreglo en `semana_auto.py`: candados atómicos en `salidas/.candados/` (batch de cada día, boletín, dato y cada fichero verificado). Commit `dc3876e`
+- Publicados: **MNF 49ers [A]** (https://x.com/CuartayDato/status/2112501105372357010) y **Contenders [A]**, adelantado del jueves al martes por decisión de Luis (https://x.com/CuartayDato/status/2112599875158175916). El MNF de Washington no sale
+- **El Nickel**: PNG para la respuesta [A] (`liga/podcast_nickel_rams_3erdown_2026_w06.png`, los 32 ataques 2025 vs 2026, sin título por petición de Luis: la explicación va en el post) y complemento [A]/[B]/[C] con los motivos (reparto hacia Kyren Williams, cae a cualquier distancia, ataque entero más corto; la protección no es). Los Rams tienen la mayor caída de la liga en pases de 3er down que llegan a la marca (71% → 54%)
+- Ojo de método: el NGS "temporada" de 2025 incluye playoffs (no comparable con el PBP de REG), y el 46% de conversión en 3er down de los Rams incluye carreras (en pases, 40% los dos años)
+- Podcasts automáticos de hoy: El Capologist 7x32 y Ecos de la NFL 2X23, los dos verificados en la cola
+- Fantasy Points Data Suite 2.0 gratis del 19 al 24-oct (cuenta gratuita; tuit de Scott Barrett): rutas, separación, CB y man/zone por jugador. Apuntado en memoria
+- Consultas: cuotas de SF (Super Bowl ~+540, NFC +205/+270, 1º de la NFC −105 en DK a 14-oct)
+
+**Archivos modificados:** `semana_auto.py`, `docs/calendario-posts.md`, `docs/decisiones.md`, `lab/podcasts/nickel_1019_png.py`, `lab/podcasts/nickel_1019_motivos.py`, `lab/verificacion/nickel_1019_complemento_ver.py` (nuevos los tres), `salidas/2026/w06/textos/borradores_posts.md` (Contenders → MARTES), `salidas/2026/w06/textos/borradores_podcast_el_nickel_1019.md` (complemento), `salidas/2026/w06/liga/podcast_nickel_rams_3erdown_2026_w06.png`
+
+**Pendiente:**
+- Respuestas a podcasts que publica Luis: El Nickel (+ PNG + complemento [C]), El Capologist, 100 Yardas (sin enlace al tuit) y Ecos de la NFL (sin enlace al tuit); pasar los enlaces para marcarlas
+- Fantasy Points Data: cuando Luis cree la cuenta (antes del sábado 24), bajar a `datos_web/` rutas/YPRR, separación, man/zone por jugador, CB y Run Gap
+- Dato de la semana 6: espera al charting de FTN (1 de 14 partidos a las 12:33)
 
 ---
 

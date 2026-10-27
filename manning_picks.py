@@ -7,7 +7,7 @@ del PNG y el del post son el mismo por construccion.
   picks   salidas/{año}/w{N-1}/textos/bot_picks.txt (lo deja el batch del
           martes en la carpeta de la ultima jornada jugada)
   orden   salidas/{año}/w{N}/textos/previas_numeros_{año}_w{N}.txt, que va
-          por kickoff (TNF primero); si aun no existe, el orden del bot
+          por kickoff (TNF primero); si aun no existe, el del calendario
 
 Una fila por partido: visitante a la izquierda, local a la derecha y la barra
 partida con la probabilidad de cada uno; el pick en naranja (el color de los
@@ -88,7 +88,23 @@ if os.path.exists(ruta_orden):
             picks[(a, h)]["dia"] = DIAS.get(d, "")
     orden = por_kick + [k for k in orden if k not in por_kick]
 else:
-    print("  (sin previas_numeros: orden del bot, sin dia)")
+    # El jueves aun no hay previas (salen el sabado): el kickoff, del calendario
+    try:
+        import pandas as pd
+        from pbp_loader import cargar_calendario
+        sch, _ = cargar_calendario(SEASON)
+        sch = sch[(sch["game_type"] == "REG") & (sch["week"] == WEEK)]
+        sch = sch.sort_values(["gameday", "gametime"], kind="stable")
+        por_kick = []
+        for f in sch.itertuples(index=False):
+            if (f.away_team, f.home_team) in picks:
+                por_kick.append((f.away_team, f.home_team))
+                dia = pd.Timestamp(f.gameday).day_name()
+                picks[(f.away_team, f.home_team)]["dia"] = DIAS.get(dia, "")
+        orden = por_kick + [k for k in orden if k not in por_kick]
+        print("  (sin previas_numeros: orden de kickoff del calendario)")
+    except Exception as e:
+        print(f"  (sin previas_numeros ni calendario: orden del bot, sin dia — {e})")
 
 # ── FIGURA (estilo docs/estilo-visual.md; el naranja LED es la marca del bot) ──
 def nombre_equipo(team):

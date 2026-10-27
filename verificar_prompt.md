@@ -48,6 +48,11 @@ Las notas de "Verificación:" que deja el redactor NO cuentan como prueba.
    "Posts X" de `CLAUDE.md` (terminología, "3er down", equipos en inglés) y
    menciones SOLO de `docs/cuentas-fans.md`. El Power Ranking va SIN
    hashtags ni menciones (ni `#NFL`): si los trae, quítalos y anótalo.
+   Las secciones "Respuesta a …" (podcasts) son respuestas al tuit del
+   episodio: SIN hashtags ni menciones y sin nombrar al programa (regla del
+   05-oct-2026). No se los añadas; si los traen, quítalos. Ahí también se
+   comprueba que lo que el post dice que dijo el programa (el "cuadra", el
+   "os dan la razón") esté en la transcripción que cita el comentario.
 
 ## Qué escribir
 

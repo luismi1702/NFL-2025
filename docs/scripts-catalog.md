@@ -42,7 +42,7 @@
 ## Carrera
 | Script | Descripción |
 |--------|-------------|
-| run_gap.py | Heatmap EPA/acarreo por dirección de hueco. Solo acarreos diseñados |
+| run_gap.py | Heatmap EPA/acarreo por dirección de hueco. Solo acarreos diseñados. `--cruce KC SEA --week 6`: fan chart con estilo nuevo, % de éxito y puesto por hueco del ataque y, debajo, lo que concede la defensa en el mismo hueco (duelo del sábado, 24-oct-2026); `--equipo KC`, solo el ataque |
 | run_gap_defensa.py | Igual desde perspectiva defensiva. Verde = buena defensa |
 
 ## Defensa
@@ -58,7 +58,7 @@
 | dline_presion_origen.py | Espejo defensivo: desde donde GENERA presion cada defensa. Enter = heatmap 32 (presiones por 100 dropbacks, total y por origen: las cuatro columnas suman la primera). Sigla = diagrama de campo con flechas convergiendo sobre el QB (grosor = % del reparto) y el mayor generador de cada origen en su puesto. Presiones reales de pfr_advstats (con hurries); clasificacion por depth_chart_position afinada con el peso (DE >=280 lb = interior) |
 | manning_picks.py | PNG de los picks de Manning Bot de una jornada (post del jueves): lee `w{N-1}/textos/bot_picks.txt`, ordena por kickoff con `previas_numeros` si existe; mascota de portada abajo. Va en el batch del martes. `--week N` = jornada de los picks |
 | cuarto_down.py | Conversiones en 4º down |
-| power_rankings.py | Composite: 35% EPA ofensivo + 35% defensivo + 10% equipos especiales (EPA neto/partido) + 20% tendencia ofensiva reciente (sin ajuste por rival) |
+| power_rankings.py | Composite: 42,5% EPA ofensivo + 42,5% defensivo + 10% equipos especiales (EPA neto/partido) + 5% tendencia (últimas 3 semanas vs anteriores, ataque + defensa; sin ajuste por rival). Desde el 21-oct-2026; antes 35/35/10/20 con tendencia solo ofensiva. El TXT trae la tabla con el puesto de la semana anterior calculado con la misma fórmula |
 | clutch_performance.py | Rendimiento en situaciones cerradas (4Q + OT, ≤7 pts). Un equipo o scatter 32 |
 
 ## Cobertura y personal

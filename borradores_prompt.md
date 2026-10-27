@@ -17,6 +17,8 @@ En `{DIR}/`:
   y rookie, con su top-3
 - `bot_balance.txt` — aciertos del bot en la jornada jugada
 - `bot_picks.txt` — pronósticos de la próxima jornada
+- `contenders.txt` y `../liga/contenders_{año}_w{NN}.png` — la fórmula del
+  campeón: cuántos de los 12 umbrales cumple cada equipo, y cuáles falla
 - `estado_datos.txt` — semáforo de fuentes
 - `ideas_boletin_review.md` — la Review de SumerSports de esta jornada. Léela
   antes de elegir ángulos (regla del 30-sep-2026): lo que ellos ya contaron no
@@ -73,6 +75,9 @@ Y para el estilo: la sección "Posts X" de `CLAUDE.md` y `docs/post-ejemplos.md`
    - EXCEPCION, el POWER RANKING (Luis, 14-oct-2026): va SIN hashtags y SIN
      menciones, ni siquiera `#NFL`. El post termina en la frase de cierre.
      (Del 15-sep al 14-oct-2026 llevaba las de los equipos nombrados.)
+   - EXCEPCION, el MANNING BOT (Luis, 15-oct-2026): los posts del bot (picks
+     y respuesta de como funciona) van SIN menciones y SIN `#Equipo`: el
+     unico hashtag es `#NFL`, al final del post de los picks.
    - Cuenta los caracteres CON hashtags y menciones incluidos.
 10. **Nada de diagnosticos internos en el texto del post.** El `z=+X.XX` de
     `dato_semana.txt` es un z-score ROBUSTO (mediana y MAD), no el z de toda
@@ -151,6 +156,26 @@ Las secciones, con estos titulos exactos:
 - `## MIÉRCOLES — MVPs 4/5: equipos especiales`
 - `## MIÉRCOLES — MVPs 5/5: rookie`
 - `## JUEVES — Bot: balance + picks`
+- `## JUEVES — Contenders`
+
+- CONTENDERS (Luis, 16-oct-2026): sale el JUEVES. Es la actualizacion semanal
+  que prometio el hilo de la formula del campeon (julio de 2026,
+  `docs/hilo_formula_campeon.md`): los 12 umbrales que cumplieron los
+  campeones, y quien los cumple hoy. `IMAGEN: contenders_{año}_w{NN}.png`,
+  con NN = {W} en dos cifras.
+  - El post cuenta LO QUE HA CAMBIADO respecto a la semana anterior
+    (`../../w{W-1}/textos/contenders.txt`): quien entra, quien cae y por que
+    umbral, quien se queda a uno. La lista entera ya esta en la imagen.
+  - Si no cambia nada (mismos contenders y mismos equipos a uno), deja la
+    seccion SIN bloques `post` y escribe en la verificacion "sin cambios:
+    esta semana no sale". Repetir "siguen los mismos" aburre.
+  - ESTRENO: el primero que se publica es el de la semana 6 de 2026 (jueves
+    22-oct). Ese presenta la idea en una frase (los 12 umbrales del
+    campeon) y los contenders de hoy, y SIEMPRE sale, cambie o no algo
+    desde la semana 5 (que no se publico).
+  - Los umbrales "(ritmo)" estan prorrateados a 17 partidos: dilo asi ("a
+    este ritmo"), nunca como si ya los hubiera cumplido.
+  - Menciones: las de los equipos que NOMBRA el post, maximo 3 (regla 9).
 
 - Dos alternativas por post con ángulos distintos, no la misma frase retocada.
 - FORMATO de TODOS los posts (como los publica Luis, ver "Como publica Luis de

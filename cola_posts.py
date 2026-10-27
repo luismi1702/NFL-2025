@@ -567,14 +567,18 @@ def main():
     # El dato de la semana (06-oct-2026) se escribe ya en la carpeta del dia
     # en que se publica, aunque sea jueves: se queda donde esta
     QUIETOS = ("borradores_jueves.md", "borradores_dato.md")
+    # Las respuestas a podcasts (22-oct-2026) las deja podcasts_auto.py ya en la
+    # carpeta de la cola de HOY: un jueves, su "## JUEVES" es de esta semana
+    def quieto(f):
+        return f in QUIETOS or f.startswith("borradores_podcast_")
     trozos = [solo_jueves(io.open(o, encoding="utf-8").read(), False)
-              if os.path.basename(o) not in QUIETOS
+              if not quieto(os.path.basename(o))
               else io.open(o, encoding="utf-8").read() for o in origenes]
     anterior = os.path.join(carpeta(int(week) - 1), "textos")
     if os.path.isdir(anterior):
         for f in sorted(os.listdir(anterior)):
             if (f.startswith("borradores_") and f.endswith(".md")
-                    and "_previo" not in f and f not in QUIETOS):
+                    and "_previo" not in f and not quieto(f)):
                 entero = io.open(os.path.join(anterior, f), encoding="utf-8").read()
                 jue = solo_jueves(entero, True)
                 if jue.strip():

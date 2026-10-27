@@ -65,6 +65,8 @@ def main():
     ap.add_argument("--marcar", default=None, help="titulo exacto de la seccion publicada")
     ap.add_argument("--letra", default="A")
     ap.add_argument("--url", default="")
+    ap.add_argument("--descartar", action="store_true",
+                    help="con --marcar: la seccion no se publica (Luis la descarta)")
     args = ap.parse_args()
 
     hoy = datetime.date.today()
@@ -95,8 +97,12 @@ def main():
                               "titulo": args.marcar}, ensure_ascii=False))
             return 1
         hechos = [h for h in hechos if h["titulo"] != args.marcar]
-        hechos.append({"titulo": args.marcar, "letra": args.letra.upper(), "url": args.url,
-                       "cuando": datetime.datetime.now().isoformat(timespec="seconds")})
+        if args.descartar:
+            hechos.append({"titulo": args.marcar, "descartado": True, "url": "",
+                           "cuando": datetime.datetime.now().isoformat(timespec="seconds")})
+        else:
+            hechos.append({"titulo": args.marcar, "letra": args.letra.upper(), "url": args.url,
+                           "cuando": datetime.datetime.now().isoformat(timespec="seconds")})
         with io.open(os.path.join(carpeta, "textos", "publicados.json"), "w",
                      encoding="utf-8", newline="\n") as f:
             json.dump(hechos, f, ensure_ascii=False, indent=1)
@@ -108,7 +114,7 @@ def main():
     for n, c in enumerate([c for c in datos["cola"] if norm(c["dia"]) == norm(dia)], 1):
         c = dict(c, orden=n, hilo="hilo" in c["titulo"].lower() or bool(re.search(r"\d+/\d+", c["titulo"])),
                  publicado=ya.get(c["titulo"]),
-                 manual="respuesta a" in c["titulo"].lower(),
+                 manual="respuesta a " in c["titulo"].lower(),
                  faltan_imagenes=[i for i in c["imagenes"] if i is None] != [],
                  se_pasa=[p["letra"] for p in c["posts"] if p["caracteres"] > 280])
         posts.append(c)

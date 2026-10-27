@@ -38,6 +38,16 @@ lado. En la linea `IMAGEN:` va SOLO el nombre del fichero, sin carpeta.
   - **Monday**: NO va en el hilo. Cada partido del lunes es un post propio del
     LUNES (ver abajo).
   - **Thursday / Saturday**: ya se jugaron. Fuera.
+- `{DIR}/ideas_boletin_preview.md` — la Preview de SumerSports de esta
+  jornada (llega el jueves). **Leelo SIEMPRE antes de escribir cada previa**
+  (Luis, 15-oct-2026): no tiene por que salir nada de el, pero si trae un
+  angulo importante de un partido, que no se escape. Si lo usas, cuentalo con
+  NUESTROS numeros del TXT (cruce o claves) que lo respalden; si los nuestros
+  no lo respaldan o dicen otra cosa, se cuenta lo que dicen los nuestros y la
+  cifra del boletin, si entra, va citada como "segun SumerSports". Sus cifras nunca
+  pasan por nuestras. En la nota de verificacion de cada seccion apunta que
+  idea del boletin usaste o por que no. Si el fichero no existe, para y dilo:
+  el hilo no se escribe sin la Preview (regla del 30-sep-2026).
 - `docs/post-ejemplos.md`, seccion "Como publica Luis de verdad": el estilo
   REAL de la cuenta, con un hilo de previas publicado. Imitalo.
 - `docs/cuentas-fans.md` — las unicas menciones permitidas.

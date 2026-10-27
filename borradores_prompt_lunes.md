@@ -49,6 +49,13 @@ el angulo, mira que familias de `destacados.txt` lo mencionan, por este orden:
    su ficha (los numeros que se VEN en esa imagen) y elige la historia del
    resultado: remontada, final ajustado, paliza, un jugador.
 
+**El post se cuenta desde el equipo que GANÓ** (Luis, 19-oct-2026), y las DOS
+alternativas también: sujeto, gancho y afición etiquetada, la del ganador (la
+del rival puede ir además si el post habla de él). Las contradicciones se dan
+la vuelta: no "Jacksonville ganó 6 de 11 facetas y perdió" sino "Houston ganó
+perdiendo 6 de las 11 facetas". El perdedor no protagoniza nunca, tampoco en el
+Sunday Night, y en caso de empate se elige.
+
 Ordena las secciones por el prefijo `NN_` de los PNG (orden de kickoff). Que
 los angulos varien: no escribas quince posts de EPA por jugada.
 

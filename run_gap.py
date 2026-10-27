@@ -1,8 +1,10 @@
 """
 run_gap.py
 - Sin equipo (Enter): heatmap 32 equipos
-- Con equipo (ej: SF): fan chart por equipo (estilo raycarp)
-NFL 2025
+- Con equipo (ej: SF): fan chart por equipo (estilo raycarp, diseño antiguo)
+- --equipo KC: fan chart con el estilo nuevo (% de éxito y puesto por hueco)
+- --cruce KC SEA: el ataque de KC y, alineado debajo, lo que concede SEA en
+  cada hueco (duelo del sábado). Con --week 6 se corta en esa semana.
 """
 
 import os
@@ -14,7 +16,7 @@ from matplotlib.path import Path as MPath
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from pbp_loader import cargar_pbp, salida, season_cli, sello
+from pbp_loader import cargar_pbp, salida, season_cli, sello, week_cli
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 SEASON   = season_cli()   # None = auto-detectar última temporada
@@ -407,13 +409,175 @@ def draw_heatmap(epa_piv, n_piv):
     print(f"Guardado: {outfile}")
 
 
+# ── FAN CHART CON ESTILO NUEVO: un equipo, o su cruce con una defensa ─────────
+# (24-oct-2026, duelo KC @ SEA). % de exito (EPA > 0) en vez de EPA, para que
+# cuadre con el resto de piezas; puesto entre los 32 en cada hueco; todos los
+# huecos pintados con su muestra (los de menos de MIN_VISIBLE, apagados, nunca
+# en blanco). Lado = el del ataque (run_location de nflverse), asi ataque y
+# defensa se leen columna a columna.
+MIN_VISIBLE = 10
+GAP_TXT = {"LE": "por fuera, a la izquierda", "LT": "por el tackle izquierdo",
+           "LG": "por el guard izquierdo", "C": "por el centro", "RG": "por el guard derecho",
+           "RT": "por el tackle derecho", "RE": "por fuera, a la derecha"}
+GAP_CORTO = {"LE": "Fuera izq.", "LT": "Tackle izq.", "LG": "Guard izq.", "C": "Centro",
+             "RG": "Guard der.", "RT": "Tackle der.", "RE": "Fuera der."}
+
+
+def tabla_huecos(plays, col, team, asc):
+    g = plays.groupby([col, "gap"]).agg(n=("success", "size"), e=("success", "mean")).reset_index()
+    g["rk"] = g.groupby("gap").e.rank(ascending=asc, method="min").astype(int)
+    g = g[g[col] == team].set_index("gap")
+    return {gap: (g.loc[gap] if gap in g.index else None) for gap in GAP_ORDER}
+
+
+def fan_estilo(plays, atk, dfn=None, hasta=None):
+    import estilo as E
+    A = tabla_huecos(plays, "posteam", atk, asc=False)
+    D = tabla_huecos(plays, "defteam", dfn, asc=True) if dfn else None
+    na = E.nombre_equipo(atk)
+    nd = E.nombre_equipo(dfn) if dfn else None
+    ok = lambda d: d is not None and d.n >= MIN_VISIBLE   # noqa: E731
+    # el titular y el contexto solo se apoyan en huecos con MIN_CARRIES o mas
+    fiable = lambda d: d is not None and d.n >= MIN_CARRIES   # noqa: E731
+    cap = lambda t: t[:1].upper() + t[1:]                      # noqa: E731
+    best_a = min((g for g in GAP_ORDER if fiable(A[g])), key=lambda g: A[g].rk)
+    print(f"\n{atk} por hueco:")
+    for gap in GAP_ORDER:
+        a = A[gap]
+        d = D[gap] if D else None
+        print(f"  {gap:>2}  {atk} {a.e:.0%} ({a.rk}º, {a.n})" if a is not None else f"  {gap:>2}  -",
+              f"| {dfn} {d.e:.0%} ({d.rk}º, {d.n})" if d is not None else "")
+
+    fig = E.lienzo()
+    E.antetitulo(fig, f"Carrera por hueco · {atk} @ {dfn}" if dfn else f"Carrera por hueco · {atk}")
+    # Titular automatico: solo afirma lo que se calcula, y solo si es top 5
+    tit, ctx = None, [(f"{cap(na)} tiene éxito en el", None), (f"{A[best_a].e * 100:.0f}%", "fuerte"),
+                      (f"de sus carreras {GAP_TXT[best_a]} ({A[best_a].rk}º de la NFL).", None)]
+    if D:
+        best_d = min((g for g in GAP_ORDER if fiable(D[g])), key=lambda g: D[g].rk)
+        ctx += [(f"{cap(nd)} solo concede el", None), (f"{D[best_d].e * 100:.0f}%", "fuerte"),
+                (f"{GAP_TXT[best_d]} ({D[best_d].rk}ª).", None)]
+        if A[best_a].rk <= 5 and D[best_d].rk <= 5:
+            tit = (f"{cap(na)} corre {GAP_TXT[best_a]}. "
+                   f"{cap(nd)} cierra {GAP_TXT[best_d].replace('por ', '', 1)}.")
+            if best_a == best_d:
+                tit = f"Lo mejor de {na} contra lo mejor de {nd}: {GAP_TXT[best_a]}."
+    elif A[best_a].rk <= 5:
+        tit = f"{cap(na)} hace daño {GAP_TXT[best_a]}."
+    y = E.titular(fig, tit, y=0.925) - 0.012 if tit else 0.90
+    y = E.contexto(fig, ctx, y=y)
+    y_top = y - 0.025
+
+    # ── Diagrama: eje con aspecto 1:1 dentro del lienzo
+    X0, X1 = -4.7, 4.7
+    ax_h = 0.34
+    w_in = (E.R - E.L) * E.ANCHO
+    h_in = ax_h * E.ALTO
+    yr = (X1 - X0) * h_in / w_in
+    ax_y0 = y_top - 0.035 - ax_h
+    ax = fig.add_axes([E.L, ax_y0, E.R - E.L, ax_h])
+    ax.axis("off")
+    ax.set_xlim(X0, X1)
+    ax.set_ylim(4.75 - yr, 4.75)
+    ax.patch.set_alpha(0)
+    rx, ry = 0.0, 0.75
+    oy = 2.5
+    gxy = {g: (x, y_ + 0.0) for g, (x, y_) in GAP_XY.items()}
+    gris = "#3a4050"
+    for gap in GAP_ORDER:
+        a = A[gap]
+        px, py = gxy[gap]
+        col = E.color_rango(a.rk) if a is not None else gris
+        col = gris if col == E.GRIS1 else col
+        alpha = 1.0 if ok(a) else 0.35
+        ctrl_x = rx + (px - rx) * CTRL_FACTOR
+        tx, ty = px - ctrl_x, py - CTRL_Y
+        tl = np.hypot(tx, ty)
+        ux, uy = tx / tl, ty / tl
+        bx, by = px - ux * ARROW_LEN, py - uy * ARROW_LEN
+        lw = 1.2 + 4.0 * min((a.n if a is not None else 0) / 50, 1)
+        ax.add_patch(mpatches.PathPatch(MPath([(rx, ry), (ctrl_x, CTRL_Y), (bx, by)],
+                                              [MPath.MOVETO, MPath.CURVE3, MPath.CURVE3]),
+                                        fc="none", ec=col, lw=lw, alpha=alpha, zorder=2,
+                                        capstyle="round"))
+        perp = np.array([-uy, ux])
+        tip = np.array([px, py])
+        base = tip - np.array([ux, uy]) * ARROW_LEN
+        ax.add_patch(plt.Polygon([tip, base + perp * ARROW_W, base - perp * ARROW_W], color=col,
+                                 alpha=alpha, zorder=7))
+        if a is not None:
+            ax.text(px, py + 0.62, f"{a.e * 100:.0f}%", ha="center", va="bottom", family=E.DISP,
+                    weight=800, size=17, color=E.FG, alpha=alpha, zorder=8)
+            ax.text(px, py + 0.38, f"{a.rk}º", ha="center", va="bottom", family=E.TXT, weight="bold",
+                    size=7.5, color=E.color_rango(a.rk), alpha=alpha, zorder=8)
+            ax.text(px, py + 0.17, f"{a.n} carr.", ha="center", va="bottom", family=E.TXT, size=6,
+                    color=E.GRIS2, zorder=8)
+    for pos, (cx, cy) in OL_POS.items():
+        ax.add_patch(plt.Circle((cx, cy), OL_R, fc="#1c2535", ec=E.GRID, lw=1, zorder=5))
+        ax.text(cx, cy, pos, ha="center", va="center", family=E.TXT, weight="bold", size=7.5,
+                color=E.FG, zorder=6)
+    ax.add_patch(plt.Circle((rx, ry), RB_R, color=E.color_equipo(atk), zorder=8))
+    ax.text(rx, ry, "RB", ha="center", va="center", family=E.TXT, weight="bold", size=9,
+            color="white", zorder=9)
+    E.poner_logo(fig, atk, E.L + 0.06, ax_y0 + 0.05, zoom=0.03)
+    E.etiqueta(fig, f"{na} · éxito por carrera", E.L + 0.01, y_top - 0.02)
+
+    # ── Franja de la defensa, alineada con las puntas de flecha
+    def fx(x):
+        return E.L + (x - X0) / (X1 - X0) * (E.R - E.L)
+
+    yb = ax_y0 - 0.01
+    if D:
+        E.linea_h(fig, yb)
+        E.poner_logo(fig, dfn, E.L + 0.025, yb - 0.03, zoom=0.016)
+        E.etiqueta(fig, f"{nd} · éxito concedido en el mismo hueco", E.L + 0.055, yb - 0.03)
+        for gap in GAP_ORDER:
+            d = D[gap]
+            x = fx(gxy[gap][0])
+            fig.text(x, yb - 0.065, GAP_CORTO[gap].upper(), ha="center", va="center", family=E.TXT,
+                     weight="semibold", size=5.8, color=E.GRIS1)
+            if d is None:
+                continue
+            al = 1.0 if ok(d) else 0.35
+            fig.text(x, yb - 0.098, f"{d.e * 100:.0f}%", ha="center", va="center", family=E.DISP,
+                     weight=800, size=17, color=E.FG, alpha=al)
+            fig.text(x, yb - 0.128, f"{d.rk}ª", ha="center", va="center", family=E.TXT, weight="bold",
+                     size=7.5, color=E.color_rango(d.rk), alpha=al)
+            fig.text(x, yb - 0.147, f"{d.n} carr.", ha="center", va="center", family=E.TXT, size=6,
+                     color=E.GRIS2)
+        yb -= 0.17
+    else:
+        for gap in GAP_ORDER:
+            fig.text(fx(gxy[gap][0]), yb - 0.01, GAP_CORTO[gap].upper(), ha="center", va="center",
+                     family=E.TXT, weight="semibold", size=5.8, color=E.GRIS1)
+        yb -= 0.04
+    E.tarjeta(fig, yb, y_top)
+    sello_txt = f"NFL {SEASON} · datos hasta sem. {hasta}" if hasta else sello(SEASON)
+    E.pie(fig, f"Carreras diseñadas, sin scrambles · Lado = el del ataque · Éxito = EPA > 0 · "
+               f"Apagados: menos de {MIN_VISIBLE} carreras · Grosor = uso",
+          f"{sello_txt} · nflverse PBP")
+    nombre = f"run_gap_cruce_{atk}_{dfn}_{SEASON}.png" if dfn else f"run_gap_off_{atk}_{SEASON}.png"
+    E.guardar(fig, salida(nombre, SEASON))
+
+
 # ── INPUT ──────────────────────────────────────────────────────────────────────
-team_input = input("Equipo (siglas, ej: SF — Enter = todos los equipos): ").strip().upper()
+import argparse                                    # noqa: E402
+_ap = argparse.ArgumentParser(add_help=False)
+_ap.add_argument("--cruce", nargs=2, metavar=("ATAQUE", "DEFENSA"))
+_ap.add_argument("--equipo")
+_args, _ = _ap.parse_known_args()
+HASTA = week_cli()
+if _args.cruce or _args.equipo:
+    team_input = ""
+else:
+    team_input = input("Equipo (siglas, ej: SF — Enter = todos los equipos): ").strip().upper()
 
 # ── CARGA DE DATOS ─────────────────────────────────────────────────────────────
-pbp, SEASON = cargar_pbp(SEASON, columns=["play_type", "posteam", "epa",
+pbp, SEASON = cargar_pbp(SEASON, columns=["play_type", "posteam", "defteam", "epa", "week",
                                           "run_location", "run_gap", "qb_scramble",
                                           "yards_gained", "rush_touchdown", "fumble"])
+if HASTA:
+    pbp = pbp[pbp["week"] <= HASTA]
 for col in ["epa", "qb_scramble", "yards_gained", "rush_touchdown", "fumble"]:
     pbp[col] = pd.to_numeric(pbp[col], errors="coerce")
 pbp["qb_scramble"] = pbp["qb_scramble"].fillna(0)
@@ -434,8 +598,16 @@ plays["gap"] = plays.apply(
 plays = plays[plays["gap"].isin(GAP_ORDER)].copy()
 print(f"Con hueco clasificado: {len(plays):,}")
 
+plays["success"] = (plays["epa"] > 0).astype(float)
+
+# ── MODO CRUCE / EQUIPO CON ESTILO NUEVO ─────────────────────────────────────
+if _args.cruce:
+    fan_estilo(plays, _args.cruce[0].upper(), _args.cruce[1].upper(), HASTA)
+elif _args.equipo:
+    fan_estilo(plays, _args.equipo.upper(), None, HASTA)
+
 # ── MODO SINGLE TEAM → FAN CHART ──────────────────────────────────────────────
-if team_input:
+elif team_input:
     all_teams = plays["posteam"].dropna().unique()
     if team_input not in all_teams:
         print(f"Equipo '{team_input}' no encontrado. Disponibles: {', '.join(sorted(all_teams))}")

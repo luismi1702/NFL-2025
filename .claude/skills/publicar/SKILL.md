@@ -65,6 +65,9 @@ orden en que se suben), `posts` (`letra`, `texto`, `caracteres`), `publicado`
   manda es `bloqueado` de cada tarjeta. Si ninguna está bloqueada, basta con
   mencionarlo.
 - Lo que tiene `publicado` se salta.
+- Si Luis descarta un post ("de New England nada"), se apunta para que no
+  vuelva a salir como pendiente: `python publicar_cola.py --dia <dia> --marcar "<titulo>" --descartar`
+  (queda en `publicado` con `descartado: true` y sin URL).
 
 ## 2. Qué es hilo y qué va suelto
 
@@ -288,3 +291,57 @@ incorporado a los pasos de arriba no se repite.
     cada una marcada y no deshabilitada. Leer luego `checked` de todas.
   · Cerrar el desplegable de @menciones cuando la última línea llena el
     ancho: clic en la línea en blanco entre el último párrafo y los hashtags.
+- 19-oct-2026, hilo de la jornada w06 (presentación + 12 partidos, ~12 min):
+  todo a la primera.
+  · La línea "Respondiendo a…" NO abre el diálogo con `.click()` de JS: hay
+    que hacer clic de verdad por coordenadas (sale a la altura que marque la
+    captura, según lo largo que sea el tuit anterior).
+  · Comprobar y publicar en la MISMA llamada de JS (texto exacto, nº de
+    imágenes, sin desplegable, línea "Respondiendo a @CuartayDato", botón
+    "Responder" activo; solo si todo cuadra, `btn.click()`): sin hueco entre
+    la comprobación y el clic.
+  · Lunes: el post de cada partido va del GANADOR (regla del 19-oct). Si una
+    opción cuenta al perdedor, se ofrece la otra.
+- 21-oct-2026, PR w06 + hilo de MVPs (~10 min de publicación, fotos aparte):
+  · Tras `navigate` a `/compose/post` el texto escrito al momento se perdió
+    (la página aún cargaba). Esperar 2 s y comprobar con captura que el
+    compositor está vacío y listo antes de escribir.
+  · Luis pidió parar y borrar el Power Ranking cuando el clic del siguiente
+    post ya había salido (comprobación y publicación van en la misma llamada
+    JS, no hay hueco para frenar). Borrar un post no lo hace Claude: se le da
+    el enlace y lo borra él. Después hay que quitar su `publicado` de la cola.
+  · Fotos: la vista previa de Google no avanza con el botón "siguiente" por
+    JS; clic en cada miniatura por coordenadas. Para townnews (bloximages),
+    quitar `?resize=...` da la versión grande.
+- 24-oct-2026, duelo KC @ SEA (8 tuits, ~8 min): en el 2/8 X dijo "Algo
+  salió mal, pero no te preocupes. Vamos a intentarlo de nuevo" y el
+  compositor siguió abierto con texto e imagen. Navegar desde esa pestaña
+  salta el "Leave site?" (no forzar). Se comprobó el hilo en una PESTAÑA
+  NUEVA (no había salido) y se reintentó con la misma comprobación JS: salió
+  una sola vez. Tras publicar, leer el id en la MISMA pestaña con JS (la página
+  vuelve sola al tuit anterior) en vez de navegar.
+  · Enfocar el cuadro de respuesta con
+    `d.querySelector('[data-testid="tweetTextarea_0"]').focus()` en el mismo
+    JS que abre la respuesta funciona: luego `type` escribe bien, sin buscar
+    coordenadas.
+- 25-oct-2026, hilo de previas w07 (13 tuits, ~15 min): todo a la primera.
+  · Tras publicar una respuesta, a veces no aparece entre los `article` de
+    la página del tuit anterior (IND @ MIN): había salido, pero cargaba más
+    abajo. Antes de pensar que falló, `window.scrollTo(0,document.body.scrollHeight)`,
+    esperar 2-3 s y volver a leer. Hacerlo siempre al leer el id.
+  · Con `browser_batch` va el doble de rápido: [navigate + wait + abrir
+    respuesta por JS + captura], luego [clic en la línea + desmarcar por JS +
+    "Listo" + comprobar la línea + type + find del file input], luego
+    [file_upload + captura], cerrar el desplegable y [comprobar y publicar
+    por JS + wait + leer id].
+- 26-oct-2026, hilo de la jornada w07 (presentación + 12 partidos, ~15 min):
+  todo a la primera; el 14 (KC, visitante) descartado por Luis por repetir
+  el ángulo del 13A.
+  · `find` "file input de imágenes del compositor" ya no encuentra nada; sí
+    "input type=file in the reply dialog" (o "... in the compose dialog").
+  · Las rutas de las imágenes se copian SIEMPRE del JSON, nunca se deducen
+    del título: el PNG era `IND_vs_MIN`, no `MIN_vs_IND`, y `file_upload`
+    rechaza la ruta inexistente.
+  · Tras el diálogo "Respondiendo a", el botón "Listo" queda en (990, 58) con
+    una o con varias cuentas; la línea a pulsar sale a la altura de la
+    captura (y≈262-295 según lo largo del tuit anterior).

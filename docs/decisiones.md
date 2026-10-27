@@ -1133,3 +1133,79 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 **Motivo:** el Dato de la semana se publicó con "Seattle perdió cinco balones" (eran cuatro). El recuento se había arreglado el lunes en `resumen_partido.py`, pero los borradores ya escritos con la cifra vieja no se rehicieron, y el aviso de "sin verificar" era solo un banner que no impedía nada. Luis: "estas cosas no pueden pasar, no es serio".
 
 **Alternativas descartadas:** bloquear solo los borradores con el banner ⛔ (fue la primera versión, del mismo día): ese banner lo pone el batch cuando `estado_datos` trae avisos de frescura, así que una semana sin avisos habría salido libre sin que nadie comprobara las cifras. Luis eligió la versión estricta sabiendo el coste: nada se copia sin una sesión de verificación, tampoco el hilo de previas del domingo.
+
+## [2026-10-14] — Un segundo Claude verifica cada borrador antes de la cola
+
+**Decisión:** después de cada `borradores(...)`, `semana_auto.verificar()` lanza otro `claude -p` con prompt de revisor (`verificar_prompt.md`) que rehace las cifras con el PBP y busca nombres en la web. Escribe `VERIFICADO` por sección (cola_posts lo acepta así además de en la cabecera), corrige con `CORREGIDO` o bloquea con `❌ SIN VERIFICAR: motivo`.
+
+**Motivo:** Luis: "¿por qué no se verifican antes de que salgan en la cola?". La regla del 13-oct ponía el candado pero nadie lo abría. Y el redactor se revisa mal a sí mismo: la nota del tuit de Maye explicaba que el superlativo era de otra métrica y el tuit salía igual.
+
+**Alternativas descartadas:** que verifique el mismo redactor (falla justo en eso); verificar a mano el día de publicar (lo que pasó el 14-oct y por lo que todo estaba en rojo); `VERIFICADO` solo en la cabecera (un post dudoso bloqueaba el fichero entero y uno verificado desbloqueaba los del jueves).
+
+## [2026-10-14] — MVPs: fumbles forzados y sacks compartidos cuentan; la temporada es la suma de las semanas
+
+**Decisión:** el EPA defensivo de los MVPs se acredita por jugada a quien tiene un dueño claro: INT y sack enteros, sack compartido a medias, fumble forzado perdido para quien lo fuerza (a medias si recupera otro defensor). Cada jugada, una vez por jugador. `MVPsSeason.py` usa el mismo reparto. Un bloque `OJO` lista las jugadas de -3 EPA o peor sin defensor acreditado, y el revisor no verifica los MVPs si alguna tiene dueño.
+
+**Motivo:** el MVP rookie publicado de la semana 5 (Z.Thomas, +5,4) no lo era: G.Halton (+8,5) tenía un TD de fumble que no contaba. Luis: "esto no puede pasar". Además los dos scripts medían cosas distintas.
+
+**Alternativas descartadas:** contar placajes y TFL (su EPA es de los once, no del que placa; inflaba a los linebackers); corregir los posts ya publicados (Luis: "vamos a dejarlo así").
+
+## [2026-10-14] — Transcribir podcasts con faster-whisper
+
+**Decisión:** `transcribir_podcast.py` (faster-whisper, modelo base, int8, audio decodificado con ffmpeg) sustituye al whisper CLI en trozos.
+
+**Motivo:** con el CLI, 45 min de audio tardaban 30-40 min y Claude Code los mataba por memoria (Ecos 2X21 y 2X22). Con faster-whisper, 2 min y sin trocear.
+
+**Alternativas descartadas:** trozos más pequeños con el CLI (sigue lento); subir la RAM (60-100 €, opcional). El decodificador PyAV de faster-whisper falla con la versión que instala pip: por eso ffmpeg.
+
+## [2026-10-15] — La previa del TNF la escribe el batch al llegar la Preview
+
+**Decisión:** cuando `semana_auto.py --dia boletin --tipo preview` lee la Preview de SumerSports, si aún no existe `borradores_jueves.md`, lanza `Previas.py` y redacta la previa con `borradores_prompt_jueves.md`; el revisor la verifica como al resto. Además, toda previa (TNF, domingo, MNF) se escribe con la Preview leída: no tiene por qué usarla, pero un ángulo importante no se escapa, contado con nuestros números o citado "según SumerSports".
+
+**Motivo:** Luis: "¿por qué la del TNF va hecha a mano?". Y esperar al correo no servía de nada si las previas no lo leían (el prompt del domingo no lo mencionaba).
+
+**Alternativas descartadas:** mover todo el batch de previas al jueves (el FTN de la semana anterior está a medias y el parte final de lesiones del domingo sale el viernes; Luis: "lo dejamos así"); obligar a sacar algo del boletín en cada previa (forzaría ángulos flojos).
+
+## [2026-10-15] — Manning Bot: orden de kickoff y solo #NFL
+
+**Decisión:** el PNG de picks lista los partidos por kickoff (de `previas_numeros` o, el jueves, del calendario) y el post va sin menciones ni `#Equipo`, solo `#NFL`.
+
+**Motivo:** petición de Luis: el orden por seguridad era difícil de seguir, y si no se etiqueta a nadie, los hashtags de equipo sobran.
+
+**Alternativas descartadas:** mantener el orden por confianza (el pick más claro ya lo dice el titular).
+
+## [2026-10-19] — Los podcasts se escuchan solos
+
+**Decisión:** `podcasts_auto.py` + tarea "NFL2025 podcasts" (cada hora, 9-23). Detecta los episodios nuevos en los feeds, los transcribe (subtítulos de YouTube o faster-whisper), redacta la respuesta [A]/[B] con `claude -p` (`podcasts_prompt.md`), la verifica con `semana_auto.verificar` y la deja en la cola como tarjeta manual. Lo descubierto con más de 4 días se marca "caducado". Skill `/podcasts` para consultar y forzar.
+
+**Motivo:** Luis, 19-oct-2026: "no puede ser que tenga que estar pendiente de todo". Ese día había dos previas de la semana 6 sin escuchar desde el 16-oct y nadie lo había dicho hasta que preguntó.
+
+**Alternativas descartadas:** programar la tarea a la hora de publicación de cada programa (100 Yardas sale casi a diario y a horas distintas; mirar un feed cada hora no cuesta nada y solo se trabaja si hay algo nuevo); un fichero de borrador por semana para todos los programas (el verificador rehacía cada vez los ya verificados).
+
+**Sembrado:** al estrenarlo se marcaron como vistos los 1.058 episodios que había en los feeds, incluidas las dos previas de la semana 6 del 16-oct (100 Yardas y El Previologist 4x06), que ya llegaban tarde.
+
+## [2026-10-20] — Candados para los trabajos automáticos
+
+**Decisión:** `semana_auto.py` coge un candado atómico (fichero creado con `O_EXCL` en `salidas/.candados/`) para el batch de cada día, el boletín, el dato y cada borrador que se verifica. Una segunda copia del mismo trabajo sale sin hacer nada y sin escribir "===== BATCH", así que no cuenta como intento para la recuperación. Un candado de un proceso muerto (se pregunta a Windows por ctypes) o de más de 6 h se quita solo.
+
+**Motivo:** el 20-oct, con el PC apagado a las 8:00, la tarea "recuperar batch" y la tarea atrasada "batch martes" (`StartWhenAvailable`) lanzaron el batch dos veces a la vez: dos redactores y dos verificadores sobre el mismo fichero, pisándose las marcas VERIFICADO. Luis: "solucionalo como veas pero que no vuelva a pasar".
+
+**Alternativas descartadas:** quitar `StartWhenAvailable` o la recuperación (cada una cubre un caso distinto: equipo apagado o sesión sin abrir); un candado global para todos los días (un batch largo de un día haría saltarse el siguiente); `os.kill(pid, 0)` para ver si el proceso vive (en Windows lo mata).
+
+
+## [2026-10-21] — Power ranking: tendencia de ataque y defensa, y solo un 5%
+
+**Decisión:** pesos 42,5% EPA de ataque, 42,5% EPA de defensa, 10% equipos especiales y 5% tendencia. La tendencia (últimas 3 semanas frente a las anteriores) suma ahora ataque y defensa. El TXT del script lleva la tabla completa con el puesto de la semana anterior calculado con la misma fórmula, que es de donde salen las subidas y bajadas del post.
+
+**Motivo:** con 35/35/10/20 y tendencia solo ofensiva, San Francisco (único 6-0, 1º en ataque, 6º en defensa) salía 9º en la semana 6, porque su ataque empezó altísimo (+0,46 y +0,49 de EPA por jugada en las semanas 2-3) y "bajó" más que nadie: 32º en tendencia, y eso le quitaba el 20% entero. Luis: "¿solo la tendencia ofensiva? ¿la defensiva no? […] un 20%, dale un 5 entre tendencia ofensiva y defensiva". Con la fórmula nueva: KC 1º, SF 2º, MIN 3º, JAX 4º.
+
+**Alternativas descartadas:** meter el récord o el diferencial de puntos (no pedido; se puede valorar más adelante). El 15% que pierde la tendencia va a partes iguales a ataque y defensa.
+
+## [2026-10-24] — Las piezas a mano reutilizan los scripts de la raíz
+
+**Decisión:** el PNG de huecos de la OL del duelo KC @ SEA sale de `run_gap.py`, migrado al estilo nuevo con un modo cruce (`--cruce ATAQUE DEFENSA`), y no de una maqueta en `lab/`.
+
+**Motivo:** Luis vio las tres maquetas (5 huecos, 7 huecos, PNG de Walker con huecos): "queda fatal […] ¿no tenemos un script que literalmente hace el PNG ya? ¿Por qué no usas ese?". Además, migrar el script deja la pieza reutilizable para cualquier otro duelo.
+
+**Alternativas descartadas:** pulir las maquetas de `lab/kc_sea_huecos.py`; usar `run_gap.py` tal cual estaba (ocultaba los huecos con menos de 15 carreras, medía EPA y no éxito, título descriptivo y dos PNG separados para ataque y defensa).
+

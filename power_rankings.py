@@ -76,116 +76,83 @@ week = week_cli() or int(input("Semana (numero): ").strip())
 # solo_reg=False: el filtro "hasta semana N" es del usuario
 df, SEASON = cargar_pbp(SEASON, solo_reg=False)
 print(f"PBP {SEASON}: {len(df):,} jugadas")
-
 to_num(df, ["epa", "week"])
 
-# Filter: up to input_week, pass+run plays, posteam and epa present
-mask = (
-    df["week"].notna() &
-    (df["week"] <= week) &
-    df["play_type"].isin(["pass", "run"]) &
-    df["posteam"].notna() &
-    df["epa"].notna()
-)
-plays = df[mask].copy()
-print(f"Jugadas filtradas: {len(plays):,}")
+# Pesos (21-oct-2026, Luis). Antes: 35/35/10 y 20% de tendencia SOLO ofensiva,
+# que hundia a SF (6-0, 1º en ataque) al 9º por haber empezado altisimo.
+# Ahora la tendencia mira ataque y defensa y es solo un desempate (5%).
+PESOS = {"off": 0.425, "def": 0.425, "st": 0.10, "trend": 0.05}
 
-# ── METRIC A: OFF EPA (mean EPA/play as posteam) ───────────────────────────────
-off_epa = plays.groupby("posteam")["epa"].mean().rename("off_epa")
 
-# ── METRIC B: DEF EPA (mean EPA/play as defteam, lower = better) ──────────────
-def_mask = (
-    df["week"].notna() &
-    (df["week"] <= week) &
-    df["play_type"].isin(["pass", "run"]) &
-    df["defteam"].notna() &
-    df["epa"].notna()
-)
-def_plays = df[def_mask].copy()
-def_epa = def_plays.groupby("defteam")["epa"].mean().rename("def_epa")
+def calcular(df, week):
+    """Ranking hasta la semana `week`, ordenado de mejor a peor."""
+    d = df[df["week"].notna() & (df["week"] <= week) & df["epa"].notna()]
+    jug = d[d["play_type"].isin(["pass", "run"]) &
+            d["posteam"].notna() & d["defteam"].notna()]
 
-# ── METRIC C: TRENDING (last 3 weeks vs previous) ─────────────────────────────
-last3_weeks = sorted([w for w in [week - 2, week - 1, week] if w >= 1])
-min_last3   = min(last3_weeks) if last3_weeks else week
+    # A/B: EPA por jugada en ataque y en defensa (defensa: menos = mejor)
+    off_epa = jug.groupby("posteam")["epa"].mean()
+    def_epa = jug.groupby("defteam")["epa"].mean()
 
-off_last3 = (
-    plays[plays["week"].isin(last3_weeks)]
-    .groupby("posteam")["epa"]
-    .mean()
-    .rename("off_last3")
-)
+    # C: tendencia = ultimas 3 semanas frente a las anteriores, ataque y defensa
+    ult3 = [w for w in (week - 2, week - 1, week) if w >= 1]
+    rec, ant = jug[jug["week"].isin(ult3)], jug[jug["week"] < min(ult3)]
+    if len(ant):
+        t_off = (rec.groupby("posteam")["epa"].mean()
+                 .sub(ant.groupby("posteam")["epa"].mean()))
+        t_def = (ant.groupby("defteam")["epa"].mean()
+                 .sub(rec.groupby("defteam")["epa"].mean()))   # bajar EPA cedido = mejorar
+        trending = t_off.add(t_def, fill_value=0.0)
+    else:
+        trending = pd.Series(0.0, index=off_epa.index)
 
-prev_plays = plays[plays["week"] < min_last3]
-if len(prev_plays) > 0:
-    off_prev = prev_plays.groupby("posteam")["epa"].mean().rename("off_prev")
-else:
-    off_prev = pd.Series(dtype=float, name="off_prev")
+    # D: equipos especiales, EPA neto por partido. El EPA va del lado de posteam
+    # (en punts y FG, quien patea; en kickoffs, quien recibe): neto = como
+    # posteam menos como defteam. Por partido, no por jugada: el numero de
+    # jugadas de ST depende del marcador, no del acierto.
+    st = d[d["play_type"].isin(["kickoff", "punt", "field_goal", "extra_point"]) &
+           d["posteam"].notna() & d["defteam"].notna()]
+    st_net = (st.groupby("posteam")["epa"].sum()
+              .sub(st.groupby("defteam")["epa"].sum(), fill_value=0.0))
+    partidos = pd.concat([jug[["posteam", "game_id"]].rename(columns={"posteam": "t"}),
+                          jug[["defteam", "game_id"]].rename(columns={"defteam": "t"})]
+                         ).groupby("t")["game_id"].nunique()
 
-# ── METRIC D: EQUIPOS ESPECIALES (EPA neto por partido) ──────────────────────
-# Kickoff, punt, FG y PAT. El EPA va del lado de posteam (en punts y FG es quien
-# patea; en kickoffs, quien recibe), asi que el neto = EPA como posteam menos
-# EPA como defteam cubre patear y retornar. Por partido y no por jugada: el
-# numero de jugadas de ST depende del marcador, no del acierto.
-st_mask = (
-    df["week"].notna() &
-    (df["week"] <= week) &
-    df["play_type"].isin(["kickoff", "punt", "field_goal", "extra_point"]) &
-    df["posteam"].notna() & df["defteam"].notna() &
-    df["epa"].notna()
-)
-st_plays = df[st_mask]
-st_net = (st_plays.groupby("posteam")["epa"].sum()
-          .sub(st_plays.groupby("defteam")["epa"].sum(), fill_value=0.0))
-partidos = pd.concat([plays[["posteam", "game_id"]].rename(columns={"posteam": "t"}),
-                      def_plays[["defteam", "game_id"]].rename(columns={"defteam": "t"})]
-                     ).groupby("t")["game_id"].nunique()
-st_epa = (st_net / partidos).rename("st_epa")
+    s = pd.DataFrame({"off_epa": off_epa, "def_epa": def_epa,
+                      "st_epa": st_net / partidos, "trending": trending})
+    s = s.dropna(subset=["off_epa", "def_epa"]).fillna({"st_epa": 0.0, "trending": 0.0})
+    s["composite"] = (PESOS["off"] * safe_norm(s["off_epa"]) +
+                      PESOS["def"] * (1.0 - safe_norm(s["def_epa"])) +
+                      PESOS["st"] * safe_norm(s["st_epa"]) +
+                      PESOS["trend"] * safe_norm(s["trending"]))
+    s = s.sort_values("composite", ascending=False)
+    s.index.name = "team"
+    return s.reset_index()
 
-# ── COMBINE METRICS ────────────────────────────────────────────────────────────
-stats = pd.DataFrame({"off_epa": off_epa, "def_epa": def_epa, "st_epa": st_epa})
-stats["st_epa"] = stats["st_epa"].fillna(0.0)
-stats = stats.join(off_last3, how="left").join(off_prev, how="left")
 
-if len(off_prev) > 0:
-    stats["trending"] = stats["off_last3"].fillna(stats["off_epa"]) - stats["off_prev"].fillna(stats["off_epa"])
-else:
-    stats["trending"] = 0.0
-
-stats["trending"] = stats["trending"].fillna(0.0)
-stats = stats.dropna(subset=["off_epa", "def_epa"]).copy()
-
-# ── NORMALIZE ─────────────────────────────────────────────────────────────────
-stats["norm_off"]   = safe_norm(stats["off_epa"])
-stats["norm_def"]   = 1.0 - safe_norm(stats["def_epa"])   # inverted: lower def_epa = better
-stats["norm_trend"] = safe_norm(stats["trending"])
-stats["norm_st"]    = safe_norm(stats["st_epa"])
-
-# ── COMPOSITE ─────────────────────────────────────────────────────────────────
-stats["composite"] = (
-    0.35 * stats["norm_off"] +
-    0.35 * stats["norm_def"] +
-    0.10 * stats["norm_st"] +
-    0.20 * stats["norm_trend"]
-)
-
-stats = stats.sort_values("composite", ascending=False).reset_index()
-stats = stats.rename(columns={"posteam": "team", "index": "team"})
-
-# Handle index column name (it may be "posteam" or "index")
-if "posteam" in stats.columns:
-    stats = stats.rename(columns={"posteam": "team"})
-elif "index" in stats.columns:
-    stats = stats.rename(columns={"index": "team"})
-
-# Ensure team column exists and is clean
-team_col_candidates = [c for c in stats.columns if c not in
-                       ["off_epa","def_epa","st_epa","off_last3","off_prev","trending",
-                        "norm_off","norm_def","norm_st","norm_trend","composite"]]
-if team_col_candidates:
-    stats = stats.rename(columns={team_col_candidates[0]: "team"})
-
-stats = stats.reset_index(drop=True)
+stats = calcular(df, week)
 print(f"Equipos en rankings: {len(stats)}")
+
+# Puesto de la semana anterior con la MISMA formula: el borrador cuenta las
+# subidas y bajadas con esto, no con el PNG de la semana pasada.
+prev = calcular(df, week - 1) if week > 1 else None
+puesto_prev = ({t: i + 1 for i, t in enumerate(prev["team"])} if prev is not None else {})
+rk_o = stats["off_epa"].rank(ascending=False, method="min").astype(int)
+rk_d = stats["def_epa"].rank(ascending=True, method="min").astype(int)
+rk_s = stats["st_epa"].rank(ascending=False, method="min").astype(int)
+rk_t = stats["trending"].rank(ascending=False, method="min").astype(int)
+print()
+print(f"Pesos: ataque {PESOS['off']:.1%} | defensa {PESOS['def']:.1%} | "
+      f"especiales {PESOS['st']:.0%} | tendencia (ataque+defensa) {PESOS['trend']:.0%}")
+print(f"{'#':>2} {'eq':<4}{'nota':>6} {'sem.ant':>8} {'mov':>5}   "
+      f"{'ataque':>11} {'defensa':>11} {'especiales':>13} {'tendencia':>13}")
+for i, r in stats.iterrows():
+    p = puesto_prev.get(r["team"])
+    mov = "" if p is None else (f"+{p - i - 1}" if p > i + 1 else ("=" if p == i + 1 else f"{p - i - 1}"))
+    print(f"{i + 1:>2} {r['team']:<4}{r['composite'] * 100:>6.1f} {p if p else '-':>8} {mov:>5}   "
+          f"{r['off_epa']:+.3f} ({rk_o[i]:>2}) {r['def_epa']:+.3f} ({rk_d[i]:>2}) "
+          f"{r['st_epa']:+7.2f} ({rk_s[i]:>2}) {r['trending']:+7.3f} ({rk_t[i]:>2})")
+print()
 
 # ── RECORD W-L (desde el cache de schedules; opcional) ────────────────────────
 def records_hasta_semana(season, max_week):
@@ -271,7 +238,9 @@ y_fin = y_top - 0.035 - (por_col - 1) * alto_fila - alto_fila / 2 - 0.01
 linea_v(fig, L + ancho_col + 0.002, y_fin + 0.015, y_top - 0.015)
 
 tarjeta(fig, y_fin, y_top)
-pie(fig, "Puntuación 0-100 (35% ataque, 35% defensa, 10% especiales, 20% tendencia) · "
+pct = lambda x: f"{x * 100:g}".replace(".", ",") + "%"
+pie(fig, f"Puntuación 0-100 ({pct(PESOS['off'])} ataque, {pct(PESOS['def'])} defensa, "
+         f"{pct(PESOS['st'])} especiales, {pct(PESOS['trend'])} tendencia) · "
          "A/D = puesto en EPA de ataque y de defensa",
     f"NFL {SEASON} · datos hasta sem. {week} · nflverse PBP")
 
