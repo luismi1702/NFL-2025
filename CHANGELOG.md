@@ -2,6 +2,23 @@
 
 ---
 
+## [2026-10-27] — Martes: MNF y dato publicados, fuera los dos posts de primetime
+
+**Que se hizo:**
+- `/podcasts`: tres respuestas listas y verificadas (El Nickel y 100 Yardas del 26-oct, El Capologist 7x33 del 27-oct, procesado solo a las 11:42)
+- **Regla nueva (Luis):** TNF, SNF y MNF llevan UN post, del ganador, como cualquier partido; se acaba la excepción del 18-sep de uno por equipo. Cambiados los prompts del martes, lunes y viernes, el calendario, `cola_posts.py`, `docs/decisiones.md` y la memoria
+- Descartado de la cola el MNF de Philadelphia (perdedor)
+- **Publicados:** MNF Dallas [A] (https://x.com/CuartayDato/status/2115105670026731877) y Dato de la semana [A] (https://x.com/CuartayDato/status/2115106006308909166), sin incidencias
+- Commits `dff77fe` (la regla, solo sus líneas) y `c0eb314` (todo lo pendiente de días anteriores: podcasts automáticos, power ranking nuevo, run_gap, prompts, notas), ambos subidos
+
+**Archivos modificados:** `borradores_prompt.md`, `borradores_prompt_lunes.md`, `borradores_prompt_viernes.md`, `cola_posts.py`, `docs/calendario-posts.md`, `docs/decisiones.md`, `salidas/2026/w07/` (cola y publicados)
+
+**Pendiente:**
+- Respuestas a podcasts que publica Luis: El Capologist (27-oct), 100 Yardas y El Nickel (26-oct)
+- El borrador de 100 Yardas del 26-oct no guardó el enlace del episodio
+
+---
+
 ## [2026-10-26] — Lunes: hilo de la jornada w07 y previa del MNF publicados
 
 **Que se hizo:**
