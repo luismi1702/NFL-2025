@@ -8,7 +8,15 @@ nada: Luis decide y escribe.
 Toca la **{TIPO}** (Review = repaso de la jornada jugada, llega los lunes;
 Preview = previa de la que viene, llega los jueves). Con la herramienta de
 Gmail busca `from:sumersports.com subject:{TIPO} newer_than:3d` y abre el más
-reciente con formato PLAIN_TEXT. Si no hay ninguno, NO escribas ningún fichero:
+reciente con formato PLAIN_TEXT.
+
+OJO (29-oct-2026): el correo del jueves cambió de formato ("Our Thursday email
+has a new format. Introducing the Sunday Setup") y su asunto YA NO dice
+"Preview" (fue "The best WR run of the tracking era"). Si la búsqueda por
+asunto no da nada, busca `from:sumersports.com newer_than:3d` y, para la
+Preview, quédate con el correo enviado en JUEVES que habla de la semana que
+viene ("Sunday Setup", "Matchups That Matter", "the Week N slate"); para la
+Review, con el del LUNES que repasa la jornada jugada. Si aún así no hay ninguno, NO escribas ningún fichero:
 responde solo `SIN CORREO` y termina (se reintentará más tarde). No uses un
 boletín del otro tipo ni uno más viejo.
 
