@@ -143,6 +143,9 @@ sin competencia en español. Ver columnas del PBP arriba.
 ### PNG para MVPsSemana y MVPsSeason
 Los dos calculan candidatos y solo los imprimen por consola. El cálculo ya está
 hecho; falta dibujar. Abre además DPOY, novato del año y entrenador.
+**02-nov-2026:** los premios de temporada ya tienen PNG en `premios_temporada.py`
+(MVP, jugador ofensivo, defensa y rookies). Siguen sin PNG `MVPsSemana` (va en
+texto a propósito) y el entrenador del año.
 
 ### Trayectoria de un jugador semana a semana
 `season_arc` es de equipo. No hay equivalente de jugador.

@@ -69,7 +69,7 @@ df, SEASON = cargar_pbp(SEASON)   # cache local; solo REG; avisa si hay poca mue
   · Las tablas de Sharp (coberturas, tendencias, OL, DL) son de 2026 aunque la
     descripción diga "2025" (cuadran con nuestro FTN de 2026: blitz de MIN
     68% en Sharp, 73% nuestro, 51% en 2025). Actualizadas el 29-sep
-  · No comprobado todavía: NFL Pro, FTN y PFF en abierto
+  · TIPO de cobertura (Cover 0-9) y personal defensivo con EPA de 2026: revisado el 02-nov-2026, SOLO de pago (StatRankings+, SūmerPass). NFL Pro, bloqueado en España; statz.ai es de 2025; FTN en abierto y Fantasy Points (pide sesión), sin comprobar. Detalle en docs/pff-wishlist.md
   Más gratis en 2026: ESPN (win rates de cada liniero y rusher, % de dobles
   equipos: artículo "2026 win rates" en espn.com), Sharp (presión cedida por OL:
   .../nfl-offensive-line-stats), YPRR estimado (sticktothemodel.com,

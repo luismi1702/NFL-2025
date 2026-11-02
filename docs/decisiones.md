@@ -1217,3 +1217,22 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 **Motivo:** decisión de Luis al plantearle el caso ("Sin dueño"): nadie forzó el balón suelto.
 
 **Alternativas descartadas:** dárselo al jugador que recupera el balón (McDuffie), o repartirlo entre los que estaban en el campo.
+
+
+## [2026-11-02] — Premios de mitad de temporada: criterios
+
+**Decisión:** el MVP es para un QB (EPA por jugada + CPOE/100, con mínimo de 5 partidos Y 200 jugadas; los que serían 1º sin llegar salen en una nota) y el Jugador Ofensivo, para alguien que no sea QB (EPA total de recepción, todos los targets, más carrera). Defensa y rookie de defensa, con el mismo reparto de jugadas decisivas que MVPsSemana. Si los dos primeros están a menos de 1 punto de EPA, el PNG lo presenta como empate técnico (los dos como 1º) y el tuit elige y explica: en la w08, Watt sobre Hooker (7,5 sacks en 5 partidos frente a 3 de sus 5 INT en un solo partido).
+
+**Motivo:** el reparto 50/50 del MVP semanal hundía a los QB por debajo de los receptores en el acumulado (Smith-Njigba salía 1º). Con "5 partidos O 200 jugadas" se colaba Lamar Jackson con 118 jugadas. Luis quería premiar a Watt; escogerle a mano dejaba la imagen diciendo otra cosa que el texto.
+
+**Alternativas descartadas:** sumar presiones de PFR para que ganara Watt (sería ajustar la métrica al ganador, y en presiones tampoco lidera); ordenar el MVP por EPA total (ganaba Josh Allen); poner a Watt 1º en el PNG sin más.
+
+
+## [2026-11-02] — Boletín: qué se busca lo decide el día, no la hora
+
+**Decisión:** sin `--tipo`, desde las 00:00 del lunes se busca la Review y desde las 00:00 del jueves la Preview. Las tareas programadas siguen a sus horas.
+
+**Motivo:** las horas de `BOLETIN_HORAS` eran las de la tarea (14:15 y 15:00); cuando el correo llegaba antes y Luis lo lanzaba a mano, el script buscaba el boletín anterior, ya leído, y no hacía nada. Pasaba cada semana.
+
+**Alternativas descartadas:** seguir con `--tipo review` a mano; adelantar las tareas programadas.
+

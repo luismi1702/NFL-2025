@@ -2,6 +2,22 @@
 
 ---
 
+## [2026-11-02] — Lunes w08: hilo de la jornada, previa del MNF programada y premios de mitad de temporada
+
+**Que se hizo:**
+- **Boletín:** la Review había llegado antes de las 14:15 y el lanzamiento a mano buscaba la Preview (ya leída), algo que pasaba cada semana. `semana_auto.py` busca ahora la Review desde las 00:00 del lunes y la Preview desde las 00:00 del jueves. Con la Review: 13 borradores del lunes, 13/13 verificados
+- **Hilo de la jornada w08 publicado:** presentación y 12 partidos (abre en https://x.com/CuartayDato/status/2117245076946768137). Arizona con el cierre "5 de 5 en el AT&T Stadium" (schedules de nflverse y Fox 4)
+- **Previa del MNF CHI @ SEA [B], programada en X para las 20:00**: estreno del programador de X; receta en las notas de campo de `/publicar`
+- **Coberturas para el hilo de "cómo juega cada equipo":** revisado a fondo (Sharp, SumerSports, statz.ai, NFL Pro, SIS DataHub, StatRankings, PFF). Cover 0-9 de 2026 por equipo y personal defensivo con EPA, solo de pago: StatRankings (34,99 $ al mes) y SūmerPass (100 $). statz.ai lo tiene, pero de 2025; NFL Pro, bloqueado en España; Fantasy Points, sin comprobar (pide sesión)
+- **`premios_temporada.py` (nuevo):** 5 PNG con el top 5: MVP (solo QB, EPA+CPOE, mín. 5 partidos y 200 jugadas) Purdy; Jugador ofensivo (sin QB) Smith-Njigba; Defensa, empate técnico Hooker-Watt (0,5 de EPA); Rookie de ataque Omar Cooper Jr.; Rookie de defensa Hezekiah Masses. Salen el viernes 06-nov
+- Commits `a163bd2` (notas del 28-oct al 01-nov y CSV de la w07-w08) y `bd378d9` (boletín), subidos a GitHub
+
+**Archivos modificados:** `semana_auto.py`, `premios_temporada.py` (nuevo), `.claude/skills/publicar/SKILL.md`, `docs/scripts-catalog.md`, `docs/backlog.md`, `docs/decisiones.md`, `docs/pff-wishlist.md`, `CLAUDE.md`, `salidas/2026/w08/textos/borradores_lunes.md` (Arizona)
+
+**Pendiente:** el viernes 06-nov, regenerar los premios con el MNF incluido (Caleb Williams lleva 4 partidos y 158 jugadas: si juega unas 42 o más, entra en el MVP y con 0,351 se lo quita a Purdy), redactar el hilo (presentación y 5 premios; el de defensa, para Watt explicando el empate) y verificarlo. Las 3 INT de Hooker a Burrow (sem. 8) solo están contrastadas con el PBP; PFR aún no tiene la semana 8. Apuntar la URL de la previa del MNF en la cola cuando salga. Decidir si se paga StatRankings para el hilo de equipos
+
+---
+
 ## [2026-11-01] — Sábado y domingo w08: duelo MIN @ DET e hilo de previas publicados
 
 **Que se hizo:**

@@ -17,7 +17,7 @@ temporada (coberturas y personal) está gratis en Sharp y SumerSports.
 | Cobertura CB/S (rating, recepciones permitidas) | PFR, `cargar_pfr` (ya en uso) | Item 6 |
 | Placajes fallados | PFR (ya en uso) | Item 3 |
 | Presiones por defensor | PFR (ya en uso) | |
-| Coberturas por equipo (man/zone, middle open/closed) y USO de cada personal | Sharp | Personal y formación: uso Y resultado, ataque y defensa (SumerSports, cada noche, con EPA) y % de éxito por personal en ataque (Sharp, modo "Efficiency", los martes). Revisado a fondo el 05-oct-2026. Coberturas: solo uso y tasas |
+| Coberturas por equipo (man/zone, middle open/closed) y USO de cada personal | Sharp | Personal y formación: uso Y resultado, ataque y defensa (SumerSports, cada noche, con EPA) y % de éxito por personal en ataque (Sharp, modo "Efficiency", los martes). Revisado a fondo el 05-oct-2026. Coberturas: solo uso y tasas. 02-nov-2026: tipo de cobertura (Cover 0-9) por equipo en 2026 y personal defensivo (Base/Nickel/Dime) con EPA SOLO de pago: StatRankings+ (34,99 $/mes, 139,99 $/año; Cover 0-9 por equipo y por jugador) y SūmerPass. statz.ai lo tiene con EPA pero de 2025; NFL Pro, bloqueado en España; SIS DataHub (gratis) va por jugador sin coberturas; Fantasy Points sin comprobar (pide sesión) |
 | Grades PFF, BTT/TWP, presiones CONTADAS por liniero, bloqueo de carrera por hueco, lado/gap del rusher | Solo PFF | Items 5, 8, 9 y parte del 1 |
 
 Las tablas web se leen y se copian a mano citando la fuente (sin scraping).
