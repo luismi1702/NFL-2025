@@ -1209,3 +1209,11 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 
 **Alternativas descartadas:** pulir las maquetas de `lab/kc_sea_huecos.py`; usar `run_gap.py` tal cual estaba (ocultaba los huecos con menos de 15 carreras, medía EPA y no éxito, título descriptivo y dos PNG separados para ataque y defensa).
 
+
+## [2026-10-28] — MVPs: el fumble que nadie fuerza no tiene dueño
+
+**Decisión:** un fumble sin jugador que lo fuerce (snap o intercambio abortado que recupera la defensa, como el de Goff recuperado por McDuffie en GB @ DET, sem. 7) no suma a ningún defensor en el MVP de defensa: queda "sin dueño". Muhammad sigue MVP de defensa de la w07.
+
+**Motivo:** decisión de Luis al plantearle el caso ("Sin dueño"): nadie forzó el balón suelto.
+
+**Alternativas descartadas:** dárselo al jugador que recupera el balón (McDuffie), o repartirlo entre los que estaban en el campo.

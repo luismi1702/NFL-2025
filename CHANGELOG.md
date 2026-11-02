@@ -2,6 +2,70 @@
 
 ---
 
+## [2026-11-01] — Sábado y domingo w08: duelo MIN @ DET e hilo de previas publicados
+
+**Que se hizo:**
+- **31-oct, duelo MIN @ DET:** hilo de 8 tuits con la presentación [A], todo publicado (abre en https://x.com/CuartayDato/status/2116569784095559717). Chrome tenía abierta @LaMinaPodcast; con permiso de Luis se cambió a @CuartayDato antes de escribir
+- **01-nov, hilo de previas:** presentación [A] y las 12 previas, 13/13 publicados y apuntados en la cola (abre en https://x.com/CuartayDato/status/2116900807107109354)
+- **IND @ JAX, que el verificador había bloqueado:** el turnover de Indianapolis incluía un punt bloqueado y devuelto para TD (2026_06_TEN_IND, drive 16). Recontado con el PBP: IND pierde el balón en 12 de 75 series (4º peor) y JAX fuerza 9 en 58 (4º o 5º según cómo se cuenten las series). Con la opción 1 de Luis: texto corregido (278 chars), solo el PNG de la previa, sin el de claves
+- **X cambió el 01-nov:** las respuestas dentro de un hilo propio ya heredan las menciones del tuit anterior. Receta nueva en las notas de campo de `/publicar`: desmarcar ANTES de escribir; si se hace después, vuelve a abrirse el desplegable de @menciones
+- Podcasts: nada nuevo desde el 30-oct. Siguen vivas las respuestas de 100 Yardas (Green Bay por dentro) y El Capologist (aDOT de Mahomes y Nix); las del jueves 29-oct ya han caducado
+
+**Archivos modificados:** `salidas/2026/w08/textos/borradores_domingo.md` (IND @ JAX), `.claude/skills/publicar/SKILL.md` (dos notas de campo), `CLAUDE.md` (línea de `/publicar`), `salidas/2026/w08/` (cola y publicados)
+
+**Pendiente:** arreglar `Previas.py`, que cuenta como turnover cualquier drive con "Opp touchdown", también un punt bloqueado devuelto (TB vs MIN de la sem. 3 tiene otro caso). Luis responde a mano a 100 Yardas o al Capologist del 30-oct (si elige la [B] de 100 Yardas, cambiar antes "ayer"). A.J. Brown salía OUT en el parte final; no se miraron los inactivos oficiales. Siguen sin commit los cambios de días anteriores
+
+---
+
+## [2026-10-30] — Viernes w08: post del TNF (Green Bay) publicado
+
+**Que se hizo:**
+- **Publicado:** CAR @ GB [A] "Green Bay ganó perdiendo más balones" (https://x.com/CuartayDato/status/2116103924835107043), con `01_1_resumen` y `01_2_ficha`. Todo a la primera
+- A petición de Luis, sin la mención @Rubenibg (solo en este post; las menciones de GB en `docs/cuentas-fans.md` no se tocan). Quitada primero del borrador (267 → 257 chars) y regenerada la cola
+- `/podcasts`: nada nuevo hoy. Pendientes de responder (a mano) los dos del 29-oct: El Nickel (Ben Johnson en 2º down) y 100 Yardas (Nelson a SEA, Buckner a SF)
+- El Nickel [A] salió VERIFICADO pese a un OJO del propio verificador: su 55%/53% cuenta jugadas anuladas por penalti; con solo jugadas válidas CHI sale 52%/54% y ya no "pasa más en corto". Recomendada la [B]
+- 100 Yardas llega por RSS sin enlace al tuit: el anuncio del episodio es https://x.com/100yardas_/status/2115505242242466076 (28-oct, "ESTA NOCHE TENEMOS 100YARDAS"). El estado marca "redactor exit 1" pero el borrador está completo y verificado
+
+- **Duelo del sábado: MIN @ DET** (elegido por Luis; KC @ DEN descartado por repetir KC). Ángulo: ataque de Detroit contra la defensa de Flores. Hilo de 8 tuits en `borradores_sabado.md` y 4 PNG (`duelo_min_det_*`: cómo defiende, blitz, play action, antecedentes). Verificador: 8/8, con dos frases aclaradas (37 PA "a Minnesota"; "tiene éxito" en vez de "acierta")
+- Claves: MIN blitzea en el 71% (2º WAS 46%) pero juega hombre solo el 5%; DET 1º en EPA contra el blitz (Goff 54/73, 7 TD, 0 INT); MIN 1ª en EPA sin play action y 18ª con él (37 jugadas); DET ganó 4 de 6 a Flores, perdió los dos de 2025
+- Sharp copiado hasta la sem. 7 y personal de SumerSports/Sharp refrescado (`datos_web/`)
+- Podcasts nuevos del 30-oct procesados por el automático: 100 Yardas ("Los líderes en peligro", GB por dentro / último cuarto; tuit https://x.com/100yardas_/status/2116135638064046517) y El Capologist (Previologist 4x08, aDOT de Mahomes y Nix)
+
+**Archivos modificados:** `salidas/2026/w08/textos/borradores_viernes.md`, `borradores_sabado.md`, `salidas/2026/w08/liga/duelo_min_det_*.png`, `lab/min_det_duelo.py`, `lab/min_det_png.py`, `datos_web/` (Sharp w07, personal w08), `salidas/2026/w08/` (cola y publicados)
+
+**Pendiente:** publicar el duelo el sábado (elegir [A]/[B] de la presentación; mirar antes el parte por si cambia algo en el ataque de DET). Responder a los cuatro podcasts: El Nickel 29-oct ([B]), 100 Yardas 29-oct, 100 Yardas 30-oct (la [B] dice "ayer": solo valía el viernes) y El Capologist 30-oct (falta el enlace de su tuit). Mirar por qué el verificador dio por buena la [A] de El Nickel con un OJO que la contradice, y el "redactor exit 1" de 100 Yardas. Siguen sin commit los cambios de días anteriores (`.claude/skills/publicar/SKILL.md`, `CHANGELOG.md`, `CLAUDE.md`, `docs/decisiones.md`, `docs/podcasts_revisados.md`)
+
+---
+
+## [2026-10-29] — Jueves w08: Contenders, bot y previa del TNF publicados
+
+**Que se hizo:**
+- **Publicados:** Contenders [A] (https://x.com/CuartayDato/status/2115772639578874045), Manning Bot [B] (https://x.com/CuartayDato/status/2115772862891983230) con su respuesta "Cómo funciona" (https://x.com/CuartayDato/status/2115773067154887081) y la previa del TNF CAR @ GB [A] (https://x.com/CuartayDato/status/2115807776240816539). Todo a la primera; el perfil tarda una recarga en mostrar cada post
+- `/podcasts`: nada nuevo; Luis descarta las cuatro respuestas pendientes de la w07 (100 Yardas y El Nickel del 26-oct, Ecos y El Capologist del 27-oct)
+- La Preview de SumerSports (14:03) no se encontraba: el correo del jueves ahora es "Sunday Setup" y su asunto no dice "Preview". `ideas_boletin_prompt.md` busca por remitente y día si falla el asunto (commit `382da07`). Con eso salieron solos la previa del TNF, los PNG de la w08 y su verificación
+- La Preview de la w08 no trae nada de CAR @ GB (cruces DET-MIN, PIT-CLE, DEN-KC, ATL-TB, BAL-BUF y JSN)
+
+**Archivos modificados:** `ideas_boletin_prompt.md`, `CLAUDE.md` (línea del boletín), `salidas/2026/w07/textos/publicados.json`, `salidas/2026/w08/` (previas, textos, cola y publicados)
+
+**Pendiente:** nada del jueves. Siguen sin commit los cambios de días anteriores (`.claude/skills/publicar/SKILL.md`, `CHANGELOG.md`, `docs/decisiones.md`, `docs/podcasts_revisados.md`)
+
+---
+
+## [2026-10-28] — Miércoles: Power Ranking y hilo de MVPs w07 publicados
+
+**Que se hizo:**
+- MVP de defensa: el fumble abortado de Goff recuperado por McDuffie (GB @ DET) queda SIN DUEÑO (decisión de Luis); Muhammad sigue MVP de defensa. Desbloqueadas las secciones MVPs 1/5 y 3/5 con su `VERIFICADO` (fichaje de Muhammad por TB el 12-mar-2026 comprobado por web)
+- **Publicados:** Power Ranking [A] (https://x.com/CuartayDato/status/2115398071244988484) e hilo de MVPs [A] (abre en https://x.com/CuartayDato/status/2115440913485099142: Williams, Muhammad, Fairbairn, Daniels, foto 1 para todos), sin menciones heredadas
+- Fotos de MVPs en `salidas/2026/w07/liga/mvp_fotos/`; originales de AP desde `assets.apnews.com` (la URL de resize da 350x350)
+- Notas de campo de `/publicar`: fotos candidatas SUELTAS, una por jugador (Luis no veía la hoja), y el dorsal se comprueba con el pie de AP
+- `/podcasts`: nada nuevo hoy; Luis descarta las respuestas a Ecos 2X24 y El Capologist 7x33 ("nada interesante")
+
+**Archivos modificados:** `.claude/skills/publicar/SKILL.md`, `salidas/2026/w07/textos/borradores_posts.md`, `salidas/2026/w07/` (cola, publicados y fotos)
+
+**Pendiente:** nada del miércoles
+
+---
+
 ## [2026-10-27] — Martes: MNF y dato publicados, fuera los dos posts de primetime
 
 **Que se hizo:**
