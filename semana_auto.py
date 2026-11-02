@@ -322,7 +322,13 @@ def _verificar(destino):
 # 30-sep-2026), asi que se busca a las 14:15
 # Preview: el 01-oct-2026 llego a las 14:03 y a las 14:54 la tarea aun daba
 # por buena la Review del lunes; se busca a las 15:00 (reintento a las 17:00)
-BOLETIN_HORAS = {"review": (0, 14, 15), "preview": (3, 15, 0)}    # (dia, h, m)
+# OJO (02-nov-2026): estas horas solo deciden QUE boletin se busca sin
+# --tipo, no cuando se lanza la tarea. Antes eran las de la tarea (lunes
+# 14:15, jueves 15:00) y cada semana que el correo llegaba antes, el lanzamiento
+# a mano buscaba el boletin anterior (ya leido) y no hacia nada. Desde las 00:00
+# del lunes manda la Review, y desde las 00:00 del jueves la Preview; si aun no
+# ha llegado, el prompt responde SIN CORREO y no se usa uno viejo
+BOLETIN_HORAS = {"review": (0, 0, 0), "preview": (3, 0, 0)}    # (dia, h, m)
 BOLETIN_TOOLS = ["Read", "Glob", "Grep", "Write", "WebSearch",
                  "mcp__claude_ai_Gmail__search_threads",
                  "mcp__claude_ai_Gmail__get_thread"]

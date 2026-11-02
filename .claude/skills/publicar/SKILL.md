@@ -345,3 +345,54 @@ incorporado a los pasos de arriba no se repite.
   · Tras el diálogo "Respondiendo a", el botón "Listo" queda en (990, 58) con
     una o con varias cuentas; la línea a pulsar sale a la altura de la
     captura (y≈262-295 según lo largo del tuit anterior).
+- 28-oct-2026, PR w07 + hilo de MVPs: todo a la primera. Las candidatas de
+  fotos se mandan SUELTAS (un `SendUserFile` por jugador, con la etiqueta en
+  el pie), no solo en hoja: Luis no veía la hoja ("tienes que ponerme las
+  fotos si no no las veo").
+  · Las fotos de AP (`dims.apnews.com/...?url=`) se bajan enteras desde
+    `assets.apnews.com/...` (el valor de `url`); si pesan más de 5 MB,
+    reducir a 2400 px.
+  · Ojo con los dorsales: Fairbairn lleva el 15 en 2026 y una foto suya con
+    el 7 era de otro año. Confirmar con el pie de AP (meta `description` de
+    la página de la foto, que se lee con curl).
+- 31-oct-2026, duelo MIN @ DET (8 tuits, ~8 min): todo a la primera. El
+  Chrome estaba en @LaMinaPodcast; se paró, y con el permiso de Luis se
+  cambió desde el selector de cuentas
+  (`[data-testid="SideNav_AccountSwitcher_Button"]` → clic en CuartayDato), sin
+  contraseña. Comprobarlo SIEMPRE leyendo ese botón antes de escribir.
+  · La comprobación JS de cada respuesta (texto exacto, nº de imágenes,
+    "Respondiendo a @CuartayDato", botón "Responder", sin desplegable) +
+    `btn.click()` en una sola llamada funcionó en los 8 tuits.
+- 01-nov-2026, hilo de previas w08 (13 tuits, ~25 min): todo salió bien,
+  pero X CAMBIÓ: desde la 2ª respuesta SÍ hereda las menciones del tuit
+  anterior ("En respuesta a @CuartayDato @X y @Y", o "Respondiendo a
+  @CuartayDato y a @X" si es una). La comprobación JS lo frenó antes de
+  publicar. Ya no vale la nota del 14-oct de "no hay nada que desmarcar":
+  hay que desmarcar SIEMPRE. Receta que funcionó en los 11:
+  1. Abrir la respuesta por JS y, en la misma llamada, devolver la línea
+     "En respuesta a…" y las coordenadas de su primer `@` (rect × 1568/innerWidth).
+  2. Clic real en esas coordenadas → desmarcar por JS → "Listo" (990, 57).
+  3. Enfocar el cuadro, escribir y sacar por JS las coordenadas de la última
+     línea en blanco del texto (`[data-block] ` vacío, borde derecho − 20):
+     ahí se cierra el desplegable de menciones sin buscar en la captura.
+  4. Subir las imágenes, clic en esa línea y comprobar y publicar por JS
+     (exigiendo "Respondiendo a @CuartayDato" exacto).
+  · OJO: si se desmarca DESPUÉS de escribir, al volver de "Listo" el
+    desplegable de menciones se reabre. Desmarcar ANTES de escribir.
+  · El borrador de IND @ JAX se corrigió el mismo día (Previas.py cuenta un
+    punt bloqueado devuelto para TD como pérdida de balón) y salió sin el PNG
+    de claves.
+- 02-nov-2026, hilo de la jornada w08 (presentación + 12, ~12 min): todo a
+  la primera con la receta del 01-nov. La previa del MNF, PROGRAMADA (Luis:
+  "a las 20:00"), estreno del programador de X:
+  · Con el texto y las imágenes montados, `[data-testid="scheduleOption"]`
+    `.click()` por JS abre `/compose/post/schedule`: 5 `select` (mes, día,
+    año, hora, minuto), zona "hora estándar de Europa central" (Madrid). Se
+    cambian con el setter nativo de `HTMLSelectElement.value` + evento
+    `change`; minuto `'0'` sale "00". Comprobar la frase "Se publicará el
+    lun., 2 nov. 2026 a la/s 8:00 p. m." y pulsar "Confirmar".
+  · Al volver al compositor el desplegable de menciones SE REABRE: cerrarlo
+    otra vez (línea en blanco) antes de la comprobación JS. El botón pasa a
+    decir "Programación" (no "Postear"): exigir ese texto en la comprobación.
+  · Se ve en `x.com/compose/post/unsent/scheduled`. Sin URL hasta que sale:
+    se marcó con `--marcar ... --letra B` sin `--url`.
