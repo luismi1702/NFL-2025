@@ -18,7 +18,7 @@ maquina (ver "Nivel 2b"); Luis elige opcion y publica.
 | Miercoles | MVPs de la jornada: HILO de 5 (apertura + ataque, defensa, especiales, rookie) | MVPsSemana (TXT, sin PNG) | batch martes |
 | Jueves | Bot: balance jornada anterior + picks (gancho: previa TNF) | Manning_bot --no-retrain | batch martes (2 TXT) |
 | Viernes | Analisis del TNF jugado la noche anterior (resumen + ficha) | resumen_partido + ficha_tactica + destacados | batch viernes 9:00 → `borradores_viernes.md` |
-| Sabado | Pieza de DUELO: un partido del domingo a fondo, hilo con el cruce que decide el partido (profundidad del 10-oct-2026, SF @ SEA; el ángulo lo marca cada partido: ver `docs/decisiones.md`) | `textos/cruces_semana_*.txt` (batch del viernes) para elegirlo; `copiar_sharp_defensa.py` + `copiar_personal_web.py` para como defiende y el personal; PNG a mano en `lab/` con la plantilla `lab/sf_sea_png*.py` | manual (el TXT sale solo) |
+| Sabado | Pieza de DUELO: un partido del domingo a fondo (si la jornada tiene partido en ESPAÑA, el duelo es ese, sin discusion: Luis, 04-nov-2026), hilo con el cruce que decide el partido (profundidad del 10-oct-2026, SF @ SEA; el ángulo lo marca cada partido: ver `docs/decisiones.md`) | `textos/cruces_semana_*.txt` (batch del viernes) para elegirlo; `copiar_sharp_defensa.py` + `copiar_personal_web.py` para como defiende y el personal; PNG a mano en `lab/` con la plantilla `lab/sf_sea_png*.py` | manual (el TXT sale solo) |
 | Domingo AM | HILO de la jornada: presentacion (con el gancho del partido gordo) + una previa por partido del DOMINGO, EN EL ORDEN DE LOS PNG (el del duelo del sabado tambien; el MNF no, va el lunes) | Previas modo jornada (+ `previas_numeros_*.txt`) | batch sabado 23:00 → PNG y `borradores_domingo.md` |
 | Quincenal | Pieza tematica rotatoria (presion, PROE, rankings posicion...) | grupo B del catalogo | manual |
 
@@ -108,7 +108,7 @@ maquina (ver "Nivel 2b"); Luis elige opcion y publica.
   `previas_numeros_*.txt` (los numeros de los PNG, con rangos y conteos) +
   `borradores_domingo.md` (prompt `borradores_prompt_domingo.md`) + la cola
 
-- **"NFL2025 podcasts"** — todos los dias, cada hora de 9:05 a 23:05 (19-oct-2026):
+- **"NFL2025 podcasts"** — todos los dias a las 23:05 (una vez al dia desde el 04-nov-2026, Luis; del 19-oct al 03-nov, cada hora de 9:05 a 23:05):
   `python podcasts_auto.py`. Mira los feeds de Ecos de la NFL, 100 Yardas, El
   Capologist/Previologist y El Nickel; cada episodio nuevo (de menos de 4 dias)
   se transcribe, `claude -p` con `podcasts_prompt.md` deja la respuesta [A]/[B]

@@ -2,6 +2,21 @@
 
 ---
 
+## [2026-11-04] — Miércoles w08: Dato de la semana, hilo de MVPs, Power Ranking programado y partido en España
+
+**Que se hizo:**
+- **Dato de la semana 8 publicado [B]** (la defensa de Tampa Bay): https://x.com/CuartayDato/status/2117957160445648920. Los signos "−" (U+2212, X los cuenta como 2) se cambiaron por "-" en el borrador para que cupiera
+- **Hilo de MVPs w08 [A], 5 tuits con foto, programado a las 16:00** con una tarea de sesión (X no programa respuestas de hilo): Allgeier, Lane III, Laube y Emmett Johnson. Abre en https://x.com/CuartayDato/status/2117995243056636316. Fotos en `salidas/2026/w08/liga/mvp_fotos/` (AP vía páginas de townnews; jacksonville.com da 402 y no se fuerza)
+- **Power Ranking [B] programado en X para las 19:00** (en la cola, sin URL todavía)
+- **Podcasts: una pasada al día, a las 23:05** (antes cada hora, de 9:05 a 23:05). Tarea de Windows, `podcasts_auto.py`, skill `/podcasts` y CLAUDE.md actualizados. El Nickel: el feed volvió (404 intermitente del 01 al 04-nov), sin episodio nuevo
+- **Partido en España = partido de la semana** (Luis): si hay Madrid Game, es el duelo del sábado y el gancho del hilo del domingo. Esta semana, CIN @ ATL en el Bernabéu (domingo 08-nov, 15:30)
+
+**Archivos modificados:** `podcasts_auto.py`, `.claude/skills/podcasts/SKILL.md`, `CLAUDE.md`, `borradores_prompt_domingo.md`, `docs/calendario-posts.md`, `docs/decisiones.md`, `salidas/2026/w08/textos/borradores_dato.md`, `salidas/2026/w08/liga/mvp_fotos/`
+
+**Pendiente:** apuntar la URL del Power Ranking en la cola cuando salga (19:00). Viernes 06-nov: premios de mitad de temporada. Sábado: duelo CIN @ ATL (Madrid)
+
+---
+
 ## [2026-11-03] — Martes w08: Monday Night, Contenders pasa al martes y respuestas a podcasts
 
 **Que se hizo:**

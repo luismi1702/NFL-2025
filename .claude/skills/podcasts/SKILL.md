@@ -7,8 +7,9 @@ description: Podcasts y programas de YouTube de NFL que sigue @CuartayDato (Ecos
 
 Desde el 19-oct-2026 (Luis: "no puede ser que tenga que estar pendiente de
 todo") los podcasts NO se miran a mano. La tarea de Windows
-**"NFL2025 podcasts"** lanza `python podcasts_auto.py` cada hora de 9:05 a
-23:05. Con cada episodio nuevo:
+**"NFL2025 podcasts"** lanza `python podcasts_auto.py` una vez al dia, a las
+23:05 (Luis, 04-nov-2026; antes cada hora). Si hace falta antes, `--forzar` o
+lanzarlo a mano. Con cada episodio nuevo:
 
 1. Lo detecta en su feed (`FUENTES` en `podcasts_auto.py`).
 2. Lo transcribe: YouTube con subtítulos automáticos (`yt-dlp`) y, si no hay,

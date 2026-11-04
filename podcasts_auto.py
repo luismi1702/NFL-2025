@@ -6,8 +6,8 @@
 # la semana (tarjeta manual: la publica Luis respondiendo al tuit del
 # episodio). Despues pasa el verificador de siempre (semana_auto.verificar).
 #
-# Lo lanza la tarea "NFL2025 podcasts" cada hora de 9:00 a 23:00: mirar un
-# feed cuesta nada, y solo se trabaja cuando hay algo nuevo.
+# Lo lanza la tarea "NFL2025 podcasts" una vez al dia, a las 23:05 (Luis,
+# 04-nov-2026). Solo se trabaja cuando hay algo nuevo.
 #
 #   python podcasts_auto.py              # mirar feeds y procesar lo nuevo
 #   python podcasts_auto.py --estado     # que hay, que se hizo, que falta

@@ -1245,3 +1245,21 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 **Motivo:** el martes solo tenía fijo el Monday Night (el Dato de la semana casi siempre se va al miércoles o jueves por FTN), y el PNG está listo desde el batch del martes. Luis ya lo había adelantado a mano el 20-oct y el 03-nov.
 
 **Alternativas descartadas:** pasar el Power Ranking al martes; dejarlo el jueves con el bot y la previa del TNF.
+
+
+## [2026-11-04] — Podcasts: una pasada al día
+
+**Decisión:** la tarea "NFL2025 podcasts" pasa de cada hora (9:05-23:05) a una vez al día, a las 23:05.
+
+**Motivo:** Luis: "basta con que lo haga una vez al día". Las respuestas se publican al día siguiente sin problema, y a las 23:05 ya han salido los episodios del día.
+
+**Alternativas descartadas:** mantenerlo cada hora; una pasada por la mañana (se perdería hasta el día siguiente lo publicado por la tarde).
+
+
+## [2026-11-04] — El partido en España es el partido de la semana
+
+**Decisión:** cuando la jornada tiene partido en España (Madrid Game), ese es el DUELO del sábado y el gancho de la presentación del hilo del domingo, sea cual sea el cruce. En 2026, semana 9: CIN @ ATL en el Bernabéu, domingo 08-nov a las 15:30 de Madrid.
+
+**Motivo:** Luis: "el partido de la semana evidentemente tiene que ser el de España". La cuenta es para público español: ese partido es el que más interesa, aunque haya otros cruces mejores sobre el papel.
+
+**Alternativas descartadas:** elegir el duelo con `cruces.py` como cualquier otra semana.

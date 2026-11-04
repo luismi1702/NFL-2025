@@ -64,7 +64,9 @@ lado. En la linea `IMAGEN:` va SOLO el nombre del fichero, sin carpeta.
   lleva el `NN` del PNG: `## DOMINGO — Hilo de previas 1/14: 02 LAC @ BUF`.
 - El partido gordo (dos invictos, dos extremos que chocan, un duelo
   divisional con algo en juego) no se adelanta en el hilo: su gancho va en
-  la PRESENTACION.
+  la PRESENTACION. Si la jornada tiene partido en ESPAÑA (`stadium` del
+  calendario: Bernabeu, Madrid), ESE es el partido gordo, sea cual sea el
+  cruce (Luis, 04-nov-2026).
 - El Sunday Night (el ultimo `Sunday` del TXT) lo dice al empezar: "Sunday
   Night en Denver."
 
