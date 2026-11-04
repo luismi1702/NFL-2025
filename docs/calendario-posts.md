@@ -12,11 +12,11 @@ maquina (ver "Nivel 2b"); Luis elige opcion y publica.
 | Lunes | Un post por partido jugado (sin el MNF) + la PREVIA del Monday Night (fuera del hilo del domingo) | destacados + fichas + Review de SumerSports; la previa sale del batch del sabado | visuales: batch lunes 10:00; textos: tras leer la Review (14:15) |
 | Martes | Monday Night (un post, desde el ganador) | resumen + ficha del MNF | batch martes 8:00 |
 | Martes (cuando FTN tiene todo menos el MNF, hacia las 13:00) | Dato de la semana | DatoSemana (21 situaciones, contra la jornada y la historia) | tarea "NFL2025 dato semana", 10:30, 20:00 y 22:30 (FTN suele completar el miércoles hacia las 19:00) |
+| Martes | Contenders (formula del campeon): que ha cambiado desde la semana anterior; si no cambia nada, no sale (martes desde el 03-nov-2026, Luis; antes jueves) | contenders_tracker | batch martes |
 | Martes | Resumen del Monday Night (2 PNGs + ficha) | resumen_partido | batch martes: regenera TODA la jornada, que es cuando entra el MNF que el lunes faltaba |
 | Miercoles | Power Rankings | power_rankings | batch martes |
 | Miercoles | MVPs de la jornada: HILO de 5 (apertura + ataque, defensa, especiales, rookie) | MVPsSemana (TXT, sin PNG) | batch martes |
 | Jueves | Bot: balance jornada anterior + picks (gancho: previa TNF) | Manning_bot --no-retrain | batch martes (2 TXT) |
-| Jueves | Contenders (formula del campeon): que ha cambiado desde la semana anterior; si no cambia nada, no sale (Luis, 16-oct-2026; estreno el 22-oct con la semana 6) | contenders_tracker (PNG copiado a la carpeta del jueves) | batch martes |
 | Viernes | Analisis del TNF jugado la noche anterior (resumen + ficha) | resumen_partido + ficha_tactica + destacados | batch viernes 9:00 → `borradores_viernes.md` |
 | Sabado | Pieza de DUELO: un partido del domingo a fondo, hilo con el cruce que decide el partido (profundidad del 10-oct-2026, SF @ SEA; el ángulo lo marca cada partido: ver `docs/decisiones.md`) | `textos/cruces_semana_*.txt` (batch del viernes) para elegirlo; `copiar_sharp_defensa.py` + `copiar_personal_web.py` para como defiende y el personal; PNG a mano en `lab/` con la plantilla `lab/sf_sea_png*.py` | manual (el TXT sale solo) |
 | Domingo AM | HILO de la jornada: presentacion (con el gancho del partido gordo) + una previa por partido del DOMINGO, EN EL ORDEN DE LOS PNG (el del duelo del sabado tambien; el MNF no, va el lunes) | Previas modo jornada (+ `previas_numeros_*.txt`) | batch sabado 23:00 → PNG y `borradores_domingo.md` |
@@ -158,9 +158,9 @@ demas. Si nflverse esta caido, estado_datos.txt lo grita: NO publicar sin leerlo
 - contenders_tracker (formula del campeon): entra en el batch del martes desde
   la semana 5 (`CONTENDERS_DESDE` en `semana_auto.py`, decidido 24-sep-2026).
   Deja `liga/contenders_{año}_wNN.png` y `textos/contenders.txt`.
-  Se publica el JUEVES de la jornada siguiente (Luis, 16-oct-2026): el
-  borrador es la seccion `## JUEVES — Contenders` de `borradores_posts.md` y
-  el batch copia el PNG a `w{N+1}/liga/`, igual que el bot.
+  Se publica el MARTES, con el Monday Night (Luis, 03-nov-2026; del 16-oct
+  al 02-nov fue el jueves): el borrador es la seccion `## MARTES — Contenders`
+  de `borradores_posts.md` y el PNG se queda en `wNN/liga/`.
 - Bot: MIN_GAMES=2 — NO hay post del bot el jueves de la semana 2 porque no
   hay picks. (Hasta el 24-sep-2026 tampoco salian los de la semana 3: el bot
   no sabia predecir partidos sin jugar. Arreglado en la v7.) Sin muestra, el

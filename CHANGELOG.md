@@ -2,6 +2,22 @@
 
 ---
 
+## [2026-11-03] — Martes w08: Monday Night, Contenders pasa al martes y respuestas a podcasts
+
+**Que se hizo:**
+- **Publicado el Monday Night [B]** (Chicago ganó corriendo en Seattle): https://x.com/CuartayDato/status/2117570813583110625
+- **Contenders adelantado del jueves y publicado [A]** (entra Jacksonville junto a Kansas City): https://x.com/CuartayDato/status/2117637226569814127
+- **Respuestas a podcasts:** El Capologist [A] (Denver solo gana los últimos cuartos, https://x.com/CuartayDato/status/2117579264706924904) y Ecos de la NFL [A] (Cincinnati, la que menos corre con el partido igualado, https://x.com/CuartayDato/status/2117579687098454490), publicadas por Luis. La de 100 Yardas se redactó como mezcla de [A] y [B] (opción [C], 274 chars) y se DESCARTÓ porque 100 Yardas no tuiteó el episodio especial del Madrid Game
+- Recalculado con el MNF el EPA por carrera de Ecos [B]: Seattle sigue 29º
+- **Contenders fijo los martes** (decisión de Luis): sección `## MARTES — Contenders` en el prompt de borradores, el batch ya no copia el PNG a `w{N+1}`, calendario actualizado
+- Los tuits de los episodios de podcast no se guardan en el repo: se buscan en X (`@ElCapologist`, `@ThePipelineNFL` para Ecos desde la 2.0, `@100yardas_`)
+
+**Archivos modificados:** `borradores_prompt.md`, `semana_auto.py`, `docs/calendario-posts.md`, `docs/decisiones.md`, `salidas/2026/w08/textos/borradores_posts.md` (Contenders → MARTES), `salidas/2026/w08/textos/borradores_podcast_100_yardas_1102.md` ([C])
+
+**Pendiente:** Dato de la semana 8, a la espera de FTN (el 03-nov a las 12:45, 0 partidos charteados). Miércoles: Power Ranking e hilo de MVPs (fotos). Viernes 06-nov: premios de mitad de temporada (ver entrada del 02-nov)
+
+---
+
 ## [2026-11-02] — Lunes w08: hilo de la jornada, previa del MNF programada y premios de mitad de temporada
 
 **Que se hizo:**

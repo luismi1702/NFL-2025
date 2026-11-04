@@ -149,6 +149,7 @@ Verificación:
 Las secciones, con estos titulos exactos:
 
 - `## MARTES — Monday Night`
+- `## MARTES — Contenders`
 - `## MIÉRCOLES — Power Rankings`
 - `## MIÉRCOLES — MVPs 1/5: abre el hilo`
 - `## MIÉRCOLES — MVPs 2/5: ataque`
@@ -156,9 +157,9 @@ Las secciones, con estos titulos exactos:
 - `## MIÉRCOLES — MVPs 4/5: equipos especiales`
 - `## MIÉRCOLES — MVPs 5/5: rookie`
 - `## JUEVES — Bot: balance + picks`
-- `## JUEVES — Contenders`
 
-- CONTENDERS (Luis, 16-oct-2026): sale el JUEVES. Es la actualizacion semanal
+- CONTENDERS: sale el MARTES (Luis, 03-nov-2026; antes, jueves desde el
+  16-oct). Es la actualizacion semanal
   que prometio el hilo de la formula del campeon (julio de 2026,
   `docs/hilo_formula_campeon.md`): los 12 umbrales que cumplieron los
   campeones, y quien los cumple hoy. `IMAGEN: contenders_{año}_w{NN}.png`,

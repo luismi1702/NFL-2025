@@ -1236,3 +1236,12 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 
 **Alternativas descartadas:** seguir con `--tipo review` a mano; adelantar las tareas programadas.
 
+
+
+## [2026-11-03] — El Contenders se publica el martes
+
+**Decisión:** el post del Contenders sale el MARTES, con el Monday Night, en la cola de la jornada (`## MARTES — Contenders`). Sigue la regla de no publicarlo si nada cambia.
+
+**Motivo:** el martes solo tenía fijo el Monday Night (el Dato de la semana casi siempre se va al miércoles o jueves por FTN), y el PNG está listo desde el batch del martes. Luis ya lo había adelantado a mano el 20-oct y el 03-nov.
+
+**Alternativas descartadas:** pasar el Power Ranking al martes; dejarlo el jueves con el bot y la previa del TNF.

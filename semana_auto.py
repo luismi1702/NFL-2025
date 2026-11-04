@@ -13,7 +13,7 @@
 # martes  -> dato de la semana, power rankings, MVPs (TXT), contenders (desde
 #            la semana 5), bot: balance de la semana jugada + picks de la
 #            proxima (TXT). Para los posts de
-#            martes (dato+resumen), miercoles (PR+MVPs) y jueves (bot).
+#            martes (MNF+contenders), miercoles (PR+MVPs) y jueves (bot).
 # domingo -> previas de TODOS los partidos de la proxima jornada (PNGs + PDF)
 #            para el hilo del domingo por la manana.
 #
@@ -767,15 +767,8 @@ def pasos_del_dia(dia, SEASON, W, txt_dir, ok):
                            ["contenders_tracker.py", "--season", str(SEASON),
                             "--week", str(W)],
                            captura=os.path.join(txt_dir, "contenders.txt")))
-            # Se publica el JUEVES (Luis, 16-oct-2026), que vive en la cola de
-            # W+1: el PNG se copia alli, como el dato de la semana
-            import shutil
-            png = os.path.join(RAIZ, "salidas", str(SEASON), f"w{W:02d}", "liga",
-                               f"contenders_{SEASON}_w{W:02d}.png")
-            if os.path.exists(png):
-                destino = os.path.join(RAIZ, "salidas", str(SEASON), f"w{W + 1:02d}", "liga")
-                os.makedirs(destino, exist_ok=True)
-                shutil.copy2(png, destino)
+            # Se publica el MARTES, con el MNF (Luis, 03-nov-2026): el PNG se
+            # queda en la cola de esta semana, ya no se copia a W+1
         else:
             log(f"-> contenders: se salta hasta la semana {CONTENDERS_DESDE} "
                 f"(jugadas {W})")
