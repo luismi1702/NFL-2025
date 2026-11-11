@@ -75,7 +75,10 @@ orden en que se suben), `posts` (`letra`, `texto`, `caracteres`), `publicado`
   un hilo. Las numeradas `1/5`, `2/5`… son ese hilo, en ese orden.
 - **Lunes:** el hilo lo abre "Hilo de la jornada: presentación" y cuelgan de él
   todos los posts de partido (los que llevan `NN_1_resumen` y `NN_2_ficha`).
-  La "Previa del Monday Night" va suelta.
+  La "Previa del Monday Night" va suelta y NUNCA en la misma tanda que los
+  posts del domingo (Luis, 09-nov-2026): primero el hilo de la jornada y la
+  previa del MNF, por la tarde, sobre las 20:00. Si se pregunta "qué toca hoy"
+  el lunes, se ofrece solo el hilo y se recuerda la previa para las 20:00.
 - **Domingo:** "Hilo de previas 0/N" abre y cuelgan las previas en orden.
 - Dato de la semana, Power Rankings, bot y previas sueltas: posts independientes.
 - El orden del JSON mezcla sueltos e hilo (el miércoles sale MVPs 1/5, PR,
@@ -129,12 +132,17 @@ las opciones [A]/[B], para no hacerle esperar.
    `media.zenfs.com`; `i0.wp.com/<web>/...` es `<web>/...`; Cloudinary del
    NFL (`static.clubs.nfl.com/image/upload/t_..._mobile/...`) sin el `t_...`;
    minutemedia (SI), cambiando `w_720` por `w_1600`.
-4. Bájalas con `curl -sL -A "Mozilla/5.0"` a una carpeta del scratchpad y
-   monta UNA hoja con PIL (fondo `#0f1115`, cada candidata con su etiqueta
-   "MAYE 1 · ESPN · 1920x1080" en amarillo). Mándala con `SendUserFile` y pide
-   la elección en una línea ("Maye 1, Green 2…").
+4. Bájalas con `curl -sL -A "Mozilla/5.0"` a una carpeta del scratchpad,
+   míralas (Read) y **elige tú** (Luis, 11-nov-2026: "no hace falta que me
+   pases las fotos"). Criterio, sacado de sus elecciones w05-w09: apaisada,
+   del jugador como protagonista y dorsal legible, en la jugada que le hace
+   MVP (defensa con el balón en la mano, kicker golpeando, QB lanzando o
+   celebrando, RB corriendo), sin rótulos ni capturas de vídeo, y entre dos
+   válidas la de más acción y resolución. Ya no se le mandan candidatas; al
+   pedir el visto bueno del hilo basta con decir qué foto lleva cada uno.
 5. Las elegidas se copian a `salidas/{año}/wNN/liga/mvp_fotos/` con nombre
-   claro (`mvp_ataque_maye.jpg`, `mvp_defensa_green.jpg`…). Solo imágenes.
+   claro (`mvp_ataque_maye.jpg`, `mvp_defensa_green.jpg`…), reducidas a
+   2400 px si son más grandes. Solo imágenes.
 6. Se suben con `file_upload` en el tuit de ese MVP.
 
 Si no aparece una foto clara de ese partido, no se pone una de otro: se le
@@ -396,3 +404,20 @@ incorporado a los pasos de arriba no se repite.
     decir "Programación" (no "Postear"): exigir ese texto en la comprobación.
   · Se ve en `x.com/compose/post/unsent/scheduled`. Sin URL hasta que sale:
     se marcó con `--marcar ... --letra B` sin `--url`.
+- 08-nov-2026, hilo de previas w09 (14 tuits, ~15 min): todo a la primera.
+  Al revés que en el duelo del 07-nov, aquí X SÍ heredó las menciones en
+  cada respuesta desde la 2ª ("En respuesta a @CuartayDato @X y @Y"); la
+  primera, como siempre, "Añadir otro post" sin línea. Se desmarcaron todas
+  con el clic real en la línea + JS (casilla general) + "Listo" por JS, y la
+  línea quedó "Respondiendo a @CuartayDato". Nunca dar por hecho que no hereda:
+  mirarlo en cada respuesta.
+- 11-nov-2026, PR w09 + hilo de MVPs (fotos elegidas por Claude, ~10 min):
+  en el 2/5, la llamada que comprobaba y publicaba devolvió "Couldn't
+  determine which page this action targets" y luego se cortó la conexión
+  con Chrome (~1 min). El compositor seguía abierto con texto e imagen: NO
+  había salido. Se comprobó en una pestaña nueva, se reintentó la misma
+  comprobación JS y salió una vez. Si se pierde la conexión, primero
+  `list_connected_browsers` y `tabs_context_mcp`; al cerrar una pestaña
+  vieja, el grupo puede cambiar de id: volver a pedir `tabs_context_mcp`
+  con `createIfEmpty`. Las menciones se heredaron en las respuestas 2 a 4
+  (no en la 1ª): misma receta del 01-nov.

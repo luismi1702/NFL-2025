@@ -334,6 +334,57 @@ BOLETIN_TOOLS = ["Read", "Glob", "Grep", "Write", "WebSearch",
                  "mcp__claude_ai_Gmail__get_thread"]
 
 
+# Barrido de borradores sin revisar (11-nov-2026). El verificador solo se
+# lanzaba tras un redactor que acababa bien: el 10-nov el de los posts del
+# martes murio por el limite de uso, el borrador se escribio luego a mano y
+# nadie lo verifico (Power Rankings y 4 MVPs bloqueados sin motivo a la
+# vista). Esto busca secciones que no tengan ni "VERIFICADO:" ni "❌ SIN
+# VERIFICAR" (las que el revisor nunca vio) y le pasa el fichero. Lo que el
+# revisor ya bloqueo con su ❌ no se reintenta: eso lo mira Luis.
+RE_REVISADA = re.compile(r"(?m)^(VERIFICADO:\s*\S|❌ SIN VERIFICAR)")
+
+
+def secciones_sin_revisar(ruta):
+    texto = io.open(ruta, encoding="utf-8", errors="replace").read()
+    cabecera, *secs = re.split(r"(?m)^## +", texto)
+    if re.search(r"(?m)^VERIFICADO:\s*\S", cabecera):
+        return []          # la cabecera desbloquea el fichero entero
+    return [s.partition("\n")[0].strip() for s in secs
+            if not RE_REVISADA.search(s.partition("\n")[2])]
+
+
+def verificar_pendientes(SEASON, seco=False, dias=8, reposo_min=10):
+    """Verifica los borradores recientes con secciones que nadie ha revisado
+    y rehace la cola de su semana. seco=True solo lista."""
+    import glob
+    import time
+    ahora = time.time()
+    semanas = set()
+    for ruta in sorted(glob.glob(os.path.join(RAIZ, "salidas", str(SEASON),
+                                              "w*", "textos", "borradores_*.md"))):
+        nombre = os.path.basename(ruta)
+        if nombre.startswith("borradores_prompt") or nombre.endswith("_previo.md"):
+            continue
+        edad = ahora - os.path.getmtime(ruta)
+        # Solo lo de esta semana de cola; y nada que se este escribiendo ahora
+        if edad > dias * 86400 or edad < reposo_min * 60:
+            continue
+        faltan = secciones_sin_revisar(ruta)
+        if not faltan:
+            continue
+        w = os.path.basename(os.path.dirname(os.path.dirname(ruta)))
+        log(f"-> sin revisar en {w}/{nombre}: {len(faltan)} seccion(es) "
+            f"({'; '.join(faltan[:4])}{'...' if len(faltan) > 4 else ''})")
+        if seco:
+            continue
+        verificar(ruta)
+        semanas.add(int(w[1:]))
+    for w in sorted(semanas):
+        paso(f"cola de posts w{w:02d}", ["cola_posts.py", "--season", str(SEASON),
+                                         "--week", str(w)])
+    return True
+
+
 def _ultimo_boletin(ahora=None):
     """('review'|'preview', hora) del ultimo boletin que ya deberia haber llegado."""
     from datetime import timedelta
@@ -839,21 +890,34 @@ def main():
                     help="al iniciar sesion: lanza el ultimo batch si se salto")
     ap.add_argument("--verificar", metavar="BORRADOR",
                     help="solo verifica ese borradores_*.md (y rehace la cola a mano)")
+    ap.add_argument("--pendientes", action="store_true",
+                    help="verifica los borradores recientes con secciones sin revisar")
+    ap.add_argument("--seco", action="store_true",
+                    help="con --pendientes: solo lista, no verifica")
     args = ap.parse_args()
     if args.verificar:
         sys.exit(0 if verificar(os.path.abspath(args.verificar)) else 1)
+    if args.pendientes:
+        from pbp_loader import temporada_actual
+        sys.exit(0 if _con_candado("pendientes", verificar_pendientes,
+                                   temporada_actual(), args.seco) else 1)
     if args.dia == "boletin":
         from pbp_loader import temporada_actual
         sys.exit(0 if _con_candado("boletin", boletin, temporada_actual(), args.tipo) else 1)
     if args.dia == "dato":
+        # La tarea del dato corre 3 veces al dia: de paso, el barrido de
+        # borradores sin revisar (si un redactor murio a medias, aqui se cura)
         from pbp_loader import temporada_actual
-        sys.exit(0 if _con_candado("dato", dato, temporada_actual()) else 1)
+        ok_dato = _con_candado("dato", dato, temporada_actual())
+        _con_candado("pendientes", verificar_pendientes, temporada_actual())
+        sys.exit(0 if ok_dato else 1)
     if args.recuperar:
         # El boletin va aparte del batch: no cuenta para batch_pendiente y se
         # salta solo si su fichero ya existe
         from pbp_loader import temporada_actual
         _con_candado("boletin", boletin, temporada_actual())
         _con_candado("dato", dato, temporada_actual())
+        _con_candado("pendientes", verificar_pendientes, temporada_actual())
         args.dia = batch_pendiente()
         if not args.dia:
             return
@@ -907,6 +971,9 @@ def _batch(args):
     # pero de eso ya se encarga batch_pendiente: sin FIN, pendiente.
     try:
         pasos_del_dia(args.dia, SEASON, W, txt_dir, ok)
+        # Lo que un redactor dejara a medias en este batch (o en otro)
+        # se verifica al cerrar; no cuenta como paso: no tumba el batch
+        _con_candado("pendientes", verificar_pendientes, SEASON)
     finally:
         buenos = sum(1 for x in ok if x)
         log(f"===== FIN BATCH {args.dia.upper()}: {buenos}/{len(ok)} pasos OK =====")

@@ -106,9 +106,28 @@ fuera = [f[0].split(" (")[0].lower() for f in datos if f[1][1] > 10]
 
 fig = lienzo()
 cab(fig, f"{RECORD} · CÓMO ES")
-fuera_rk = [f"{f[0].split(' (')[0].lower()} ({f[1][1]}º)" for f in datos if f[1][1] > 10]
-tit = (f"Top 10 en {top10} de las {len(datos)} facetas. "
-       + (f"Fuera: {' y '.join(fuera_rk)}." if fuera_rk else "En todas."))
+fuera_rk = [f"{f[0].split(' (')[0].lower().replace('epa', 'EPA')} ({f[1][1]}º)" for f in datos if f[1][1] > 10]
+def y_lista(xs):
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " y " + xs[-1]
+if top10 * 2 >= len(datos):
+    tit = (f"Top 10 en {top10} de las {len(datos)} facetas. "
+           + (f"Fuera: {' y '.join(fuera_rk)}." if fuera_rk else "En todas."))
+else:
+    # Equipo con más agujeros que virtudes (Chargers 0-7, 06-nov-2026): la
+    # lista de "fuera" no cabe; se cuenta dónde está en el top 10 y dónde es último
+    dentro = [f for f in datos if f[1][1] <= 10]
+    grupo = {}
+    g = None
+    for f in filas:
+        if f[1] is None:
+            g = f[0]
+        else:
+            grupo[f[0]] = g
+    lados = {grupo[f[0]] for f in dentro}
+    ultimos = [f[0].split(" (")[0].lower().replace("epa", "EPA") for f in datos if f[1][1] == f[1][2]]
+    tit = (f"Top 10 solo en {top10} de las {len(datos)} facetas"
+           + (f", todas de {'la defensa' if lados == {'DEFENSA'} else 'ataque'}" if len(lados) == 1 and lados <= {'DEFENSA', 'ATAQUE'} else "")
+           + "." + (f" Últimos en {y_lista(ultimos)}." if ultimos else ""))
 y = titular(fig, tit, y=0.82, size=18.5) - 0.025
 y0 = y
 for f in filas:
@@ -145,6 +164,12 @@ except DatosNoDisponibles:
     ftn, semanas_ftn = None, []
 
 v_run, rk_run, n_run = puesto(run.groupby("defteam").epa.mean(), True)
+rk_blitz = None
+if ftn is not None and len(semanas_ftn):
+    _m = pas.merge(ftn, left_on=["game_id", "play_id"], right_on=["nflverse_game_id", "nflverse_play_id"])
+    _m = _m[_m.n_pass_rushers > 0]
+    _cb = _m[_m.n_blitzers > 0].groupby("defteam").epa.mean()
+    rk_blitz, v_blitz = int(_cb.rank(method="min")[T]), _cb[T]
 fig = lienzo()
 cab(fig, "CÓMO DEFIENDE")
 caja = ten.set_index("team") if ten is not None else None
@@ -152,6 +177,10 @@ rk_caja = int(caja.caja_ligera_pct.rank(ascending=False, method="min")[T]) if ca
 tit = (f"La {'mejor' if rk_run == 1 else f'{rk_run}ª'} defensa contra la carrera"
        + (f" juega con la caja ligera: {caja.loc[T, 'caja_ligera_pct']:.0f}% de las jugadas"
           f" ({rk_caja}º)." if caja is not None and rk_caja <= 10 else "."))
+# Si no para la carrera pero es élite con blitz (Chargers, 06-nov-2026), el titular es el blitz
+if rk_run > 10 and rk_blitz is not None and rk_blitz <= 5:
+    tit = (f"Cuando manda blitz, la {'mejor' if rk_blitz == 1 else f'{rk_blitz}ª'} defensa de la NFL: "
+           f"{num(v_blitz)} EPA por pase. Contra la carrera, {rk_run}ª.")
 y = titular(fig, tit, y=0.82, size=18.5) - 0.03
 y_card = y
 etiqueta(fig, "EPA por carrera permitido", L + 0.01, y - 0.005)
@@ -221,7 +250,16 @@ if fo is not None:
     tit = (f"Pasa mejor con tres receptores en un lado ({mejor.lower()}: {num(fo.loc[mejor, 'epa_pase'])}"
            f" por pase) que en 2x2 ({num(fo.loc['2X2', 'epa_pase'])}), su formación más usada.")
     if mejor not in ("1X3", "3X1"):
-        tit = f"Su formación más usada es la {fo.uso_pct.idxmax()}."
+        con = fo[fo.jugadas >= 30]
+        p_neg = per_o is not None and (per_o[(per_o.team == T) & per_o.personal.isin(["11", "12", "13"])].epa_jugada < 0).all()
+        if (con.epa_pase < 0).all() and p_neg:
+            # Nada funciona (Chargers, 06-nov-2026): se dice, con el peor caso
+            w_ = con.epa_pase.idxmin()
+            tit = (f"En negativo con cada personal y cada formación. Lo peor, la {w_.lower()}: "
+                   f"{num(con.loc[w_, 'epa_pase'])} EPA por pase.")
+        else:
+            tit = (f"Su mejor formación para pasar es la {mejor.lower()}: "
+                   f"{num(fo.loc[mejor, 'epa_pase'])} EPA por pase.")
 else:
     tit = "Cómo ataca"
 y = titular(fig, tit, y=0.82, size=17) - 0.03
@@ -269,8 +307,17 @@ if fo is not None:
          L + 0.01, y + 0.012)
     y -= 0.02
 tarjeta(fig, y, y_card + 0.02)
-pie(fig, "SumerSports, sem. 1-5 (13-oct). Verde/rojo: top/bottom 5 en EPA con ese personal.",
-    sello(SEASON))
+def _origen(patron):
+    fs = sorted(glob.glob(os.path.join("datos_web", patron)))
+    if not fs:
+        return None
+    d = pd.read_csv(fs[-1])
+    mm, dd = str(d.actualizado.iloc[0]).split(" ")[0].split("-")[:2]   # SumerSports: MM-DD-AAAA
+    mes = "ene feb mar abr may jun jul ago sep oct nov dic".split()[int(mm) - 1]
+    return int(fs[-1][-6:-4]), f"{int(dd)}-{mes}"
+_o = _origen("sumersports_personal_ataque_*.csv") or _origen(f"sumersports_formaciones_{T}_*.csv")
+pie(fig, (f"SumerSports, hasta la sem. {_o[0]} (actualizado {_o[1]}). " if _o else "SumerSports. ")
+    + "Verde/rojo: top/bottom 5 en EPA con ese personal.", sello(SEASON))
 guardar(fig, salida(f"radiografia_{T}_3_ataque_{SEASON}.png", SEASON))
 
 # ═══ 4. REPARTO ═══════════════════════════════════════════════════════════════

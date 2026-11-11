@@ -34,3 +34,4 @@ lab/remotion_under_center/out/
 # Los 11 ficheros de lab/ trackeados de antes siguen en el repo: .gitignore
 # solo afecta a lo no trackeado.
 lab/
+pff_data/

@@ -98,3 +98,29 @@ prospectos requiere la suscripción college aparte.
 - CSVs siempre descargados a mano a `pff_data/` (licencia personal, no
   commitearlos: añadir `pff_data/` a .gitignore cuando exista).
 - En los posts, citar "PFF" como fuente cuando el dato venga de ahí.
+
+## Revisión con la prueba de PFF (09-nov-2026, PFF+ 7 días, cancelada el mismo día)
+
+Revisado entero: informes por posición (34), por equipo, por partido y ficha de
+jugador. Todo descarga CSV.
+
+- NO tiene: tipo de cobertura (Cover 0-9) por equipo, personal defensivo
+  (base/nickel/dime) ni EPA. Su "Coverage Scheme" es solo hombre/zona por
+  defensor. Los huecos de SūmerPass del informe de equipo siguen sin cubrir.
+- SÍ tiene, con columnas comprobadas:
+  · Pase: BTT, BTT%, TWP, TWP%, ADJ%, drops, tiempo hasta lanzar, presión (item 5).
+  · Recepción: Y/RR, rutas, slot/wide/inline, drops, contested catches (item 4).
+  · Pass blocking por jugador: presiones cedidas (SK, HIT, HUR, PR), eficiencia,
+    también en "true pass sets". La ficha "Snaps By Position" con "Detailed
+    Positions" da snaps por puesto con LADO (LT/RT, TE-L/TE-R) → item 1 real.
+  · Pass rush: presiones, PRP y WIN% (pass rush win rate), también en true pass sets (item 7).
+  · Defensa: alineación por snaps (DL, BOX, SLOT, CNR, FS y A-gap/B-gap/over tackle/outside) → parte del item 9.
+  · Run blocking: nota en esquema de zona y de gap (NO por hueco: item 8 solo a medias).
+  · Por partido: emparejamientos defensor contra receptor (targets, yardas, INT).
+
+## SumerLive / SumerBrain (prueba gratis, 09-nov-2026)
+
+- La tabla de equipos (fan.sumersports.com/teams) trae Man %, Zone %, 2-High, 1-High y Base/Nickel/Dime % por defensa, sin Cover 0-9 ni botón de exportar. El filtro "Refinement" da el EPA con Base, Nickel o Dime (un filtro cada vez).
+- Cover 0-6 por equipo CON EPA solo aparece preguntando a SumerBrain (su chat sobre la base de datos). De ahí salen `datos_web/sumerpass_coberturas_2026_w09.csv` (defensa y ataque) y `sumerpass_personal_defensivo_2026_w09.csv`, ya con el esquema del informe.
+- Comprobado: el % de Base/Nickel/Dime de SumerBrain coincide al decimal con la tabla de equipos (CIN, LA, CLE, SEA).
+- PFF: su API rechaza el acceso automático ("requires a PFF Pro subscription and an API key"). Solo vale el botón CSV pulsado a mano; Chrome dejó bajar uno (`pff_data/pff_offense_blocking_2026_w09.csv`).

@@ -1263,3 +1263,30 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 **Motivo:** Luis: "el partido de la semana evidentemente tiene que ser el de España". La cuenta es para público español: ese partido es el que más interesa, aunque haya otros cruces mejores sobre el papel.
 
 **Alternativas descartadas:** elegir el duelo con `cruces.py` como cualquier otra semana.
+
+## [2026-11-07] — Informe de equipo: dos fuentes, dos PNG y sin titular
+
+**Decisión:** `informe_equipo.py` (de momento `lab/informe_equipo_dual.py`) funciona de dos maneras. Con datos de jugada (participación, que solo llega en febrero) usa el PBP como siempre. En temporada usa las tablas web: personal de SumerSports, coberturas y tendencias de Sharp, presión de PFR. Sale en dos PNG 4:5, ataque y defensa, sin titular ("En el informe no quiero títulos. Así caben mejor las cosas"). La cabecera lleva el apodo del equipo en grande ("49ERS") y no lleva récord. El tipo de cobertura con EPA y el personal defensivo con EPA solo están en SūmerPass (de pago): se dejan como "Pendiente" hasta que haya CSV en `datos_web/sumerpass_*`. Luis paga la semana de prueba (10 €) para sacar un informe por equipo.
+**Motivo:** el script original no corría en temporada, porque `pbp_participation` no existe hasta febrero, y la pieza tiene que salir ahora.
+**Alternativas descartadas:** un solo PNG con todo (no cabía); titular automático (Luis no lo quiere en esta pieza); la ciudad en la cabecera.
+
+
+## [2026-11-09] — Coberturas y personal defensivo: SumerBrain, no PFF
+
+**Decisión:** el tipo de cobertura (Cover 0-6) por equipo con EPA y el personal defensivo (base/nickel/dime) con EPA salen de SumerBrain (SumerLive, prueba de una semana), preguntando por chat y copiando la tabla a `datos_web/sumerpass_*`. Con eso, el informe de equipo queda completo y el radar de las previas suma las coberturas. La serie de mitad de temporada sale en 8 hilos por división, de martes a viernes, y la previa del MNF va siempre sola, sobre las 20:00.
+**Motivo:** PFF (revisado entero con su prueba) no tiene Cover 0-9 por equipo, ni personal defensivo, ni EPA; solo hombre/zona por defensor. Las cifras de SumerBrain se contrastaron con su tabla de equipos y cuadran al decimal.
+**Alternativas descartadas:** PFF+ para el informe (no lo trae); sacar sus CSV por su API sin Pro (la bloquean expresamente); un único hilo de 33 tuits para la serie (demasiado largo).
+
+
+## [2026-11-10] — Serie de mitad de temporada: tuits de equipo escritos a mano
+
+**Decisión:** en la serie de mitad de temporada, los tuits de cada equipo se escriben a mano, con las cifras de `lab/_mitad_tmp/informes.jsonl` (el mismo cálculo que el PNG). Cada equipo lleva un ángulo propio y un cierre propio, con dos opciones. La presentación del hilo es siempre la explicativa ([A]: "Mitad de temporada: cómo juega cada equipo de la …"); Luis: "el primer post debe ser explicativo".
+**Motivo:** la plantilla automática cogía el mejor y el peor ranking de cada equipo aunque fueran del montón ("su punto flojo: el 15º contra la Cover 2") y repetía tres cierres para los 32 equipos.
+**Alternativas descartadas:** publicar la plantilla tal cual; arreglar solo los umbrales de la plantilla, porque seguiría sin contar una historia por equipo.
+
+
+## [2026-11-11] — Fotos de los MVPs, sin consulta; barrido de verificación
+
+**Decisión:** (1) Las fotos del hilo de MVPs las elige Claude sin pasarle candidatas a Luis ("no hace falta que me pases las fotos"). El criterio sale de sus elecciones w05-w09: apaisada, el jugador como protagonista con el dorsal legible, en la jugada que le hace MVP, sin rótulos; entre dos válidas, la de más acción y resolución. (2) Ningún borrador se queda sin verificar porque falle su redactor: un barrido (`semana_auto.py --pendientes`) revisa cada día las secciones que nadie ha mirado.
+**Motivo:** (1) Mandar candidatas le costaba tiempo a Luis cada miércoles y sus elecciones siguen un patrón claro. (2) El 10-nov el redactor murió por límite de uso, el borrador se escribió a mano y cinco posts se quedaron bloqueados sin que nada lo avisara.
+**Alternativas descartadas:** (1) seguir mandando candidatas por foto. (2) Verificar solo desde `borradores()`; reintentar también lo que el revisor bloqueó con ❌ (eso lo decide Luis).

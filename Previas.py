@@ -602,6 +602,29 @@ def construir_radar(d, season, semana):
     except DatosNoDisponibles as e:
         print("  Radar sin datos_web de SumerSports: sale sin personal.", e)
 
+    # Tipo de cobertura (SumerBrain, 09-nov-2026): el ataque contra la Cover X
+    # frente a la defensa jugando esa misma Cover X. La elige la defensa, asi que
+    # el % de uso es el suyo ("Tampa la juega en el 50% de sus dropbacks")
+    try:
+        cv, _ = cargar_web("sumerpass_coberturas", season, semana)
+        for cob_x in sorted(cv.categoria.unique()):
+            t = {}
+            for lado in ("of", "df"):
+                x = cv[(cv.categoria == cob_x) & (cv.lado == ("off" if lado == "of" else "def"))]
+                x = x.set_index("team")
+                x = x[x.jugadas >= RADAR_MIN_N + 5]
+                x = x.assign(n=x.jugadas, val=x.epa_jugada, yds=np.nan, uso=x.uso_pct / 100)
+                x["rk"] = x.val.rank(ascending=(lado == "df"), method="min")
+                x["rk_uso"] = x.uso.rank(ascending=False, method="min")
+                x["txt"] = [f"{_epa(r.val)} EPA · {int(r.n)} dropbacks" for r in x.itertuples()]
+                t[lado] = x
+            if len(t["of"]) >= 16 and len(t["df"]) >= 16:
+                tab[f"Pase contra {cob_x}"] = dict(of=t["of"], df=t["df"], fam="cobertura",
+                                                   base="db", elige="df")
+        fuentes.add("SumerBrain")
+    except DatosNoDisponibles as e:
+        print("  Radar sin coberturas de SumerBrain: sale sin Cover 0-6.", e)
+
     # Trincheras en carrera y coberturas (Sharp): tablas de equipo, sin recuento de jugadas
     cob = cpos = sem_cob = None
     try:

@@ -185,7 +185,7 @@ def poner_logo(fig, team, x, y, zoom=0.02):
 Y_BAJO_CABECERA = 0.84                     # y del antetitulo cuando hay cabecera
 
 
-def cabecera(fig, equipos, textos=None, alto=0.15):
+def cabecera(fig, equipos, textos=None, alto=0.15, size_grande=None):
     """Banda superior teñida con el color del equipo y su logo en grande.
 
     Un equipo ("SEA"): nombre a la izquierda y logo a la derecha;
@@ -208,15 +208,16 @@ def cabecera(fig, equipos, textos=None, alto=0.15):
         if uno:
             grande, chico = textos or (nombre_equipo(t).upper(), "")
             poner_logo(fig, t, R - 0.11, yc, zoom=0.075)
-            xt, size = L, 22
+            xt, size = L, size_grande or 22
         else:
             grande, chico = t, (textos or {}).get(t, "")
             poner_logo(fig, t, i * ancho + 0.16, yc, zoom=0.07)
             xt, size = i * ancho + 0.27, 20
-        fig.text(xt, yc + (0.011 if chico else 0), grande, family=DISP, weight="bold", size=size,
+        dy = 0.011 if size <= 22 else 0.014
+        fig.text(xt, yc + (dy if chico else 0), grande, family=DISP, weight="bold", size=size,
                  color=FG, va="center")
         if chico:
-            fig.text(xt, yc - 0.024, chico, family=TXT, weight="semibold" if uno else "normal",
+            fig.text(xt, yc - (0.024 if size <= 22 else 0.029), chico, family=TXT, weight="semibold" if uno else "normal",
                      size=8 if uno else 7.5, color=FG, alpha=0.75, va="center")
     if not uno:
         fig.text(0.5, yc, "@", family=TXT, weight="bold", size=9, color=GRIS1, ha="center",

@@ -2,6 +2,106 @@
 
 ---
 
+## [2026-11-11] — Miércoles w09: barrido de verificación, PR, MVPs y Norte reescrito
+
+**Que se hizo:**
+- **Barrido `semana_auto.py --pendientes`** (`--seco` solo lista): el verificador solo arrancaba tras un redactor que acababa bien, y el 10-nov el de los posts murió por límite de uso (PR y 4 MVPs bloqueados sin motivo a la vista). Ahora verifica los borradores de los últimos 8 días con secciones sin `VERIFICADO:` ni `❌` y rehace la cola; corre en la tarea del dato (3/día), en `--recuperar` y al cerrar cada batch
+- **Verificador sobre `w09/borradores_posts.md`:** 10/10, con correcciones: PR ("en el top 7…", "en una semana"), Reese ("el más joven con tres sacks", no "desde 1982"), bot (Baltimore 78%, no 79%)
+- **Publicado:** Power Ranking [A] y el hilo de MVPs (1/5 B + 4), con las menciones heredadas desmarcadas. Fotos elegidas por Claude; desde hoy siempre (memoria y skill `/publicar`)
+- **Serie de mitad de temporada, Norte:** los 8 tuits de equipo seguían con la plantilla; reescritos a mano con `informes.jsonl` y marcados VERIFICADO. Luis eligió: Bengals A, Steelers A, Browns A, Ravens B, Bears B, Lions A, Vikings A, Packers A
+- "Tendencia últimas 4" es el CAMBIO de EPA/jugada frente a las semanas anteriores, no el nivel (apuntado en la memoria de la serie)
+
+**Archivos modificados:** `semana_auto.py`, `CLAUDE.md`, `.claude/skills/publicar/SKILL.md`, `salidas/2026/w09/textos/{borradores_posts,borradores_mitad_temporada}.md`, `salidas/2026/w09/liga/mvp_fotos/`, colas w09/w10, `docs/decisiones.md`
+
+**Pendiente:** bot a las 17:00 y los hilos del Norte a las 20:00 (avisos de esta sesión); reescribir a mano Sur (jueves) y Oeste (viernes) en `w10/borradores_mitad_temporada.md`; commit
+
+---
+
+## [2026-11-10] — Martes w09: MNF, contenders, podcasts y serie de mitad de temporada (Este)
+
+**Que se hizo:**
+- **Publicado:** MNF BUF @ MIN [A]; contenders [B] (con "los Rams" en vez de "LA"); hilos de mitad de temporada AFC Este y NFC Este (presentación A + 4 equipos cada uno, menciones heredadas desmarcadas). Luis publicó a mano la respuesta a El Capologist [B]
+- **SumerBrain:** las filas de BUF y MIN de `datos_web/sumerpass_*_w09.csv`, rehechas con el MNF dentro (cuadran con el PBP: unos 35 dropbacks más por equipo). Serie regenerada (64 PNG + textos) y verificada 20/20
+- **Textos de la serie, reescritos a mano:** la plantilla vendía rankings medios como fortaleza o punto flojo ("su punto flojo: 15º") y repetía cierres. Corregido "la Nª línea en presión sufrida" → "el Nº ataque" en el script y en los borradores de w10
+- **Batch del martes:** el redactor se quedó sin cuota (11:31). Verificados a mano el MNF, los contenders y el MVP de ataque, este con el dato de presión de la newsletter de PFF (37,1%, citado)
+- **Logos nuevos de TEN y LA** (rebrand de 2026, sacados de ESPN vía nflverse); rehechos los 4 informes de TEN y LA de la serie. Los colores ya venían bien de nflverse
+- **nflfastR 6.0** (18-sep-2026) revisado: nada que cambiar. Los 2 puntos cuentan como pase o carrera con EPA, pero ya era así en 2025 e impacto mínimo
+
+**Archivos modificados:** `datos_web/sumerpass_coberturas_2026_w09.csv`, `datos_web/sumerpass_personal_defensivo_2026_w09.csv`, `lab/mitad_temporada.py`, `logos/TEN.png`, `logos/LA.png`, `logos/LAR.png`, `salidas/2026/w09/textos/{borradores_posts,borradores_mitad_temporada}.md`, `salidas/2026/w10/textos/borradores_mitad_temporada.md`, `salidas/2026/w09|w10/liga/mitad_temporada/`, colas w09/w10
+
+**Pendiente:** reescribir a mano los tuits de equipo de miércoles (AFC/NFC Norte), jueves (Sur) y viernes (Oeste), y arreglar la plantilla de `lab/mitad_temporada.py`; verificar en `borradores_posts.md` el power ranking, los MVPs 1, 3, 4 y 5 y el bot; respuesta a 100 Yardas sin marcar (no aparece en @CuartayDato); dato de la semana esperando a FTN; decidir si el batch vigila la versión de nflfastR.
+
+---
+
+## [2026-11-09] — Post del SNF TB @ CHI
+
+**Que se hizo:**
+- Generados `14_1_resumen`, `14_2_ficha` y `14_3_resumen_claves` de TB @ CHI (el batch del lunes se los saltó)
+- Borrador del SNF en `borradores_lunes.md` con [A]/[B] verificados contra el PBP (5 pérdidas de CHI = -20,7 EPA, FG de Santos a 0:03, 3er down 7/13 frente a 2/12)
+- Publicado [A] al final del hilo de la jornada: https://x.com/CuartayDato/status/2119882508494143988. El hilo queda con los 13 partidos del domingo
+
+**Archivos modificados:** `salidas/2026/w09/textos/borradores_lunes.md`, `salidas/2026/w09/partidos/14_*_TB_vs_CHI_2026_w09.png`, cola de la w09
+
+**Pendiente:** lo de la entrada anterior (serie de mitad de temporada el martes con el MNF y API de PFF).
+
+---
+
+## [2026-11-08/09] — Previas w09, jornada w09, MNF y serie de mitad de temporada
+
+**Que se hizo:**
+- **Publicado:** domingo, hilo de previas w09 (presentación A y 13 previas); lunes, hilo de la jornada (presentación B y 12 partidos, https://x.com/CuartayDato/status/2119791234067603575); previa del MNF BUF @ MIN [A] (https://x.com/CuartayDato/status/2119878715173961982). X arrastró menciones en cada respuesta y se quitaron todas
+- **Nueva regla:** la previa del MNF nunca va con los posts del domingo; sale sola sobre las 20:00 (skill `/publicar` y memoria)
+- **Rueda de prensa CIN @ ATL (Madrid):** preguntas para Luis con big plays y profundos del play-by-play de ESPN
+- **PFF (prueba, cancelada):** revisado entero. No trae Cover 0-9 por equipo, personal defensivo ni EPA. Sí trae BTT/TWP, YPRR, presiones cedidas por liniero con su lado (LT/RT), pass rush win rate y alineación del rusher. Su API bloquea el acceso automático; solo se bajó `pff_data/pff_offense_blocking_2026_w09.csv` (fuera de git)
+- **SumerLive (prueba de una semana):** SumerBrain da Cover 0-6 por equipo con EPA (ataque y defensa) y base/nickel/dime con EPA → `datos_web/sumerpass_coberturas_2026_w09.csv` y `sumerpass_personal_defensivo_2026_w09.csv`. El % de personal cuadra al decimal con su tabla de equipos
+- **Informe de equipo completo:** sin "Pendiente"; defensa con 3 filas por bloque y más aire; pie "SumerBrain"; huecos con menos de 10 carreras en gris ("solo 8 car.") en vez de guion; vuelca sus cifras a JSON (`INFORME_JSON`)
+- **Previas:** el radar de claves suma "Pase contra Cover 0-6" (SumerBrain); entra en 5 de los 14 partidos de la semana 10
+- **Serie "Mitad de temporada"** (`lab/mitad_temporada.py`): 8 hilos por división, martes 10 a viernes 13 de noviembre, con 64 PNG y borradores [A] (lo mejor) y [B] (punto flojo), solo con cifras de la imagen
+
+**Archivos modificados:** `.claude/skills/publicar/SKILL.md`, `Previas.py`, `lab/informe_equipo_dual.py`, `lab/mitad_temporada.py` (nuevo), `lab/prueba_radar_coberturas.py` (nuevo), `docs/pff-wishlist.md`, `.gitignore` (`pff_data/`), `datos_web/sumerpass_*`, `salidas/2026/w09|w10/liga/mitad_temporada/`, `textos/borradores_mitad_temporada.md`
+
+**Pendiente:** martes 10, con el MNF en el PBP: volver a preguntar a SumerBrain, `python lab/mitad_temporada.py`, verificador y `cola_posts.py --week 9/10`; luego publicar AFC Este y NFC Este. Después, API de PFF Pro (Luis inicia sesión en Restish).
+
+---
+
+## [2026-11-07] — Viernes/sábado w09: hilo Chargers, informe de equipo para SūmerPass y duelo CIN @ ATL de Madrid
+
+**Que se hizo:**
+- **Hilo Chargers publicado [B]**, presentación más 5 tuits: https://x.com/CuartayDato/status/2118725232961716499. `radiografia_equipo.py` se relanzó por la "EPA" en mayúsculas; el EPA por carrera ya solo cuenta carreras diseñadas
+- **Informe de equipo en dos modos, de prueba** (`lab/informe_equipo_dual.py`, sin commit):
+  - Con datos de jugada usa FTN/participación; si no hay, tira de las tablas web (SumerSports, Sharp, PFR).
+  - Sale en dos PNG 4:5 (ataque y defensa), sin titular y con el apodo del equipo en grande y sin récord en la cabecera.
+  - Tiene huecos para las tablas de SūmerPass (`datos_web/sumerpass_*`). Probado con LAC y SF.
+- `estilo.cabecera()` acepta `size_grande`, opcional: si no se pasa, el tamaño es el de siempre
+- **Duelo del sábado CIN @ ATL (Madrid)**, ángulo de Luis: el pase de Cincinnati contra la defensa de Ulbrich.
+  - 4 PNG `duelo_cin_atl_*` (`lab/cin_atl_png.py`) y la exploración en `lab/cin_atl_duelo.py`.
+  - Imagen de la presentación: el cartel oficial del Madrid Game de NFL.com.
+  - Borrador `borradores_sabado.md`, 7 tuits, verificado (7/7, dos frases corregidas). Luis elige la [A]; **se publica el sábado**
+- Sharp copiado hasta la semana 8 y personal de SumerSports del 06-nov en `datos_web/`
+
+**Archivos modificados:** `estilo.py`, `radiografia_equipo.py`, `lab/informe_equipo_dual.py`, `lab/cin_atl_duelo.py`, `lab/cin_atl_png.py`, `lab/verificacion/duelo_cin_atl_w09_ver.py`, `datos_web/` (Sharp w08, SumerSports w09), `salidas/2026/w09/` (radiografía LAC, duelo, borradores, cola), memoria `feedback_png_sin_titulo.md`
+
+**Pendiente:**
+- Publicar el hilo del duelo [A] con `/publicar sabado`, mirando antes el parte oficial del viernes.
+- Luis paga SūmerPass. Después: copiar las tablas de coberturas y personal defensivo a `datos_web/sumerpass_*`, revisar las condiciones de uso y sacar los 32 informes.
+- Commit de `radiografia_equipo.py` y `estilo.py`. El informe dual sigue en el lab hasta que Luis lo dé por bueno
+
+---
+
+## [2026-11-05] — Jueves w09: bot y previa del TNF JAX @ BAL
+
+**Que se hizo:**
+- **Bot publicado [A]** (10-4 en la semana 8; picks de la 9): https://x.com/CuartayDato/status/2118355860019954149, con la respuesta «Cómo funciona»: https://x.com/CuartayDato/status/2118356082972135597
+- **Boletín de SumerSports leído** («Brian Flores is QB kryptonite», 05-nov): ideas en `salidas/2026/w09/textos/ideas_boletin_preview.md`. Nada para JAX @ BAL; sus top 3 son para el domingo (Goff y el play action contra MIA, Bryce Young bajo presión) y el MNF (Flores sin blitz)
+- El primer `--dia boletin` se quedó sin memoria y el sistema lo paró a mitad: escribió las ideas, pero no la previa. Al relanzarlo, vio el fichero de ideas y se saltó la previa. Se lanzaron a mano `Previas.py` (las 15 previas de la w09 + PDF), `borradores()` con el prompt del jueves, que pasó el verificador (1/1), y `cola_posts.py`
+- **Previa del TNF publicada [A]** («Noche para lanzar»): https://x.com/CuartayDato/status/2118367633309667810. El verificador corrigió el texto: el puesto 29º de BAL es por EPA, no por yardas por target (en yardas es 27ª)
+
+**Archivos modificados:** solo salidas de la w09 (`previas/`, `textos/borradores_jueves*.md`, `ideas_boletin_preview.md`, `cola_posts.json`, `publicados.json`); nada de código
+
+**Pendiente:** `claude auth login` antes del 06-nov (la sesión de las tareas automáticas caduca entre el 6 y el 9). En `semana_auto.py`, si el fichero de ideas del boletín ya existe pero no hay `borradores_jueves.md`, la previa del TNF no se genera: arreglarlo. Descartar o publicar las dos tarjetas del viernes 30-oct que siguen pendientes en la cola. Viernes 06-nov: el TNF y los premios de mitad de temporada
+
+---
+
 ## [2026-11-04] — Miércoles w08: Dato de la semana, hilo de MVPs, Power Ranking programado y partido en España
 
 **Que se hizo:**
