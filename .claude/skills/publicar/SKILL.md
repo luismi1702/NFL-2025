@@ -421,3 +421,10 @@ incorporado a los pasos de arriba no se repite.
   vieja, el grupo puede cambiar de id: volver a pedir `tabs_context_mcp`
   con `createIfEmpty`. Las menciones se heredaron en las respuestas 2 a 4
   (no en la 1ª): misma receta del 01-nov.
+- 11-nov-2026 (tarde), bot w10 + hilos AFC y NFC Norte (12 tuits, ~15 min):
+  todo a la primera. A las 18:00 el Chrome estaba en @CuartayDato y a las
+  20:00 en @LaMinaPodcast: la cuenta cambia entre tandas del mismo día, así
+  que se comprueba en CADA tanda, no solo en la primera. Con el sí de Luis se
+  cambió desde el selector (el menú lista las dos cuentas; clic en
+  CuartayDato). Los avisos programados con CronCreate mueren con la sesión:
+  el del bot de las 17:00 se perdió al cerrarse la sesión anterior.

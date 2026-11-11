@@ -2,6 +2,19 @@
 
 ---
 
+## [2026-11-11] — Miércoles w09 (tarde): bot y hilos del Norte publicados
+
+**Que se hizo:**
+- **Manning Bot w10** (picks A + respuesta "cómo funciona") publicado a las 18:01: el aviso de las 17:00 murió al cerrarse la sesión anterior
+- **Hilos de mitad de temporada AFC Norte y NFC Norte** publicados a las 20:00 (10 tuits, opciones elegidas por Luis); récords de los 8 equipos comprobados antes contra el PBP. Cola del miércoles w09: 0 pendientes
+- El Chrome estaba en @LaMinaPodcast a las 20:00 (a las 18:00, en @CuartayDato); se cambió con el sí de Luis. Nota de campo en la skill `/publicar`: comprobar la cuenta en CADA tanda
+
+**Archivos modificados:** `.claude/skills/publicar/SKILL.md`, colas w09/w10 (`publicado` con URL)
+
+**Pendiente:** reescribir a mano los tuits de equipo del Sur (jueves) y del Oeste (viernes) en `w10/textos/borradores_mitad_temporada.md`; commit
+
+---
+
 ## [2026-11-11] — Miércoles w09: barrido de verificación, PR, MVPs y Norte reescrito
 
 **Que se hizo:**
