@@ -19,6 +19,12 @@ el charting de FTN de la jornada esté completo (decisión de Luis, 06-oct-2026)
 - El PNG `dato_semana_outlier_*.png`, en `../liga/` (la imagen del post).
 - `{DIR_DATO}/ideas_boletin_review.md` — lo que contó SumerSports de la jornada:
   si ya contaron este dato, complétalo o cambia de ángulo.
+- `datos_web/ngs_trends_insights_{AÑO}.csv` (en la raíz del repo, si existe y
+  su columna `copiado` es de los últimos 7 días) — los "insights" de Next Gen
+  Stats de la jornada (filtra por `semana`). Son IDEAS, como el boletín: si
+  uno apunta a lo mismo que el candidato, cambia de ángulo o complétalo; nunca
+  se copia su frase ni su cifra, y su EPA (modelo de NGS) no se mezcla con el
+  nuestro. Si no está o es vieja, se sigue sin ella.
 - `{DIR_DATO}/estado_datos.txt` — semáforo de fuentes.
 - Las reglas de estilo, menciones, terminología y verificación de
   `borradores_prompt.md` (léelo: reglas 1 a 12) y `docs/post-ejemplos.md`.

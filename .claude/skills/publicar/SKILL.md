@@ -428,3 +428,8 @@ incorporado a los pasos de arriba no se repite.
   cambió desde el selector (el menú lista las dos cuentas; clic en
   CuartayDato). Los avisos programados con CronCreate mueren con la sesión:
   el del bot de las 17:00 se perdió al cerrarse la sesión anterior.
+- 13-nov-2026, hilos AFC y NFC Oeste (10 tuits, ~12 min), programados por
+  Luis a las 18:00 con las letras elegidas por mí: todo a la primera con la
+  receta del 01-nov. Las menciones se heredaron desde la 2ª respuesta de
+  cada hilo. El desplegable de menciones se cerró siempre con un clic a la
+  derecha de la línea en blanco que hay antes de los hashtags (x≈955).

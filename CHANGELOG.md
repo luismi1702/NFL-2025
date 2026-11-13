@@ -2,6 +2,22 @@
 
 ---
 
+## [2026-11-13] — Gráficas de QBs, hilos del Oeste, podcasts y Next Gen Trends a fondo
+
+**Que se hizo:**
+- **QBs para el hilo de la w11:** `qb_overview.py` migrado y cuatro nuevas (`qb_situaciones`, `qb_riesgo_int`, `qb_presion_sufrida`, `qb_agresividad`); textos [A]/[B] de borrador. La cifra de INT de Daniels se quedó vieja (FTN hasta la sem. 9) y Luis lo cazó
+- **Hilos de mitad de temporada AFC y NFC Oeste** publicados a las 18:00 (todo [A]); serie de las 8 divisiones completa
+- **Podcasts:** Previologist 4x10 y 100 Yardas del 13-nov con respuesta [A]/[B] verificada en la cola w10. Claude Code mató dos veces la corrida por falta de memoria; se lanzó con la tarea de Windows. `podcasts_auto.py` ya ignora un candado cuyo proceso no existe
+- **Next Gen Trends revisado entero:** el copiador guarda además la evolución semanal (con 2025 como sem. 0), el cuadro de playoffs por conferencia y el resumen de cambios de la liga; etiqueta la semana de la mayoría (tras el TNF ponía w10)
+- **Cinco scripts nuevos:** `ngs_bloqueo`, `ngs_dependencia`, `ngs_identidad`, `ngs_partidos_en_juego` (13 cruces comprobados con el calendario) y `ngs_cambio_liga`
+- **Integración:** `cargar_ngs_trends()` en pbp_loader; bloque NGS (identidad y choques de uso) en los TXT de `Previas.py` y `cruces.py`; `informe_equipo.py` con bloqueo en zona, single-high, press y quién llama las jugadas; los redactores del dato y del martes leen los insights de NGS como ideas
+
+**Archivos modificados:** `copiar_ngs_trends.py`, `ngs_*.py` (5 nuevos), `pbp_loader.py`, `Previas.py`, `cruces.py`, `informe_equipo.py`, `borradores_prompt.md`, `borradores_prompt_dato.md`, `podcasts_auto.py`, `docs/scripts-catalog.md`, `CLAUDE.md`, `datos_web/ngs_trends_*`, `.claude/skills/publicar/SKILL.md`, colas w10
+
+**Pendiente:** commit y push de todo lo de hoy; hilo de QBs de la w11 (regenerar las 5 con FTN de la w10, reescribir textos, INT contra ESPN, traspasos de Cousins y Brissett); relanzar `copiar_ngs_trends.py` el martes con la jornada completa (decidir si entra en el batch); el bloque NGS de `informe_equipo.py` no se verá hasta febrero (necesita participación)
+
+---
+
 ## [2026-11-11] — Miércoles w09 (tarde): bot y hilos del Norte publicados
 
 **Que se hizo:**

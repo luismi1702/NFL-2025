@@ -232,6 +232,66 @@ def dibujar(c, season, week, hasta, vis, loc):
     guardar(fig, salida(nombre, season, week))
 
 
+
+# ── NGS Trends en el TXT (13-nov-2026): identidad de cada lado y choques de
+# uso (los dos en el top 8). Solo % de uso y puesto, citando la fuente: su EPA
+# es el de NGS y no se mezcla con el nuestro. Sin copia reciente, se omite.
+NGS_ES = {"11Personnel": "11 personnel", "12Personnel": "12 personnel", "13Personnel": "13 personnel",
+          "21Personnel": "21 personnel", "motion": "motion", "earlyDownPlayAction": "play action",
+          "calledPassRate": "pase pedido", "tempo": "tempo", "quickPassing": "quick passing",
+          "inBreakingTargets": "rutas hacia dentro", "outBreakingTargets": "rutas hacia fuera",
+          "downfieldPassing": "pases de 10+ yardas", "manBlocking": "bloqueo man",
+          "gapBlocking": "bloqueo gap", "insideZoneBlocking": "inside zone",
+          "outsideZoneBlocking": "outside zone", "base": "base", "nickel": "nickel", "dime": "dime",
+          "manCoverage": "cobertura man", "zoneCoverage": "cobertura en zona", "pressCoverage": "press",
+          "singleHigh": "single-high", "splitSafety": "split-safety", "cover0": "Cover 0",
+          "blitzRate": "blitz", "pressureRateBlitz": "presión con blitz",
+          "pressureRateNoBlitz": "presión sin blitz"}
+NGS_CHOQUES = [("quickPassing", "blitzRate", "suelta rápido contra una defensa que blitzea"),
+               ("motion", "manCoverage", "motion contra cobertura man"),
+               ("downfieldPassing", "singleHigh", "pase de 10+ yardas contra single-high"),
+               ("earlyDownPlayAction", "singleHigh", "play action contra single-high"),
+               ("calledPassRate", "pressureRateNoBlitz", "pasa mucho contra presión sin blitz")]
+_NGS = {}
+
+
+def ngs_lineas(vis, loc, sangria="  "):
+    if "df" not in _NGS:
+        try:
+            from pbp_loader import cargar_ngs_trends
+            _NGS["df"], _NGS["ruta"] = cargar_ngs_trends("equipos", max_dias=10)
+        except Exception as e:                       # DatosNoDisponibles u otra
+            _NGS["df"], _NGS["err"] = None, str(e)
+    d = _NGS["df"]
+    if d is None:
+        return [f"{sangria}NGS Trends: sin copia reciente ({_NGS.get('err', '')})"]
+    sem = int(d["semana"].mode()[0])
+    out = [f"{sangria}NGS (Next Gen Trends, % de uso y puesto hasta la sem. {sem}; su EPA no se"
+           " mezcla con el nuestro):"]
+    x = d.set_index(["equipo", "lado", "metrica"])
+
+    def rasgo(t, lado, m):
+        r = x.loc[(t, lado, m)]
+        return f"{NGS_ES[m]} {r['uso'] * 100:.0f}% ({int(r['puesto'])}º)"
+
+    for t in (vis, loc):
+        for lado in ("ataque", "defensa"):
+            ids = d[(d["equipo"] == t) & (d["lado"] == lado) & d["identidad"]].sort_values("puesto")
+            if len(ids):
+                out.append(f"{sangria}  {t} {lado} (identidad): "
+                           + " · ".join(rasgo(t, lado, m) for m in ids["metrica"]))
+    for atk, dfn in ((vis, loc), (loc, vis)):
+        for ma, md, txt in NGS_CHOQUES:
+            try:
+                ra, rd = x.loc[(atk, "ataque", ma)], x.loc[(dfn, "defensa", md)]
+            except KeyError:
+                continue
+            if ra["puesto"] <= 8 and rd["puesto"] <= 8:
+                out.append(f"{sangria}  CHOQUE de uso, {txt}: {atk} {rasgo(atk, 'ataque', ma)}"
+                           f" vs {dfn} {rasgo(dfn, 'defensa', md)}")
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(add_help=False)
     ap.add_argument("--partido", nargs=2, metavar=("VIS", "LOC"))
@@ -268,6 +328,7 @@ def main():
             lineas.append("  (ningún cruce claro)")
         for c in todos[:3]:
             lineas.append(linea_txt(c))
+        lineas += ngs_lineas(vis, loc)
         lineas.append("")
         if args.partido and {vis, loc} == set(args.partido):
             cand = [c for c in todos if (not args.faceta or c["faceta"] == args.faceta)

@@ -654,6 +654,35 @@ def _clave_nombre(n):
     return p[0] if len(p) == 1 else p[0][0] + " " + p[-1]
 
 
+def ngs_extra():
+    """Next Gen Trends (13-nov-2026), solo para la temporada copiada: esquema
+    de bloqueo y coberturas que nflverse no trae en temporada, y quien llama
+    las jugadas. Filas de identidad marcadas con * (fuente en el pie)."""
+    out = {"ataque": [], "defensa": [], "llama": {}}
+    try:
+        from pbp_loader import cargar_ngs_trends
+        e, _ = cargar_ngs_trends("equipos", season=SEASON)
+        c, _ = cargar_ngs_trends("entrenadores", season=SEASON)
+    except Exception as ex:
+        print(f"  Aviso: sin NGS Trends ({ex})")
+        return out
+    x = e[e["equipo"] == team].set_index("metrica")
+    if x.empty:
+        return out
+    lg = e.groupby("metrica")["uso_liga"].first()
+    zona = x.loc["outsideZoneBlocking", "uso"] + x.loc["insideZoneBlocking", "uso"]
+    zona_lg = lg["outsideZoneBlocking"] + lg["insideZoneBlocking"]
+    out["ataque"] = [("Bloqueo en zona*", zona * 100, zona_lg * 100)]
+    out["defensa"] = [("Single-high*", x.loc["singleHigh", "uso"] * 100, lg["singleHigh"] * 100),
+                      ("Press*", x.loc["pressCoverage", "uso"] * 100, lg["pressCoverage"] * 100)]
+    c = c[c["equipo"] == team]
+    for lado, col in (("ataque", "llama_ataque"), ("defensa", "llama_defensa")):
+        q = c[c[col].astype(str).str.lower() == "true"]
+        if len(q):
+            out["llama"][lado] = q["nombre"].iloc[0]
+    return out
+
+
 def pares_identidad(es_off):
     """Filas de IDENTIDAD: (nombre, % del equipo, % de la liga).
 
@@ -680,7 +709,7 @@ def pares_identidad(es_off):
         pares = [("Shotgun", sg_t, sg_lg),
                  ("Bajo centro", uc_t, uc_lg),
                  ("No-huddle", nh_t, nh_lg),
-                 ("Play-action", pa_t, pa_lg)] + [
+                 ("Play-action", pa_t, pa_lg)] + NGS_X["ataque"] + [
                  (f"Personal {p}", uso_pkg.get(p, 0), lg_pkg.get(p, 0))
                  for p in top_pkgs]
     else:
@@ -690,7 +719,7 @@ def pares_identidad(es_off):
         lg_mz    = snap_pct(all_plays, "man_zone")
         pr       = snap_pct(defn, "pressure")
         lg_pr    = snap_pct(all_plays, "pressure")
-        pares = [("Juega zona", jug_mz.get("Zona", 0), lg_mz.get("Zona", 0)),
+        pares = [("Juega zona", jug_mz.get("Zona", 0), lg_mz.get("Zona", 0))] + NGS_X["defensa"] + [
                  ("Genera presión", pr.get("Bajo presion", 0), lg_pr.get("Bajo presion", 0))] + [
                  (f"Juega {p}", uso_pkg.get(p, 0), lg_pkg.get(p, 0))
                  for p in DEF_PKG_ORDER if uso_pkg.get(p, 0) >= 5]
@@ -1218,9 +1247,13 @@ def draw_informe(side, outfile):
             fontstyle="italic", zorder=3)
 
     # ── Pie ───────────────────────────────────────────────────────────────────
+    lado_ngs = "ataque" if es_off else "defensa"
+    llama = NGS_X["llama"].get(lado_ngs)
+    extra_ngs = ("  |  * Next Gen Stats" + (f"; llama las jugadas: {llama}" if llama else "")
+                 if NGS_X[lado_ngs] else "")
     fig.text(0.012, 0.008,
              f"Fuente: nflverse PBP + NGS participation  |  {sello(SEASON)}  |  "
-             f"mín. {MIN_SNAPS} snaps por faceta",
+             f"mín. {MIN_SNAPS} snaps por faceta{extra_ngs}",
              ha="left", va="bottom", fontsize=7.5, color="#555555",
              fontstyle="italic")
     fig.text(0.988, 0.008, "@CuartayDato", ha="right", va="bottom", fontsize=9,
@@ -1231,5 +1264,6 @@ def draw_informe(side, outfile):
     print(f"Guardado: {outfile}")
 
 
+NGS_X = ngs_extra()
 draw_informe("off", salida(f"informe_ataque_{team}_{SEASON}.png", SEASON))
 draw_informe("def", salida(f"informe_defensa_{team}_{SEASON}.png", SEASON))

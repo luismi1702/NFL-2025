@@ -293,7 +293,16 @@ def main():
     os.makedirs(DIR, exist_ok=True)
     if os.path.exists(LOCK):
         edad = datetime.now().timestamp() - os.path.getmtime(LOCK)
-        if edad < 3 * 3600:
+        # 13-nov-2026: una corrida matada (falta de memoria) dejo el candado y
+        # bloqueaba 3 h; si el PID del candado ya no existe, se ignora
+        try:
+            pid = int(io.open(LOCK).read().strip())
+            vivo = str(pid) in subprocess.run(
+                ["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True,
+                text=True, errors="replace").stdout
+        except Exception:
+            vivo = True
+        if edad < 3 * 3600 and vivo:
             print("Ya hay una corrida en marcha.")
             return
     io.open(LOCK, "w").write(str(os.getpid()))

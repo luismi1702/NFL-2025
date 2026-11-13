@@ -24,6 +24,12 @@ En `{DIR}/`:
   antes de elegir ángulos (regla del 30-sep-2026): lo que ellos ya contaron no
   se repite, se completa. Sus cifras solo entran citadas como "según
   SumerSports"
+- `datos_web/ngs_trends_insights_<temporada>.csv` (en la raíz del repo, si existe y
+  su columna `copiado` es de los últimos 7 días) — los "insights" de Next Gen
+  Stats de la jornada (filtra por `semana`). Son IDEAS, como el boletín: si
+  uno apunta a lo mismo que el candidato, cambia de ángulo o complétalo; nunca
+  se copia su frase ni su cifra, y su EPA (modelo de NGS) no se mezcla con el
+  nuestro. Si no está o es vieja, se sigue sin ella.
 - `NN_1_resumen_VIS_vs_LOC_*.png` y `NN_2_ficha_VIS_vs_LOC_*.png` — boxscore y cara
   a cara de CADA partido de la jornada. Solo se usan los del Monday Night (ver
   su sección más abajo)

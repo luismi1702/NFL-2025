@@ -23,6 +23,14 @@ HTML) y deja, con NN = la última semana con datos:
                                      las jugadas en ataque y en defensa
   ngs_trends_liga_{s}_wNN.csv        media de la liga de cada tendencia,
                                      temporada a temporada desde 2018
+  ngs_trends_liga_resumen_{s}_wNN.csv  cambio de cada tendencia en 1, 3 y 5 años
+                                     y desde 2018, en puntos de % (13-nov-2026)
+  ngs_trends_evolucion_{s}_wNN.csv   cada equipo semana a semana: EPA del partido
+                                     y acumulado con su puesto y lo que sube o
+                                     baja; semana 0 = temporada anterior entera
+  ngs_trends_playoffs_{s}_wNN.csv    cuadro por conferencia (cabeza de serie) y
+                                     probabilidades, ya con la jornada en curso
+                                     (la portada va una semana por delante)
   ngs_trends_insights_{s}.csv        los "insights" de NGS (datos de partido
                                      redactados por su equipo, con jugador,
                                      rival y semana): se ACUMULAN, la web solo
@@ -40,6 +48,12 @@ OJO:
 - Lo que la web carga por su API (temporadas anteriores por equipo, evolución
   de un equipo año a año, gráficos de dispersión) NO se copia: pide un token.
   Para tener serie propia, lanzar el copiador cada semana (cada wNN se guarda).
+
+Entre semana (tras el TNF) solo dos equipos van por la jornada nueva: los
+ficheros se etiquetan con la semana de la mayoria (13-nov-2026).
+Scripts que lo usan: ngs_bloqueo, ngs_dependencia, ngs_identidad,
+ngs_partidos_en_juego, ngs_cambio_liga; Previas.py y cruces.py (bloque NGS en
+sus TXT) e informe_equipo.py. Carga: `pbp_loader.cargar_ngs_trends()`.
 
     python copiar_ngs_trends.py
 """
@@ -169,6 +183,49 @@ def insights(datos):
     return out
 
 
+def evolucion(datos):
+    """Portada (13-nov-2026): cada equipo semana a semana con su partido y el
+    acumulado (EPA neto, de ataque, de defensa, diferencia de puntos) con su
+    puesto y lo que sube o baja; semana 0 = la temporada anterior completa."""
+    d = next((x for x in datos if x and x.get("conference") == "ALL"), None)
+    out = []
+    for t in (d or {}).get("teams", []):
+        eq = sigla(t["teamAbbr"])
+        ls = t.get("lastSeason") or {}
+        if ls.get("seasonToDate"):
+            out.append({"equipo": eq, "temporada": ls.get("season"), "semana": 0,
+                        **{f"acum_{k}": v for k, v in ls["seasonToDate"].items()}})
+        for w in t.get("weeks", []):
+            gi = w.get("gameInfo") or {}
+            if gi.get("gameState") != "POST" and not gi.get("byeWeek"):
+                continue
+            out.append({"equipo": eq, "temporada": d["season"], "semana": w["week"],
+                        "descanso": bool(gi.get("byeWeek")),
+                        "rival": sigla(gi.get("opponentTeamAbbr", "") or ""),
+                        "campo": gi.get("gameLocation"), "resultado": gi.get("result"),
+                        **(w.get("stats") or {}),
+                        **{f"acum_{k}": v for k, v in (w.get("seasonToDate") or {}).items()}})
+    return out
+
+
+def cuadro_playoffs(datos):
+    """Portada: puesto actual en la conferencia y la división (cabeza de serie)
+    y las probabilidades, una semana por delante de las páginas de equipo."""
+    out = []
+    for d in datos:
+        for t in (d or {}).get("teams", []):
+            po = dict(t.get("playoffs") or {})
+            gi = po.pop("gameInfo", {}) or {}
+            out.append({"equipo": sigla(t["teamAbbr"]), "semana": d["throughWeek"],
+                        "temporada": d["season"], "conferencia": t.get("conference"),
+                        "division": t.get("division"), "puesto_conferencia": t.get("conferenceSeed"),
+                        "puesto_division": t.get("divisionSeed"), **(t.get("stats") or {}), **po,
+                        "proximo_rival": sigla(gi.get("opponentTeamAbbr", "") or ""),
+                        "proximo_fecha": gi.get("gameDate"), "proximo_hora": gi.get("kickoffTime"),
+                        "proximo_campo": gi.get("gameLocation"), "proximo_game_id": gi.get("gameId")})
+    return out
+
+
 def guardar(df, nombre, que):
     df = df.copy()
     df["fuente"] = FUENTE
@@ -204,11 +261,19 @@ def main():
         ins += insights(q.get("useFetchNgsTrendsInsights", []))
     ins += insights(portada.get("useFetchNgsTrendsLeagueInsights", []))
 
-    season, w = max(semanas)
+    # 13-nov-2026: entre semana (tras el TNF) solo 2 equipos van por la nueva
+    # jornada; el fichero se etiqueta con la semana de la MAYORÍA
+    season = max(semanas)[0]
+    cuenta = pd.Series([f["semana"] for f in filas_s]).value_counts()
+    w = int(cuenta.index[0])
     if len(semanas) != 1:
-        atras = sorted(f["equipo"] for f in filas_s if f["semana"] != w)
-        print(f"Nota: datos hasta la semana {w}; {', '.join(atras)} se quedan en la anterior "
-              "porque descansaron en la última jornada (los byes previos ya están dentro)")
+        delante = sorted(f["equipo"] for f in filas_s if f["semana"] > w)
+        detras = sorted(f["equipo"] for f in filas_s if f["semana"] < w)
+        if delante:
+            print(f"Nota: jornada {w + 1} a medias; {', '.join(delante)} ya la traen. "
+                  f"Fichero etiquetado w{w:02d} (la de la mayoría)")
+        if detras:
+            print(f"Nota: {', '.join(detras)} se quedan en la semana anterior (descansaron)")
     print(f"NGS Trends {season}, semana {w}:")
     guardar(pd.DataFrame(filas_t), f"ngs_trends_equipos_{season}_w{w:02d}.csv", "tendencias")
     guardar(pd.DataFrame(filas_p).sort_values(["semana", "equipo"]),
@@ -222,6 +287,25 @@ def main():
             columns={"metric": "metrica", "season": "temporada", "frequency": "uso_liga"})
         guardar(hist.sort_values(["metrica", "temporada"]), f"ngs_trends_liga_{season}_w{w:02d}.csv",
                 "medias de la liga desde 2018")
+        res = pd.DataFrame(liga[0].get("summary", [])).rename(columns={
+            "metric": "metrica", "yearOverYear": f"cambio_desde_{liga[0]['yoyStartSeason']}",
+            "threeYear": f"cambio_desde_{liga[0]['threeYearStartSeason']}",
+            "fiveYear": f"cambio_desde_{liga[0]['fiveYearStartSeason']}",
+            "ngsHistory": f"cambio_desde_{liga[0]['ngsHistoryStartSeason']}"})
+        if len(res):
+            guardar(res, f"ngs_trends_liga_resumen_{season}_w{w:02d}.csv",
+                    "cambio de cada tendencia (puntos de %)")
+
+    evo = evolucion(portada.get("useFetchNgsTrendsTeamsPerformanceWeek", []))
+    if evo:
+        guardar(pd.DataFrame(evo).sort_values(["equipo", "semana"]),
+                f"ngs_trends_evolucion_{season}_w{w:02d}.csv",
+                "evolución semanal y temporada anterior (sem. 0)")
+    cp = cuadro_playoffs(portada.get("useFetchNgsTrendsPlayoffSeason", []))
+    if cp:
+        wp = max(x["semana"] for x in cp)
+        guardar(pd.DataFrame(cp).sort_values(["conferencia", "puesto_conferencia"]),
+                f"ngs_trends_playoffs_{season}_w{wp:02d}.csv", "cuadro de playoffs por conferencia")
 
     # Insights: se acumulan (la web solo enseña los últimos)
     ruta_ins = os.path.join(DIR, f"ngs_trends_insights_{season}.csv")

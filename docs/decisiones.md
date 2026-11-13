@@ -1290,3 +1290,11 @@ Plantillas: `lab/sf_sea_carrera.py` y `lab/sf_sea_cobertura.py` (exploración, s
 **Decisión:** (1) Las fotos del hilo de MVPs las elige Claude sin pasarle candidatas a Luis ("no hace falta que me pases las fotos"). El criterio sale de sus elecciones w05-w09: apaisada, el jugador como protagonista con el dorsal legible, en la jugada que le hace MVP, sin rótulos; entre dos válidas, la de más acción y resolución. (2) Ningún borrador se queda sin verificar porque falle su redactor: un barrido (`semana_auto.py --pendientes`) revisa cada día las secciones que nadie ha mirado.
 **Motivo:** (1) Mandar candidatas le costaba tiempo a Luis cada miércoles y sus elecciones siguen un patrón claro. (2) El 10-nov el redactor murió por límite de uso, el borrador se escribió a mano y cinco posts se quedaron bloqueados sin que nada lo avisara.
 **Alternativas descartadas:** (1) seguir mandando candidatas por foto. (2) Verificar solo desde `borradores()`; reintentar también lo que el revisor bloqueó con ❌ (eso lo decide Luis).
+
+
+## [2026-11-13] — Next Gen Trends en los scripts: solo uso junto a lo nuestro
+
+**Decisión:** lo que copiamos de NFL Next Gen Trends entra en el catálogo como piezas propias (`ngs_*.py`, todo con datos de NGS y la fuente en el pie) y como contexto en los TXT de previas y cruces, donde solo van % de uso y puesto, nunca su EPA. La carga va por `pbp_loader.cargar_ngs_trends()`. El copiador sigue a demanda, fuera del batch.
+**Motivo:** su EPA es otro modelo (BUF w09: +0,107 frente a +0,140 nuestro) y no se puede mezclar en una frase o un gráfico con el de nflverse; el uso sí cuadra. Las condiciones de nfl.com piden permiso para sacar datos de forma sistemática. Lo nuevo de verdad son el esquema de bloqueo, las coberturas en temporada y el EPA con/sin cada recurso, que nflverse no trae.
+**Alternativas descartadas:** rehacer sus gráficos de uso frente a eficacia (están a un clic); meter el copiador en el batch de los martes (pendiente de Luis); usar su API, que pide token de sesión.
+

@@ -691,6 +691,33 @@ def cargar_ngs(tipo="passing", season=None, refrescar=False):
     return df[df["season"] == season].copy(), season
 
 
+def cargar_ngs_trends(tipo="equipos", season=None, max_dias=None):
+    """Lo ultimo copiado de NFL Next Gen Trends (`copiar_ngs_trends.py`, a
+    demanda) en datos_web/: equipos, partidos, temporada, playoffs, evolucion,
+    liga, liga_resumen, entrenadores, insights. Devuelve (df, ruta).
+
+    OJO: su EPA es el modelo de NGS, no el de nflverse: no se mezclan. El %
+    de uso si se puede citar junto a lo nuestro, nombrando la fuente.
+    max_dias: si la copia es mas vieja, DatosNoDisponibles (13-nov-2026).
+    """
+    import glob
+    if season is None:
+        season = temporada_actual()
+    base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "datos_web")
+    fs = sorted(glob.glob(os.path.join(base, f"ngs_trends_{tipo}_{season}_w*.csv"))) \
+        or sorted(glob.glob(os.path.join(base, f"ngs_trends_{tipo}_{season}.csv")))
+    if not fs:
+        raise DatosNoDisponibles(f"NGS Trends '{tipo}' {season}: lanza `python copiar_ngs_trends.py`")
+    ruta = fs[-1]
+    df = pd.read_csv(ruta)
+    if max_dias is not None and "copiado" in df.columns:
+        edad = (pd.Timestamp.now() - pd.to_datetime(df["copiado"].iloc[0])).days
+        if edad > max_dias:
+            raise DatosNoDisponibles(f"NGS Trends '{tipo}' copiado hace {edad} días"
+                                     " (relanzar copiar_ngs_trends.py)")
+    return df, ruta
+
+
 def cargar_lesiones(season=None, refrescar=False):
     """Parte de lesiones semanal (estado, practica, parte del cuerpo)."""
     return _cargar_auxiliar(season, refrescar, "injuries", INJ_URL, "lesiones")
