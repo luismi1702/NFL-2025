@@ -21,7 +21,11 @@
 | comparador_qbs.py | Radar dos QBs: EPA global/RZ/3er down, EPA bajo presión, **% EPA de aire** (cuánto genera el brazo y cuánto los receptores) y CPOE, + índice EPA+CPOE |
 | QBsTotalEPA.py | Scatter EPA/play Red Zone vs 3er down |
 | qb_presion.py | EPA bajo presión vs pocket limpio |
-| qb_overview.py | Scatter todos los QBs: EPA/play vs CPOE, tamaño = intentos, color = EPA bajo presión |
+| qb_overview.py | Scatter de todos los QBs: EPA por jugada de pase frente a CPOE, logos, titular automático. Estilo nuevo (13-nov-2026; ya sin el color de presión, que era un proxy) |
+| qb_situaciones.py | Tabla de 31 QBs "cuando aprieta": EPA en global, 3er down, red zone (<20) y contra blitz (FTN), con su puesto. Corta en la última semana con FTN completo (13-nov-2026) |
+| qb_riesgo_int.py | Suerte y riesgo: pases que merecían intercepción (FTN) frente a INT reales por 100 intentos; línea = ratio de la liga (13-nov-2026) |
+| qb_presion_sufrida.py | ¿Culpa suya o de la línea?: % de dropbacks con presión (PFR semanal) frente a EPA. Sustituye en temporada a qb_presion.py (13-nov-2026) |
+| qb_agresividad.py | Quién arriesga: agresividad NGS (% a ventana cerrada) frente al tiempo hasta lanzar; equipo de nuestro PBP, no el actual de NGS (13-nov-2026) |
 | mapa_pases_por_zona.py | Mapa de pases por zona del campo |
 
 ## Ataque
