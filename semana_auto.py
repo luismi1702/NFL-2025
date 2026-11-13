@@ -274,6 +274,36 @@ def verificar(destino):
         soltar_candado(cand)
 
 
+def cruce_externo(destino):
+    """Lanza cruce_externo.py para la semana del borrador y devuelve, para el
+    prompt del verificador, dónde está el resultado y qué dice.
+
+    13-nov-2026: la red zone del resumen y de las previas salió mal desde
+    agosto (contaba el extra point como visita) y el verificador no lo vio en
+    tres meses: comprobaba cada texto contra NUESTRO script, que daba el mismo
+    número equivocado. Este cruce compara lo que pintan los scripts con el
+    boxscore de ESPN, una fuente que no es nuestra."""
+    m = re.search(r"salidas[\\/](\d{4})[\\/]w(\d{2})", destino)
+    if not m:
+        return "(no aplica: el fichero no es de una semana de salidas/)"
+    season, week = m.group(1), str(int(m.group(2)))
+    try:
+        r = subprocess.run([sys.executable, "cruce_externo.py", "--season", season,
+                            "--week", week], cwd=RAIZ, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=900)
+    except Exception as e:
+        log(f"   cruce externo: FALLO {type(e).__name__}: {e}")
+        return f"(el cruce externo FALLÓ: {type(e).__name__}. Las cifras de boxscore se cruzan a mano con la web)"
+    ruta = f"salidas/{season}/w{int(week):02d}/textos/cruce_externo_{season}_w{int(week):02d}.txt"
+    res = next((l for l in (r.stdout or "").splitlines() if l.startswith("RESULTADO")), "")
+    log(f"   cruce externo sem. {week}: {res or 'sin resultado'}")
+    if not res:
+        return ("(el cruce externo no dio resultado: "
+                + " | ".join((r.stderr or r.stdout or "").strip().splitlines()[-2:])
+                + ". Las cifras de boxscore se cruzan a mano con la web)")
+    return f"`{ruta}` — {res}"
+
+
 def _verificar(destino):
     import shutil
     from datetime import date
@@ -285,7 +315,8 @@ def _verificar(destino):
                         encoding="utf-8").read()
     rel = os.path.relpath(destino, RAIZ).replace(os.sep, "/")
     prompt = (plantilla.replace("{FICHERO}", rel)
-                       .replace("{FECHA}", str(date.today())))
+                       .replace("{FECHA}", str(date.today()))
+                       .replace("{CRUCE}", cruce_externo(destino)))
     log(f"-> verificacion de {os.path.basename(destino)}: claude -p (PBP + web)")
     try:
         # Prompt por STDIN, como en borradores()

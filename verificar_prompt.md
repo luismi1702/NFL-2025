@@ -18,7 +18,29 @@ sep-2026, "Green Bay ganó 8 de 11 facetas" (eran 6, contadas a ojo en el PNG)
 y "Lamar, 33% de snaps bajo centro" (era 55%: otro conjunto de jugadas).
 Las notas de "Verificación:" que deja el redactor NO cuentan como prueba.
 
+El 13-nov-2026 se descubrió que la red zone del resumen de partido y de las
+previas llevaba MAL desde agosto (contaba el extra point, que se patea desde
+la 15, como visita: SF 25/28 cuando era 20/23). Este verificador la dio por
+buena todas las semanas porque la comprobaba contra el MISMO script que la
+calculaba mal. Comprobar contra nuestro script no prueba nada si el script
+está mal: por eso existe el punto 0.
+
 ## Qué comprobar en CADA post de CADA sección (opciones [A] y [B])
+
+0. **Cruce con una fuente externa** (antes que nada): {CRUCE}
+   Ese fichero compara lo que pintan `resumen_partido.py` (por partido) y
+   `Previas.py` (temporada) con el boxscore de ESPN: red zone (TD/visitas),
+   3er down, pérdidas, INT, sacks, completos/intentos y yardas.
+   - Si el post cita una de esas cifras y en el cruce sale con ❌, esa
+     opción NO pasa: corrígela con la cifra de ESPN si el arreglo es seguro,
+     o deja la sección `❌ SIN VERIFICAR: cruce externo — <cifra>`.
+   - Si el post cita una cifra de BOXSCORE que el cruce no cubre (yardas de
+     un jugador, puntos, FG, conversiones de 4º down, récords, tiempo de
+     posesión…), crúzala tú con una fuente externa (boxscore de ESPN, NFL.com
+     o Pro Football Reference por WebSearch), no solo con nuestro PBP.
+   - Si el cruce no dio resultado, todas las cifras de boxscore se cruzan
+     así, a mano, con la web.
+   Nuestro script NUNCA es prueba suficiente de una cifra básica de partido.
 
 1. **Cada número**, recalculado con Python contra el PBP (`from pbp_loader
    import cargar_pbp, ...`; mira `CLAUDE.md` para las demás fuentes) y contra

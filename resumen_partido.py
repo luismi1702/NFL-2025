@@ -246,7 +246,22 @@ for team in [team_a, team_b]:
     drv = off_all[off_all["fixed_drive"].notna()]
     if not drv.empty and "td_team" in drv.columns:
         for _, g in drv.groupby("fixed_drive"):
-            if g["yardline_100"].min() <= 20:
+            # Visita = alguna jugada de scrimmage (castigos incluidos) DENTRO de
+            # la 20 (de la 19 hacia dentro, como la NFL y ESPN), sin nada de
+            # lo que viene tras el TD: el extra point (yardline_100=15), la
+            # conversion de 2 y sus castigos hacian visita a todo TD de lejos
+            # (WAS @ NYG, sem. 10 de 2026: salia WAS 3/3 y fue 1/1). Cuadra
+            # con ESPN en los 272 equipo-partido de las sem. 1-9 de 2026
+            # (lab/verificacion/rz_fix_vs_espn.py; cruce_externo.py)
+            g = g.sort_values("play_id")
+            _td = g.index[g["touchdown"] == 1]
+            if len(_td):
+                g = g.loc[:_td[0]]
+            sc = g[g["play_type"].isin(["pass", "run", "field_goal", "no_play",
+                                        "qb_kneel", "qb_spike", "punt"])]
+            if "two_point_attempt" in sc.columns:
+                sc = sc[sc["two_point_attempt"] != 1]
+            if len(sc) and sc["yardline_100"].min() < 20:
                 rz_trips += 1
                 if (g["td_team"].astype(str) == team).any():
                     rz_tds += 1
@@ -297,6 +312,21 @@ for team in [team_a, team_b]:
         "turnovers": turnovers, "explosivas": explosivas,
         "rz_trips": rz_trips, "rz_tds": rz_tds,
     }
+
+# Los numeros del boxscore que pinta el PNG, en JSON, para que
+# cruce_externo.py los compare con el boxscore de ESPN (13-nov-2026: la red
+# zone salio mal todo el año y el verificador no lo vio porque comprobaba el
+# texto contra este mismo calculo)
+import json as _json
+_box = ["comp", "att", "pass_yds", "pass_td", "ints", "sacks", "rush_att",
+        "rush_yds", "rush_td", "total_yds", "tdc", "tdf", "turnovers",
+        "rz_trips", "rz_tds"]
+with open(salida(f"resumen_numeros_{team_a}_{team_b}_{SEASON}.json", SEASON, week),
+          "w", encoding="utf-8") as _f:
+    _json.dump({"game_id": str(game_df["game_id"].iloc[0]),
+                "equipos": {t: {k: int(team_stats[t][k]) for k in _box}
+                            for t in (team_a, team_b)}},
+               _f, ensure_ascii=False, indent=1)
 
 # ── TOP 3 PLAYS BY |WPA| ───────────────────────────────────────────────────────
 # vegas_home_wp incorpora la linea pregame: un favorito de -7 ARRANCA en ~70%

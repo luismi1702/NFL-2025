@@ -566,7 +566,9 @@ def main():
     # Lo que se escriba a mano en borradores_jueves.md se queda donde esta.
     # El dato de la semana (06-oct-2026) se escribe ya en la carpeta del dia
     # en que se publica, aunque sea jueves: se queda donde esta
-    QUIETOS = ("borradores_jueves.md", "borradores_dato.md")
+    # La serie de mitad de temporada (12-nov-2026) deja su JUEVES ya en la
+    # carpeta de la semana en que se publica: también se queda donde está
+    QUIETOS = ("borradores_jueves.md", "borradores_dato.md", "borradores_mitad_temporada.md")
     # Las respuestas a podcasts (22-oct-2026) las deja podcasts_auto.py ya en la
     # carpeta de la cola de HOY: un jueves, su "## JUEVES" es de esta semana
     def quieto(f):

@@ -110,8 +110,23 @@ def compute_drive_level(df: pd.DataFrame):
             continue
         start_y = g["yardline_100"].iloc[0] if "yardline_100" in g.columns else np.nan
         start_y = np.clip(start_y, 1, 99) if pd.notna(start_y) else np.nan
-        min_y   = g["yardline_100"].min() if "yardline_100" in g.columns else np.nan
-        entered_rz = (pd.notna(min_y) and (min_y <= 20))
+        # Visita = alguna jugada de scrimmage (castigos incluidos) DENTRO de
+        # la 20 (de la 19 hacia dentro, como la NFL y ESPN), sin nada de lo
+        # que viene tras el TD: el extra point (yardline_100=15) hacia visita
+        # a todo TD de lejos (13-nov-2026: SF salia 25/28 y era 20/23; NE
+        # 21/32 y era 12/23). Cuadra con ESPN en los 272 equipo-partido de
+        # las sem. 1-9 de 2026 (lab/verificacion/rz_fix_vs_espn.py)
+        sc = g.sort_values("play_id") if "play_id" in g.columns else g
+        _td = sc.index[pd.to_numeric(sc["touchdown"], errors="coerce").fillna(0) == 1]
+        if len(_td):
+            sc = sc.loc[:_td[0]]
+        if "play_type" in sc.columns:
+            sc = sc[sc["play_type"].isin(["pass", "run", "field_goal", "no_play",
+                                          "qb_kneel", "qb_spike", "punt"])]
+        if "two_point_attempt" in sc.columns:
+            sc = sc[pd.to_numeric(sc["two_point_attempt"], errors="coerce").fillna(0) != 1]
+        min_y   = sc["yardline_100"].min() if len(sc) else np.nan
+        entered_rz = (pd.notna(min_y) and (min_y < 20))
 
         if "td_team" in g.columns:
             td_for = g["td_team"].astype(str).eq(str(posteam)).any()

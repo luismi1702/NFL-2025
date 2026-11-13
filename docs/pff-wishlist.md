@@ -124,3 +124,12 @@ jugador. Todo descarga CSV.
 - Cover 0-6 por equipo CON EPA solo aparece preguntando a SumerBrain (su chat sobre la base de datos). De ahí salen `datos_web/sumerpass_coberturas_2026_w09.csv` (defensa y ataque) y `sumerpass_personal_defensivo_2026_w09.csv`, ya con el esquema del informe.
 - Comprobado: el % de Base/Nickel/Dime de SumerBrain coincide al decimal con la tabla de equipos (CIN, LA, CLE, SEA).
 - PFF: su API rechaza el acceso automático ("requires a PFF Pro subscription and an API key"). Solo vale el botón CSV pulsado a mano; Chrome dejó bajar uno (`pff_data/pff_offense_blocking_2026_w09.csv`).
+
+## NFL Next Gen Trends (gratis, 12-nov-2026)
+
+- nfl.com/stats/ngs/trends, lanzada por Next Gen Stats el 12-nov-2026 (tuit de Mike Band). Gratis y sin sesión.
+- Por equipo: uso, puesto, percentil, EPA/jugada, % de éxito y % de big plays de 16 tendencias de ataque (personal 11/12/13/21, motion, play action en early downs, pase pedido, tempo, quick passing, rutas dentro/fuera, 10+ yardas de aire, bloqueo man/gap/inside zone/outside zone) y 12 de defensa (base/nickel/dime, man/zone/press, single-high/split-safety, Cover 0, blitz, presión con y sin blitz). En motion, play action, pase pedido y quick passing, también el rendimiento SIN la tendencia.
+- Histórico de la liga desde 2018 por tendencia; por equipo, la evolución de sus 5 rasgos de identidad, temporada a temporada.
+- Cubre gratis lo que el 02-nov se dio como solo de pago: personal defensivo con EPA y Cover 0. Sigue sin estar el desglose Cover 1-6 (eso, SumerBrain o StatRankings+).
+- Copiador: `copiar_ngs_trends.py` -> `datos_web/ngs_trends_*` (tendencias, partidos, temporada y playoffs, entrenadores, medias de la liga desde 2018 e insights acumulados). Lo que va por API con token (temporadas anteriores por equipo, evolución año a año, dispersión) no se copia. El EPA es el del modelo de NGS (BUF w09: +0,107 frente a +0,140 en nflverse): no se mezcla con el nuestro.
+- De pago (NFL Pro): los "Latest Insights" de jugadores.
